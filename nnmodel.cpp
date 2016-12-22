@@ -87,34 +87,12 @@ void nnmodel::pass()
 	Matd sz2 = elemwiseMult(a2, 1. - a2);
 	Matd sz1 = elemwiseMult(a1, 1. - a1);
 
-	Matd dEdWout = a2.t() * d;
-	Matd dEdbout = Matd::ones(m_y.cols, m_y.rows) * d;
-
-	Matd da2 = d * m_Wout.t();
-	da2 = da2 * sz2;
-	Matd dEdW2 = a1.t() * da2;
-	Matd dEdb2 = da2;
-
-	Matd da1 = da2 * m_W2.t();
-	da1 = da1 * sz1;
-	Matd dEdW1 = m_X.t() * da1;
-	Matd dEdb1 = da1;
-//	Matd da2 = d * m_W2.t();
-//	da2 = da2 * sz2;
-//	Matd dW2 = a2.t() * da2;
-//	Matd db2 = d * sz1;
-
-//	Matd da1 = da2 * m_W1.t();
-//	da1 = da1 * sz1;
-//	Matd dW1 = a1.t() * da1;
-//	Matd db1 = da2 * sz1;
-
-	m_W1 -= (dEdW1 * m_alpha);
-	m_b1 -= (dEdb1 * m_alpha);
-	m_W2 -= (dEdW2 * m_alpha);
-	m_b2 -= (dEdb2 * m_alpha);
-	m_Wout -= (dEdWout * m_alpha);
-	m_bout -= (dEdbout * m_alpha);
+//	m_W1 -= (dEdW1 * m_alpha);
+//	m_b1 -= (dEdb1 * m_alpha);
+//	m_W2 -= (dEdW2 * m_alpha);
+//	m_b2 -= (dEdb2 * m_alpha);
+//	m_Wout -= (dEdWout * m_alpha);
+//	m_bout -= (dEdbout * m_alpha);
 }
 
 Matd nnmodel::resultModel(Matd &m)
