@@ -704,7 +704,8 @@ public:
 	}
 	static inline Mat_< T > ones(int rows, int cols){
 		Mat_< T > res(rows, cols);
-		res.val.resize(rows * cols, 1);
+		for(size_t i = 0; i < val.size(); i++)
+			val[i] = 1;
 		return res;
 	}
 	static inline Mat_< T > eye(int rows, int cols){

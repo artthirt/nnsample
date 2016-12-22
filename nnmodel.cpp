@@ -84,12 +84,21 @@ void nnmodel::pass()
 	Matd d2 = elemwiseMult(d, d);
 	m_L2 = d2.sum() / d2.total();
 
-//	Matd sz2 = a2 * (1. - a2);
-//	Matd sz1 = a1 * (1. - a1);
+	Matd sz2 = elemwiseMult(a2, 1. - a2);
+	Matd sz1 = elemwiseMult(a1, 1. - a1);
 
-//	Matd dWout = a2.t() * d;
-//	Matd dbout = ;
+	Matd dEdWout = a2.t() * d;
+	Matd dEdbout = Matd::ones(m_y.cols, m_y.rows) * d;
 
+	Matd da2 = d * m_Wout.t();
+	da2 = da2 * sz2;
+	Matd dEdW2 = a1.t() * da2;
+	Matd dEdb2 = da2;
+
+	Matd da1 = da2 * m_W2.t();
+	da1 = da1 * sz1;
+	Matd dEdW1 = m_X.t() * da1;
+	Matd dEdb1 = da1;
 //	Matd da2 = d * m_W2.t();
 //	da2 = da2 * sz2;
 //	Matd dW2 = a2.t() * da2;
@@ -100,12 +109,12 @@ void nnmodel::pass()
 //	Matd dW1 = a1.t() * da1;
 //	Matd db1 = da2 * sz1;
 
-//	m_W1 -= (dW1 * m_alpha);
-//	m_b1 -= (db1 * m_alpha);
-//	m_W2 -= (dW2 * m_alpha);
-//	m_b2 -= (db2 * m_alpha);
-//	m_W2 -= (dWout * m_alpha);
-//	m_b2 -= (dbout * m_alpha);
+	m_W1 -= (dEdW1 * m_alpha);
+	m_b1 -= (dEdb1 * m_alpha);
+	m_W2 -= (dEdW2 * m_alpha);
+	m_b2 -= (dEdb2 * m_alpha);
+	m_Wout -= (dEdWout * m_alpha);
+	m_bout -= (dEdbout * m_alpha);
 }
 
 Matd nnmodel::resultModel(Matd &m)
@@ -136,16 +145,16 @@ void nnmodel::init_weights()
 {
 	m_W1 = Matd(m_X.cols, m_layer1);
 	m_W1.randn(0., 0.1);
-	m_b1 = Matd::ones(m_layer1, 1);
-	//m_b1.randn(0, 0.1);
+	m_b1 = Matd(m_layer1, 1);
+	m_b1.randn(0, 0.1);
 
 	m_W2 = Matd(m_layer1, m_layer2);
 	m_W2.randn(0., 0.1);
-	m_b2 = Matd::ones(m_layer2, 1);
-	//m_b2.randn(0, 0.1);
+	m_b2 = Matd(m_layer2, 1);
+	m_b2.randn(0, 0.1);
 
 	m_Wout = Matd(m_layer2, m_y.cols);
 	m_Wout.randn(0., 0.1);
-	m_bout = Matd::ones(m_y.cols, 1);
-	//m_bout.randn(0, 0.1);
+	m_bout = Matd(m_y.cols, 1);
+	m_bout.randn(0, 0.1);
 }
