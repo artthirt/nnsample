@@ -699,6 +699,7 @@ public:
 	///**************************
 	static inline Mat_< T > zeros(int rows, int cols){
 		Mat_< T > res(rows, cols);
+		res.val.clear();
 		res.val.resize(rows * cols, 0);
 		return res;
 	}

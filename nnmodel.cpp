@@ -68,24 +68,43 @@ void nnmodel::pass()
 		return;
 
 	/// forward
-	Matd z1 = m_X * m_W1;
-	z1.biasPlus(m_b1);
-	Matd a1 = sigmoid(z1);
-	Matd z2 = a1 * m_W2;
-	z2.biasPlus(m_b2);
+	Matd z2 = m_X * m_W1;
+	z2.biasPlus(m_b1);
 	Matd a2 = sigmoid(z2);
-	Matd z3 = a2 * m_Wout;
-	z3.biasPlus(m_bout);
-	Matd a3 = (z3);
+	Matd z3 = a2 * m_W2;
+	z3.biasPlus(m_b2);
+	Matd a3 = sigmoid(z3);
+	Matd z4 = a3 * m_Wout;
+	z4.biasPlus(m_bout);
+	Matd a4 = (z4);
 
 	/// backward
-	Matd d = a3 - m_y;
+	Matd d4 = a4 - m_y;
 
-	Matd d2 = elemwiseMult(d, d);
-	m_L2 = d2.sum() / d2.total();
+	Matd dl2 = elemwiseMult(d4, d4);
+	m_L2 = dl2.sum() / dl2.total();
 
+	Matd sz3 = elemwiseMult(a3, 1. - a3);
 	Matd sz2 = elemwiseMult(a2, 1. - a2);
-	Matd sz1 = elemwiseMult(a1, 1. - a1);
+
+	int m = m_X.rows;
+
+	Matd dW3 = Matd::zeros(m_Wout.rows, m_Wout.cols);
+	Matd dW2 = Matd::zeros(m_W2.rows, m_W2.cols);
+	Matd dW1 = Matd::zeros(m_W1.rows, m_W1.cols);
+	for(int i = 0; i < m; i++){
+
+	}
+
+	Matd d3 = d4 * m_Wout.t();
+	d3 = elemwiseMult(d3, sz3);
+	dW3 = a3.t() * d4;
+
+	Matd d2 = d3 * m_W2.t();
+	d2 = elemwiseMult(d2, sz2);
+	dW2 = a2.t() * d3;
+
+	dW1 = m_X.t() * d2;
 
 //	m_W1 -= (dEdW1 * m_alpha);
 //	m_b1 -= (dEdb1 * m_alpha);

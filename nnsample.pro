@@ -28,4 +28,6 @@ FORMS    += mainwindow.ui \
 
 win32{
     LIBS += -lopengl32 -lglu32
+}else{
+    LIBS += -lGLU
 }
