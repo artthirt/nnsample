@@ -18,8 +18,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_X = ct::Matd(cnt, 2);
 	m_y = ct::Matd(cnt, 1);
 
-	std::uniform_real_distribution<double> ud(-10, 10);
-	std::mt19937 gen;
+	ud = std::uniform_real_distribution<double>(-10, 10);
+
 	gen.seed(0);
 
 	std::vector< ct::Vec3d > pts;
@@ -84,20 +84,40 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pb_calculate_clicked()
 {
-	ct::Matd Y = m_nn.forward(m_X);
+	ct::Matd Y = m_nn.forward(m_X), y_validate;
 
-	std::vector< ct::Vec3d > pts;
+	const int cnt = 200;
+	ct::Matd X(cnt, 2);
+
+	for(int i = 0; i < cnt; i++){
+		double x = ud(gen);
+		double y = ud(gen);
+		X.at(i, 0) = x;
+		X.at(i, 1) = y;
+	}
+
+	y_validate = m_nn.forward(X);
+
+	std::vector< ct::Vec3d > pts, pts_val;
 	for(int i = 0; i < m_X.rows; i++){
 		double x = m_X.at(i, 0);
 		double y = m_X.at(i, 1);
 		double z = Y.at(i, 0);
 		pts.push_back(ct::Vec3d(x, y, z));
 	}
+	for(int i = 0; i < cnt; i++){
+		double x = X.at(i, 0);
+		double y = X.at(i, 1);
+		double z = y_validate.at(i, 0);
+		pts_val.push_back(ct::Vec3d(x, y, z));
+	}
 	if(ui->widgetScene->count() < 2){
 		ui->widgetScene->add_graphic(pts, ct::Vec3d(0, 0.7, 0));
+		ui->widgetScene->add_graphic(pts_val, ct::Vec3d(0, 0.1, 0.7));
 		ui->widgetScene->add_graphicLines(ui->widgetScene->pts(0), pts, ct::Vec3d(0.8, 0.7, 0.3));
 	}else{
 		ui->widgetScene->pts(1) = pts;
+		ui->widgetScene->pts(2) = pts_val;
 		ui->widgetScene->pts2Line(0) = pts;
 	}
 

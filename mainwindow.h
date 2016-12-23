@@ -32,6 +32,9 @@ private:
 	ct::Matd m_X;
 	ct::Matd m_y;
 
+	std::uniform_real_distribution<double> ud;
+	std::mt19937 gen;
+
 	nnmodel m_nn;
 };
 
