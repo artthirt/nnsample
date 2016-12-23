@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QTimer>
 
 #include "custom_types.h"
 #include "nnmodel.h"
@@ -20,9 +21,13 @@ public:
 
 private slots:
 	void on_pb_calculate_clicked();
+	void onTimeout();
+
+	void on_dsb_alpha_valueChanged(double arg1);
 
 private:
 	Ui::MainWindow *ui;
+	QTimer m_timer;
 
 	ct::Matd m_X;
 	ct::Matd m_y;

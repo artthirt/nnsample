@@ -7,6 +7,8 @@
 #include <math.h>
 #include <sstream>
 #include <random>
+#include <iostream>
+#include <iomanip>
 
 namespace ct{
 
@@ -480,6 +482,19 @@ std::ostream& operator<< (std::ostream& stream, const Vec_<T, count >& v)
 
 /////////////////////////////////////////////
 
+struct Size{
+	Size(){
+		width = height = 0;
+	}
+	Size(int w, int h){
+		width = w;
+		height = h;
+	}
+
+	int width;
+	int height;
+};
+
 typedef std::vector< unsigned char > vector_uchar;
 typedef std::shared_ptr< vector_uchar > shared_uvector;
 
@@ -508,7 +523,7 @@ public:
 		this->rows = rows;
 		this->cols = cols;
 		val.resize(rows * cols);
-		std::copy(data, data + rows * cols * depth, (char*)&val[0]);
+		std::copy((char*)data, (char*)data + rows * cols * depth, (char*)&val[0]);
 	}
 	template< int count >
 	Mat_(const Vec_< T, count>& v){
@@ -545,6 +560,9 @@ public:
 	inline T* ptr() const{
 		return &val[0];
 	}
+	inline Size size() const{
+		return Size(cols, rows);
+	}
 	///****************
 	inline char* bytes(){
 		return (char*)val[0];
@@ -567,32 +585,37 @@ public:
 	}
 	///********************
 	inline Mat_<T>& operator += (const Mat_<T>& v){
-		for(int i = 0; i < rows * cols; i++){
+//#pragma omp parallel for
+		for(size_t i = 0; i < val.size(); i++){
 			val[i] += v.val[i];
 		}
 		return *this;
 	}
 	inline Mat_<T>& operator -= (const Mat_<T>& v){
-		for(int i = 0; i < rows * cols; i++){
+//#pragma omp parallel for
+		for(int i = 0; i < val.size(); i++){
 			val[i] -= v.val[i];
 		}
 		return *this;
 	}
 	///********************
 	inline Mat_<T>& operator *= (T v){
-		for(int i = 0; i < rows * cols; i++){
+//#pragma omp parallel for
+		for(int i = 0; i < val.size(); i++){
 			val[i] *= v;
 		}
 		return *this;
 	}
 	inline Mat_<T>& operator += (T v){
-		for(int i = 0; i < rows * cols; i++){
+//#pragma omp parallel for
+		for(size_t i = 0; i < val.size(); i++){
 			val[i] += v;
 		}
 		return *this;
 	}
 	inline Mat_<T>& operator -= (T v){
-		for(int i = 0; i < rows * cols; i++){
+//#pragma omp parallel for
+		for(size_t i = 0; i < val.size(); i++){
 			val[i] -= v;
 		}
 		return *this;
@@ -600,6 +623,7 @@ public:
 	inline Mat_<T>& biasPlus(const Mat_<T > & m){
 		if(m.cols != 1 || cols != m.rows)
 			return *this;
+//#pragma omp parallel for
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
 				val[i * cols + j] += m.val[j];
@@ -631,6 +655,7 @@ public:
 	Mat_<T> t() const{
 		Mat_<T> res(cols, rows);
 
+//#pragma omp parallel for
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
 				res.val[j * rows + i] = val[i * cols + j];
@@ -689,7 +714,7 @@ public:
 		res << "[";
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				res << val[i * cols + j] << " ";
+				res << std::setprecision(3) << val[i * cols + j] << " ";
 			}
 			res << ";\n";
 		}
@@ -708,6 +733,12 @@ public:
 		for(size_t i = 0; i < res.val.size(); i++)
 			res.val[i] = 1.;
 		return res;
+	}
+	static inline Mat_< T > zeros(const Size& size){
+		return Mat_<T>::zeros(size.height, size.width);
+	}
+	static inline Mat_< T > ones(const Size& size){
+		return Mat_<T>::ones(size.height, size.width);
 	}
 	static inline Mat_< T > eye(int rows, int cols){
 		Mat_< T > res = zeros(rows, cols);
@@ -729,11 +760,12 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Mat_<T>& m2)
 	int c = m2.cols;
 	Mat_<T> res(r, c);
 
+#pragma omp parallel for
 	for(int i = 0; i < m1.rows; i++){
 		for(int k = 0; k < m2.cols; k++){
 			T s = 0;
 			for(int j = 0; j < m1.cols; j++){
-				s += m1.at(i, j) * m2.at(j, k);
+				s += m1.val[i * m1.cols + j]/*at(i, j)*/ * m2.val[j * m2.cols + k]/*at(j, k)*/;
 			}
 			res.at(i, k) = s;
 		}
@@ -886,6 +918,20 @@ inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
 	return res;
 }
 
+template< typename T >
+inline Mat_<T> sumRows(const Mat_<T > &m)
+{
+	Mat_<T> res;
+	if(m.rows == 0 || m.cols == 0)
+		return res;
+	res = Mat_<T>::zeros(1, m.cols);
+//#pragma omp parallel for
+	for(int i = 0; i < m.rows; i++){
+		for(int j = 0; j < m.cols; j++)
+			res.val[j] += m.val[i * m.cols + j];
+	}
+	return res;
+}
 
 /**
  * @brief expi
@@ -897,7 +943,7 @@ inline Mat_<T> exp(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
 		res.val[i] = exp(m.val[i]);
 	}
@@ -914,7 +960,7 @@ inline Mat_<T> expi(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
 		res.val[i] = exp(-m.val[i]);
 	}
@@ -931,9 +977,27 @@ inline Mat_<T> sigmoid(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
 		res.val[i] = 1. / (1. + std::exp(-m.val[i]));
+	}
+	return res;
+}
+
+/**
+ * @brief sigmoid
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> tanh(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+//#pragma omp parallel for
+	for(int i = 0; i < m.total(); i++){
+		T e = std::exp(2 * m.val[i]);
+		res.val[i] = (e - 1.) / (e + 1.);
 	}
 	return res;
 }

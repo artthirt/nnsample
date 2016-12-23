@@ -8,6 +8,8 @@
 
 #include "custom_types.h"
 
+typedef ct::Vec3d Line[2];
+
 namespace Ui {
 class GLView;
 }
@@ -23,10 +25,17 @@ public:
 	void set_update();
 
 	void add_graphic(const std::vector< ct::Vec3d >& pts, const ct::Vec3d& color);
+	void add_graphicLines(const std::vector< ct::Vec3d >& p1,
+						  const std::vector< ct::Vec3d >& p2, const ct::Vec3d& color);
 
 	std::vector<ct::Vec3d> &pts(size_t index);
 	ct::Vec3d &color(size_t index);
 	size_t count() const;
+
+	std::vector<ct::Vec3d> &pts1Line(size_t index);
+	std::vector<ct::Vec3d> &pts2Line(size_t index);
+	ct::Vec3d &colorLine(size_t index);
+	size_t countLine() const;
 
 private:
 	Ui::GLView *ui;
@@ -41,12 +50,19 @@ private:
 			this->points = pts;
 			this->color = color;
 		}
+		graphic( const std::vector< ct::Vec3d > & p1,  const std::vector< ct::Vec3d > & p2, const ct::Vec3d& color){
+			this->points = p1;
+			this->points2 = p2;
+			this->color = color;
+		}
 
 		std::vector < ct::Vec3d > points;
+		std::vector < ct::Vec3d > points2;
 		ct::Vec3d color;
 	};
 
 	std::vector< graphic > m_graphics;
+	std::vector< graphic > m_graphicsLines;
 
 	bool m_show_graphics;
 
@@ -83,6 +99,7 @@ private:
 	void init();
 	void draw_net();
 	void draw_graphics();
+	void draw_graphicsLine();
 
 	void load_xml();
 	void save_xml();

@@ -24,7 +24,15 @@ public:
 
 	double L2() const;
 
-	void init_weights();
+	ct::Matd& w1();
+	ct::Matd& w2();
+	ct::Matd& w3();
+
+	ct::Matd& b1();
+	ct::Matd& b2();
+	ct::Matd& b3();
+
+	void init_weights(int seed = 0);
 	void pass();
 
 	ct::Matd resultModel(ct::Matd& m);
@@ -40,8 +48,10 @@ private:
 	ct::Matd m_W2;
 	ct::Matd m_b2;
 
-	ct::Matd m_Wout;
-	ct::Matd m_bout;
+	ct::Matd m_W3;
+	ct::Matd m_b3;
+
+	ct::Matd m_dW1, m_dW2, m_dW3, m_dB1, m_dB2, m_dB3;
 
 	int m_layer1;
 	int m_layer2;
@@ -49,6 +59,7 @@ private:
 	int m_inputs;
 	int m_outputs;
 	double m_alpha;
+	double m_betha;
 
 	double m_L2;
 

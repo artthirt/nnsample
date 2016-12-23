@@ -28,6 +28,7 @@ FORMS    += mainwindow.ui \
 
 win32{
     LIBS += -lopengl32 -lglu32
+    QMAKE_CXXFLAGS += /openmp
 }else{
     LIBS += -lGLU
 }

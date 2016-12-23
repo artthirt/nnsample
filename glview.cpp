@@ -140,6 +140,13 @@ void GLView::add_graphic(const std::vector<ct::Vec3d> &pts, const ct::Vec3d &col
 	m_graphics.push_back(graphic(pts, color));
 }
 
+void GLView::add_graphicLines(const std::vector<ct::Vec3d> &p1, const std::vector<ct::Vec3d> &p2, const ct::Vec3d &color)
+{
+	if(p1.size() != p2.size())
+		return;
+	m_graphicsLines.push_back(graphic(p1, p2, color));
+}
+
 std::vector<ct::Vec3d> &GLView::pts(size_t index)
 {
 	return m_graphics[index].points;
@@ -153,6 +160,26 @@ ct::Vec3d &GLView::color(size_t index)
 size_t GLView::count() const
 {
 	return m_graphics.size();
+}
+
+std::vector<ct::Vec3d> &GLView::pts1Line(size_t index)
+{
+	return m_graphicsLines[index].points;
+}
+
+std::vector<ct::Vec3d> &GLView::pts2Line(size_t index)
+{
+	return m_graphicsLines[index].points2;
+}
+
+ct::Vec3d &GLView::colorLine(size_t index)
+{
+	return m_graphicsLines[index].color;
+}
+
+size_t GLView::countLine() const
+{
+	return m_graphicsLines.size();
 }
 
 void GLView::init()
@@ -210,7 +237,7 @@ void GLView::draw_net()
 void GLView::draw_graphics()
 {
 	glEnable(GL_BLEND);
-	glPointSize(3);
+	glPointSize(5);
 	for(size_t i = 0; i < m_graphics.size(); i++){
 		graphic& g = m_graphics[i];
 
@@ -218,6 +245,24 @@ void GLView::draw_graphics()
 		glBegin(GL_POINTS);
 		for(size_t j = 0; j < g.points.size(); j++){
 			glVertex3dv(g.points[j].val);
+		}
+		glEnd();
+	}
+	glDisable(GL_BLEND);
+}
+
+void GLView::draw_graphicsLine()
+{
+	glEnable(GL_BLEND);
+	glPointSize(5);
+	for(size_t i = 0; i < m_graphicsLines.size(); i++){
+		graphic& g = m_graphicsLines[i];
+
+		glColor3dv(g.color.val);
+		glBegin(GL_LINES);
+		for(size_t j = 0; j < g.points.size(); j++){
+			glVertex3dv(g.points[j].val);
+			glVertex3dv(g.points2[j].val);
 		}
 		glEnd();
 	}
@@ -352,6 +397,7 @@ void GLView::glDraw()
 
 	draw_net();
 	draw_graphics();
+	draw_graphicsLine();
 
 	glPopMatrix(); //////////////////
 
