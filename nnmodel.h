@@ -27,10 +27,12 @@ public:
 	ct::Matd& w1();
 	ct::Matd& w2();
 	ct::Matd& w3();
+	ct::Matd& w4();
 
 	ct::Matd& b1();
 	ct::Matd& b2();
 	ct::Matd& b3();
+	ct::Matd& b4();
 
 	void init_weights(int seed = 0);
 	void pass();
@@ -51,10 +53,14 @@ private:
 	ct::Matd m_W3;
 	ct::Matd m_b3;
 
-	ct::Matd m_dW1, m_dW2, m_dW3, m_dB1, m_dB2, m_dB3;
+	ct::Matd m_W4;
+	ct::Matd m_b4;
+
+	ct::Matd m_dW1, m_dW2, m_dW3, m_dW4, m_dB1, m_dB2, m_dB3, m_dB4;
 
 	int m_layer1;
 	int m_layer2;
+	int m_layer3;
 
 	int m_inputs;
 	int m_outputs;

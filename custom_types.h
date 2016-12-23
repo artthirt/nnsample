@@ -894,6 +894,7 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Vec_< T, count >& v)
 	if(m1.cols != count)
 		return res;
 
+#pragma omp parallel for
 	for(int i = 0; i < m1.rows; i++){
 		T s = 0;
 		for(int j = 0; j < m1.cols; j++){
@@ -925,7 +926,7 @@ inline Mat_<T> sumRows(const Mat_<T > &m)
 	if(m.rows == 0 || m.cols == 0)
 		return res;
 	res = Mat_<T>::zeros(1, m.cols);
-//#pragma omp parallel for
+#pragma omp parallel for
 	for(int i = 0; i < m.rows; i++){
 		for(int j = 0; j < m.cols; j++)
 			res.val[j] += m.val[i * m.cols + j];

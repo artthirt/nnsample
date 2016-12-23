@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 	m_timer.start(30);
 
-	const int cnt = 1000;
+	const int cnt = 3000;
 	const int cnt2 = 5;
 	m_X = ct::Matd(cnt, 2);
 	m_y = ct::Matd(cnt, 1);
@@ -104,27 +104,36 @@ void MainWindow::on_pb_calculate_clicked()
 	ui->widgetScene->set_update();
 	qDebug("L2=%f", m_nn.L2());
 
+	ui->lb_L2norm->setText(QString("L2=%1").arg(m_nn.L2(), 0, 'f', 6));
+
 	std::string sw1 = m_nn.w1();
 	std::string sw2 = m_nn.w2();
 	std::string sw3 = m_nn.w3();
+	std::string sw4 = m_nn.w4();
 
 	std::string sb1 = m_nn.b1().t();
 	std::string sb2 = m_nn.b2().t();
 	std::string sb3 = m_nn.b3().t();
+	std::string sb4 = m_nn.b4().t();
 
 	QString sout;
 
-	sout  = QString("-----W1-------\n") + sw1.c_str();
-	sout += "\n--------------\n";
-	sout += QString("-----b1-------\n") + sb1.c_str();
-	sout += "\n--------------\n";
-	sout += QString("-----W2-------\n") + sw2.c_str();
-	sout += "\n--------------\n";
-	sout += QString("-----b2-------\n") + sb2.c_str();
-	sout += "\n--------------\n";
+	sout += QString("-----W3-------\n") + sw4.c_str();
+	sout += "\n";
+	sout +=QString( "-----b3-------\n") + sb4.c_str();
+	sout += "\n";
 	sout += QString("-----W3-------\n") + sw3.c_str();
-	sout += "\n--------------\n";
+	sout += "\n";
 	sout +=QString( "-----b3-------\n") + sb3.c_str();
+	sout += "\n";
+	sout += QString("-----W2-------\n") + sw2.c_str();
+	sout += "\n";
+	sout += QString("-----b2-------\n") + sb2.c_str();
+	sout += "\n";
+	sout += QString("-----W1-------\n") + sw1.c_str();
+	sout += "\n";
+	sout += QString("-----b1-------\n") + sb1.c_str();
+	sout += "\n";
 
 	ui->pte_out->setPlainText(sout);
 
