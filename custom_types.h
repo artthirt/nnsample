@@ -623,7 +623,7 @@ public:
 	inline Mat_<T>& biasPlus(const Mat_<T > & m){
 		if(m.cols != 1 || cols != m.rows)
 			return *this;
-//#pragma omp parallel for
+#pragma omp parallel for
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
 				val[i * cols + j] += m.val[j];
@@ -634,6 +634,7 @@ public:
 	inline Mat_<T>& biasMinus(const Mat_<T > & m){
 		if(m.cols != 1 || cols != m.rows)
 			return *this;
+#pragma omp parallel for
 		for(int i = 0; i < cols; i++){
 			for(int j = 0; j < rows; j++){
 				val[i * cols + j] -= m.val[j];
@@ -655,10 +656,27 @@ public:
 	Mat_<T> t() const{
 		Mat_<T> res(cols, rows);
 
-//#pragma omp parallel for
+#pragma omp parallel for
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
 				res.val[j * rows + i] = val[i * cols + j];
+			}
+		}
+
+		return res;
+	}
+	Mat_<T> getRows(std::vector<int> rowsI) const{
+		if(rowsI.size() > rows)
+			return Mat_<T>();
+		Mat_<T> res(rowsI.size(), cols);
+
+//#pragma omp parallel for
+		for(int i = 0; i < rowsI.size(); i++){
+			int id = rowsI[i];
+			if(id < rows){
+				for(int j = 0; j < cols; j++){
+					res.val[i * cols + j] = val[id * cols + j];
+				}
 			}
 		}
 
@@ -714,7 +732,7 @@ public:
 		res << "[";
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				res << std::setprecision(3) << val[i * cols + j] << " ";
+				res << std::setprecision(4) << val[i * cols + j] << "\t";
 			}
 			res << ";\n";
 		}

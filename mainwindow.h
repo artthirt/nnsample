@@ -26,10 +26,12 @@ private slots:
 	void on_dsb_alpha_valueChanged(double arg1);
 
 private:
+	uint m_iteration;
 	Ui::MainWindow *ui;
 	QTimer m_timer;
 
 	ct::Matd m_X;
+	ct::Matd m_X_val;
 	ct::Matd m_y;
 
 	std::uniform_real_distribution<double> ud;

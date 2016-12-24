@@ -8,8 +8,8 @@ nnmodel::nnmodel()
 	, m_inputs(0)
 	, m_outputs(0)
 	, m_layer1(15)
-	, m_layer2(25)
-	, m_layer3(5)
+	, m_layer2(45)
+	, m_layer3(10)
 	, m_L2(99999999)
 	, m_resultModel(ESquarError)
 {
@@ -46,7 +46,7 @@ double nnmodel::alpha() const
 	return m_alpha;
 }
 
-ct::Matd nnmodel::forward(const ct::Matd &X)
+ct::Matd nnmodel::forward(const ct::Matd &X) const
 {
 	Matd z2 = X * m_W1;			/// [1000 2] * [2 5] = [1000 5]
 	z2.biasPlus(m_b1);				///
@@ -64,7 +64,12 @@ ct::Matd nnmodel::forward(const ct::Matd &X)
 
 double nnmodel::L2() const
 {
-	return m_L2;
+	Matd y = forward(m_X);
+	Matd d = m_y - y;
+	d = elemwiseMult(d, d);
+	double L2 = d.sum() * 1./d.rows;
+
+	return L2;
 }
 
 Matd &nnmodel::w1()
@@ -109,14 +114,43 @@ Matd &nnmodel::b4()
 
 void nnmodel::pass()
 {
+	pass_batch(m_X, m_y);
+}
+
+void nnmodel::pass_batch(int batch)
+{
+	if(!m_X.total() || !m_y.total() || m_X.rows != m_y.rows || !batch || batch > m_X.rows)
+		return;
+
+	Matd X(batch, m_X.cols), y(batch, m_y.cols);
+
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_X.rows - 1);
+	for(int i = 0; i < batch; i++){
+		indexes[i] = ud(m_generator);
+	}
+	X = m_X.getRows(indexes);
+	y = m_y.getRows(indexes);
+
+	pass_batch(X, y);
+
+//	y = forward(m_X);
+//	Matd d = m_y - y;
+//	d = elemwiseMult(d, d);
+//	m_L2 = d.sum() * 1./d.rows;
+}
+
+void nnmodel::pass_batch(const Matd &X, const Matd y)
+{
 	if(!m_W1.total() || !m_W2.total()
 			|| !m_b1.total() || !m_b2.total()
-			|| !m_X.total() || !m_y.total()
-			|| m_W1.rows != m_X.cols)
+			|| !X.total() || !y.total()
+			|| m_W1.rows != X.cols)
 		return;
 
 	/// forward
-	Matd z2 = m_X * m_W1;			/// [1000 2] * [2 5] = [1000 5]
+	Matd z2 = X * m_W1;				/// [1000 2] * [2 5] = [1000 5]
 	z2.biasPlus(m_b1);				///
 	Matd a2 = tanh(z2);				/// [1000 5]
 	Matd z3 = a2 * m_W2;			/// [1000 5] * [5 4] = [1000 4]
@@ -130,10 +164,7 @@ void nnmodel::pass()
 	Matd a5 = z5;
 
 	/// backward
-	Matd d5 = a5 - m_y;
-
-	Matd dl2 = elemwiseMult(d5, d5);
-	m_L2 = dl2.sum() / dl2.total();
+	Matd d5 = a5 - y;
 
 	Matd sz4 = elemwiseMult(a4, a4);
 	sz4 = 1. - sz4;
@@ -142,7 +173,7 @@ void nnmodel::pass()
 	Matd sz2 = elemwiseMult(a2, a2);
 	sz2 = 1. - sz2;
 
-	int m = m_X.rows;
+	int m = X.rows;
 
 	Matd dW4, dW3, dW2, dW1;
 	Matd dB4, dB3, dB2, dB1;
@@ -171,7 +202,7 @@ void nnmodel::pass()
 	dB2 = (sumRows(d3) * (1./m)).t();
 
 	/// layer 2 -> 1
-	dW1 = m_X.t() * d2;				///
+	dW1 = X.t() * d2;				///
 	dW1 *= 1./m;
 	dB1 = (sumRows(d2) * (1./m)).t();
 
@@ -192,7 +223,6 @@ void nnmodel::pass()
 	m_b3 -= m_alpha * (m_dB3);
 	m_W4 -= m_alpha * (m_dW4);
 	m_b4 -= m_alpha * (m_dB4);
-
 }
 
 Matd nnmodel::resultModel(Matd &m)

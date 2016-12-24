@@ -20,7 +20,7 @@ public:
 	void setAlpha(double alpha);
 	double alpha() const;
 
-	ct::Matd forward(const ct::Matd& X);
+	ct::Matd forward(const ct::Matd& X) const;
 
 	double L2() const;
 
@@ -36,6 +36,9 @@ public:
 
 	void init_weights(int seed = 0);
 	void pass();
+
+	void pass_batch(int batch = 100);
+	void pass_batch(const ct::Matd& X, const ct::Matd y);
 
 	ct::Matd resultModel(ct::Matd& m);
 	ct::Matd diffModel(ct::Matd& m);

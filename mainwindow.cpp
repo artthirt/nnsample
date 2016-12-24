@@ -11,11 +11,13 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->setupUi(this);
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
-	m_timer.start(30);
+	m_timer.start(32);
 
-	const int cnt = 3000;
+	const int cnt = 5000;
+	const int cnt_val = 700;
 	const int cnt2 = 5;
 	m_X = ct::Matd(cnt, 2);
+	m_X_val = ct::Matd(cnt_val, 2);
 	m_y = ct::Matd(cnt, 1);
 
 	ud = std::uniform_real_distribution<double>(-10, 10);
@@ -55,8 +57,17 @@ MainWindow::MainWindow(QWidget *parent) :
 		m_y.at(i, 0) = z;
 	}
 
+	for(int i = 0; i < cnt_val; i++){
+		double x = ud(gen);
+		double y = ud(gen);
+		m_X_val.at(i, 0) = x;
+		m_X_val.at(i, 1) = y;
+	}
+
 	m_nn.setData(m_X, m_y);
 	m_nn.init_weights(13);
+
+	m_iteration = 0;
 
 	double data[4 * 5] = {
 		0, 1, 2, 3, 4,
@@ -86,17 +97,7 @@ void MainWindow::on_pb_calculate_clicked()
 {
 	ct::Matd Y = m_nn.forward(m_X), y_validate;
 
-	const int cnt = 200;
-	ct::Matd X(cnt, 2);
-
-	for(int i = 0; i < cnt; i++){
-		double x = ud(gen);
-		double y = ud(gen);
-		X.at(i, 0) = x;
-		X.at(i, 1) = y;
-	}
-
-	y_validate = m_nn.forward(X);
+	y_validate = m_nn.forward(m_X_val);
 
 	std::vector< ct::Vec3d > pts, pts_val;
 	for(int i = 0; i < m_X.rows; i++){
@@ -105,9 +106,9 @@ void MainWindow::on_pb_calculate_clicked()
 		double z = Y.at(i, 0);
 		pts.push_back(ct::Vec3d(x, y, z));
 	}
-	for(int i = 0; i < cnt; i++){
-		double x = X.at(i, 0);
-		double y = X.at(i, 1);
+	for(int i = 0; i < m_X_val.rows; i++){
+		double x = m_X_val.at(i, 0);
+		double y = m_X_val.at(i, 1);
 		double z = y_validate.at(i, 0);
 		pts_val.push_back(ct::Vec3d(x, y, z));
 	}
@@ -122,42 +123,47 @@ void MainWindow::on_pb_calculate_clicked()
 	}
 
 	ui->widgetScene->set_update();
-	qDebug("L2=%f", m_nn.L2());
 
-	ui->lb_L2norm->setText(QString("L2=%1").arg(m_nn.L2(), 0, 'f', 6));
+	if((m_iteration % 30) == 0){
+		double L2 = m_nn.L2();
 
-	std::string sw1 = m_nn.w1();
-	std::string sw2 = m_nn.w2();
-	std::string sw3 = m_nn.w3();
-	std::string sw4 = m_nn.w4();
+		qDebug("L2=%f", L2);
 
-	std::string sb1 = m_nn.b1().t();
-	std::string sb2 = m_nn.b2().t();
-	std::string sb3 = m_nn.b3().t();
-	std::string sb4 = m_nn.b4().t();
+		ui->lb_L2norm->setText(QString("L2=%1").arg(L2, 0, 'f', 6));
+		std::string sw1 = m_nn.w1();
+		std::string sw2 = m_nn.w2();
+		std::string sw3 = m_nn.w3();
+		std::string sw4 = m_nn.w4();
 
-	QString sout;
+		std::string sb1 = m_nn.b1().t();
+		std::string sb2 = m_nn.b2().t();
+		std::string sb3 = m_nn.b3().t();
+		std::string sb4 = m_nn.b4().t();
 
-	sout += QString("-----W3-------\n") + sw4.c_str();
-	sout += "\n";
-	sout +=QString( "-----b3-------\n") + sb4.c_str();
-	sout += "\n";
-	sout += QString("-----W3-------\n") + sw3.c_str();
-	sout += "\n";
-	sout +=QString( "-----b3-------\n") + sb3.c_str();
-	sout += "\n";
-	sout += QString("-----W2-------\n") + sw2.c_str();
-	sout += "\n";
-	sout += QString("-----b2-------\n") + sb2.c_str();
-	sout += "\n";
-	sout += QString("-----W1-------\n") + sw1.c_str();
-	sout += "\n";
-	sout += QString("-----b1-------\n") + sb1.c_str();
-	sout += "\n";
+		QString sout;
 
-	ui->pte_out->setPlainText(sout);
+		sout += QString("-----W3-------\n") + sw4.c_str();
+		sout += "\n";
+		sout +=QString( "-----b3-------\n") + sb4.c_str();
+		sout += "\n";
+		sout += QString("-----W3-------\n") + sw3.c_str();
+		sout += "\n";
+		sout +=QString( "-----b3-------\n") + sb3.c_str();
+		sout += "\n";
+		sout += QString("-----W2-------\n") + sw2.c_str();
+		sout += "\n";
+		sout += QString("-----b2-------\n") + sb2.c_str();
+		sout += "\n";
+		sout += QString("-----W1-------\n") + sw1.c_str();
+		sout += "\n";
+		sout += QString("-----b1-------\n") + sb1.c_str();
+		sout += "\n";
 
-	m_nn.pass();
+		ui->pte_out->setPlainText(sout);
+	}
+
+	m_nn.pass_batch(100);
+	m_iteration++;
 }
 
 void MainWindow::onTimeout()
