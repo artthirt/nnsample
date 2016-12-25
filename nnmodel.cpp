@@ -1,4 +1,5 @@
 #include "nnmodel.h"
+#include  <map>
 
 using namespace ct;
 
@@ -7,9 +8,9 @@ nnmodel::nnmodel()
 	, m_betha(0.9)
 	, m_inputs(0)
 	, m_outputs(0)
-	, m_layer1(15)
-	, m_layer2(45)
-	, m_layer3(10)
+	, m_layer1(8)
+	, m_layer2(40)
+	, m_layer3(20)
 	, m_L2(99999999)
 	, m_resultModel(ESquarError)
 {
@@ -127,8 +128,14 @@ void nnmodel::pass_batch(int batch)
 	std::vector<int> indexes;
 	indexes.resize(batch);
 	std::uniform_int_distribution<int> ud(0, m_X.rows - 1);
+	std::map<int, bool> set;
 	for(int i = 0; i < batch; i++){
-		indexes[i] = ud(m_generator);
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
 	}
 	X = m_X.getRows(indexes);
 	y = m_y.getRows(indexes);

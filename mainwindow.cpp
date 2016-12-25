@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 	m_timer.start(32);
 
-	const int cnt = 5000;
+	const int cnt = 7000;
 	const int cnt_val = 700;
 	const int cnt2 = 5;
 	m_X = ct::Matd(cnt, 2);
@@ -42,8 +42,8 @@ MainWindow::MainWindow(QWidget *parent) :
 		double w2 = x + y;
 		double e = exp(1.1 * x + x * x + y * y + 1.2 * y + 2.7 * w1 + 2.1 * w2);
 		e = e / (1 + e);
-		double z =
-				+ k1 * sin(x) + k2 * cos(w1) + k3 * sin(w2);
+		double z =  e
+				+ k1 * sin(0.23 * x) + k2 * cos(0.17 * w1) + k3 * sin(0.15 * w2);
 
 		for(size_t k = 0; k < rand_pts.size(); k++){
 			double s = (rand_pts[k] - ct::Vec2d(x, y)).norm();
@@ -162,7 +162,7 @@ void MainWindow::on_pb_calculate_clicked()
 		ui->pte_out->setPlainText(sout);
 	}
 
-	m_nn.pass_batch(100);
+	m_nn.pass_batch(150);
 	m_iteration++;
 }
 
