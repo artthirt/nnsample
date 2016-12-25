@@ -8,9 +8,9 @@ nnmodel::nnmodel()
 	, m_betha(0.9)
 	, m_inputs(0)
 	, m_outputs(0)
-	, m_layer1(8)
-	, m_layer2(40)
-	, m_layer3(20)
+	, m_layer1(20)
+	, m_layer2(60)
+	, m_layer3(15)
 	, m_L2(99999999)
 	, m_resultModel(ESquarError)
 {
@@ -29,10 +29,10 @@ void nnmodel::setNeurons(int layer, int neurons)
 {
 	switch (layer) {
 		case 0:
-			m_layer1 = layer;
+			m_layer1 = neurons;
 			break;
 		default:
-			m_layer2 = layer;
+			m_layer2 = neurons;
 			break;
 	}
 }

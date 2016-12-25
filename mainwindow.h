@@ -38,6 +38,8 @@ private:
 	std::mt19937 gen;
 
 	nnmodel m_nn;
+
+	void update_scene();
 };
 
 #endif // MAINWINDOW_H

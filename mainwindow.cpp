@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->setupUi(this);
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
-	m_timer.start(32);
+	m_timer.start(1);
 
 	const int cnt = 7000;
 	const int cnt_val = 700;
@@ -95,6 +95,28 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pb_calculate_clicked()
 {
+	update_scene();
+}
+
+void MainWindow::onTimeout()
+{
+	if(ui->chb_auto->isChecked()){
+		if((m_iteration % 50) == 0){
+			update_scene();
+		}
+
+		m_nn.pass_batch(150);
+		m_iteration++;
+	}
+}
+
+void MainWindow::on_dsb_alpha_valueChanged(double arg1)
+{
+	m_nn.setAlpha(arg1);
+}
+
+void MainWindow::update_scene()
+{
 	ct::Matd Y = m_nn.forward(m_X), y_validate;
 
 	y_validate = m_nn.forward(m_X_val);
@@ -124,56 +146,39 @@ void MainWindow::on_pb_calculate_clicked()
 
 	ui->widgetScene->set_update();
 
-	if((m_iteration % 30) == 0){
-		double L2 = m_nn.L2();
+	double L2 = m_nn.L2();
 
-		qDebug("L2=%f", L2);
+	qDebug("L2=%f", L2);
 
-		ui->lb_L2norm->setText(QString("L2=%1").arg(L2, 0, 'f', 6));
-		std::string sw1 = m_nn.w1();
-		std::string sw2 = m_nn.w2();
-		std::string sw3 = m_nn.w3();
-		std::string sw4 = m_nn.w4();
+	ui->lb_L2norm->setText(QString("L2=%1;\tIteration=%2").arg(L2, 0, 'f', 6).arg(m_iteration));
+	std::string sw1 = m_nn.w1();
+	std::string sw2 = m_nn.w2();
+	std::string sw3 = m_nn.w3();
+	std::string sw4 = m_nn.w4();
 
-		std::string sb1 = m_nn.b1().t();
-		std::string sb2 = m_nn.b2().t();
-		std::string sb3 = m_nn.b3().t();
-		std::string sb4 = m_nn.b4().t();
+	std::string sb1 = m_nn.b1().t();
+	std::string sb2 = m_nn.b2().t();
+	std::string sb3 = m_nn.b3().t();
+	std::string sb4 = m_nn.b4().t();
 
-		QString sout;
+	QString sout;
 
-		sout += QString("-----W3-------\n") + sw4.c_str();
-		sout += "\n";
-		sout +=QString( "-----b3-------\n") + sb4.c_str();
-		sout += "\n";
-		sout += QString("-----W3-------\n") + sw3.c_str();
-		sout += "\n";
-		sout +=QString( "-----b3-------\n") + sb3.c_str();
-		sout += "\n";
-		sout += QString("-----W2-------\n") + sw2.c_str();
-		sout += "\n";
-		sout += QString("-----b2-------\n") + sb2.c_str();
-		sout += "\n";
-		sout += QString("-----W1-------\n") + sw1.c_str();
-		sout += "\n";
-		sout += QString("-----b1-------\n") + sb1.c_str();
-		sout += "\n";
+	sout += QString("-----W3-------\n") + sw4.c_str();
+	sout += "\n";
+	sout +=QString( "-----b3-------\n") + sb4.c_str();
+	sout += "\n";
+	sout += QString("-----W3-------\n") + sw3.c_str();
+	sout += "\n";
+	sout +=QString( "-----b3-------\n") + sb3.c_str();
+	sout += "\n";
+	sout += QString("-----W2-------\n") + sw2.c_str();
+	sout += "\n";
+	sout += QString("-----b2-------\n") + sb2.c_str();
+	sout += "\n";
+	sout += QString("-----W1-------\n") + sw1.c_str();
+	sout += "\n";
+	sout += QString("-----b1-------\n") + sb1.c_str();
+	sout += "\n";
 
-		ui->pte_out->setPlainText(sout);
-	}
-
-	m_nn.pass_batch(150);
-	m_iteration++;
-}
-
-void MainWindow::onTimeout()
-{
-	if(ui->chb_auto->isChecked()){
-		on_pb_calculate_clicked();
-	}
-}
-
-void MainWindow::on_dsb_alpha_valueChanged(double arg1)
-{
-	m_nn.setAlpha(arg1);
+	ui->pte_out->setPlainText(sout);
 }
