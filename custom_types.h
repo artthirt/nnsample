@@ -695,6 +695,52 @@ public:
 		}
 		return res;
 	}
+	bool empty() const{
+		return val.empty();
+	}
+	/**
+	 * @brief mean
+	 * @param axis 0 - mean for all elements; 1 - mean for rows; 2 - mean for cols
+	 * @return
+	 */
+	Mat_<T> mean(int axis = 0){
+		Mat_<T> res;
+		if(empty())
+			return res;
+		if(axis == 0){
+			res = Mat_<T>::zeros(1, 1);
+			for(int i = 0; i < val.size(); i++){
+				res.val[0] += val[i];
+			}
+			res.val[0] = 1. / val.size();
+		}
+		if(axis == 1){
+			res = Mat_<T>::zeros(1, cols);
+#pragma omp parallel for
+			for(int i = 0; i < rows; i++){
+				for(int j = 0; j < cols; j++){
+					res.val[j] += val[i * cols + j];
+				}
+			}
+			for(int j = 0; j < cols; j++){
+				res.val[j] *= 1./rows;
+			}
+		}
+		if(axis == 2){
+			res = Mat_<T>::zeros(rows, 1);
+#pragma omp parallel for
+			for(int j = 0; j < cols; j++){
+				for(int i = 0; i < rows; i++){
+					res.val[i] += val[i * cols + j];
+				}
+			}
+			for(int i = 0; i < rows; i++){
+				res.val[i] *= 1./cols;
+			}
+		}
+		return res;
+	}
+
 	///***********************
 	template < int count >
 	inline Vec_<T, count > toVecCol(int col = 0) const{
