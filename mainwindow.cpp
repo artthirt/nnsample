@@ -65,7 +65,16 @@ MainWindow::MainWindow(QWidget *parent) :
 	}
 
 	m_nn.setData(m_X, m_y);
-	m_nn.init_weights(13);
+	//m_nn.init_weights(13);
+	std::vector<int> layers;
+	layers.push_back(5);
+	layers.push_back(16);
+	layers.push_back(21);
+	layers.push_back(28);
+	layers.push_back(9);
+	layers.push_back(1);
+	m_nn.setLayers(layers);
+	m_nn.init_model(0);
 
 	m_iteration = 0;
 
@@ -95,17 +104,19 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pb_calculate_clicked()
 {
+	m_nn.pass_batch_model(150);
+	m_iteration++;
 	update_scene();
 }
 
 void MainWindow::onTimeout()
 {
 	if(ui->chb_auto->isChecked()){
-		if((m_iteration % 50) == 0){
+		if((m_iteration % 20) == 0){
 			update_scene();
 		}
 
-		m_nn.pass_batch(150);
+		m_nn.pass_batch_model(150);
 		m_iteration++;
 	}
 }
@@ -117,9 +128,9 @@ void MainWindow::on_dsb_alpha_valueChanged(double arg1)
 
 void MainWindow::update_scene()
 {
-	ct::Matd Y = m_nn.forward(m_X), y_validate;
+	ct::Matd Y = m_nn.forward_model(m_X), y_validate;
 
-	y_validate = m_nn.forward(m_X_val);
+	y_validate = m_nn.forward_model(m_X_val);
 
 	std::vector< ct::Vec3d > pts, pts_val;
 	for(int i = 0; i < m_X.rows; i++){
@@ -151,34 +162,17 @@ void MainWindow::update_scene()
 	qDebug("L2=%f", L2);
 
 	ui->lb_L2norm->setText(QString("L2=%1;\tIteration=%2").arg(L2, 0, 'f', 6).arg(m_iteration));
-	std::string sw1 = m_nn.w1();
-	std::string sw2 = m_nn.w2();
-	std::string sw3 = m_nn.w3();
-	std::string sw4 = m_nn.w4();
-
-	std::string sb1 = m_nn.b1().t();
-	std::string sb2 = m_nn.b2().t();
-	std::string sb3 = m_nn.b3().t();
-	std::string sb4 = m_nn.b4().t();
 
 	QString sout;
+	for(int i = m_nn.count() - 1; i >= 0; --i){
+		std::string sw = m_nn.w(i);
+		std::string sb = m_nn.b(i).t();
 
-	sout += QString("-----W3-------\n") + sw4.c_str();
-	sout += "\n";
-	sout +=QString( "-----b3-------\n") + sb4.c_str();
-	sout += "\n";
-	sout += QString("-----W3-------\n") + sw3.c_str();
-	sout += "\n";
-	sout +=QString( "-----b3-------\n") + sb3.c_str();
-	sout += "\n";
-	sout += QString("-----W2-------\n") + sw2.c_str();
-	sout += "\n";
-	sout += QString("-----b2-------\n") + sb2.c_str();
-	sout += "\n";
-	sout += QString("-----W1-------\n") + sw1.c_str();
-	sout += "\n";
-	sout += QString("-----b1-------\n") + sb1.c_str();
-	sout += "\n";
+		sout += QString("-----W%1-------\n").arg(i + 1) + sw.c_str();
+		sout += "\n";
+		sout += QString("-----b%1-------\n").arg(i + 1) + sb.c_str();
+		sout += "\n";
+	}
 
 	ui->pte_out->setPlainText(sout);
 }

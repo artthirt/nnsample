@@ -403,11 +403,11 @@ inline Vec_<T, count> sign(const Vec_<T, count>& v1)
 }
 
 template<typename T, int count>
-inline Vec_<T, count> sqrt(const Vec_<T, count>& v1)
+inline Vec_<T, count> elemwiseSqrt(const Vec_<T, count>& v1)
 {
 	Vec_<T, count > res;
 	for(int i = 0; i < count; i++){
-		res[i] = sqrt(v1.val[i]);
+		res[i] = elemwiseSqrt(v1.val[i]);
 	}
 	return res;
 }
@@ -551,7 +551,7 @@ public:
 	}
 	///***********************
 	inline int total() const{
-		return val.size();
+		return rows * cols;
 	}
 	///********************
 	inline T* ptr(){
@@ -587,7 +587,7 @@ public:
 	inline Mat_<T>& operator += (const Mat_<T>& v){
 //#pragma omp parallel for
 #pragma omp parallel for
-		for(size_t i = 0; i < val.size(); i++){
+		for(int i = 0; i < total(); i++){
 			val[i] += v.val[i];
 		}
 		return *this;
@@ -595,7 +595,7 @@ public:
 	inline Mat_<T>& operator -= (const Mat_<T>& v){
 //#pragma omp parallel for
 #pragma omp parallel for
-		for(int i = 0; i < val.size(); i++){
+		for(int i = 0; i < total(); i++){
 			val[i] -= v.val[i];
 		}
 		return *this;
@@ -604,7 +604,7 @@ public:
 	inline Mat_<T>& operator *= (T v){
 //#pragma omp parallel for
 #pragma omp parallel for
-		for(int i = 0; i < val.size(); i++){
+		for(int i = 0; i < total(); i++){
 			val[i] *= v;
 		}
 		return *this;
@@ -612,7 +612,7 @@ public:
 	inline Mat_<T>& operator += (T v){
 //#pragma omp parallel for
 #pragma omp parallel for
-		for(size_t i = 0; i < val.size(); i++){
+		for(int i = 0; i < total(); i++){
 			val[i] += v;
 		}
 		return *this;
@@ -620,7 +620,7 @@ public:
 	inline Mat_<T>& operator -= (T v){
 //#pragma omp parallel for
 #pragma omp parallel for
-		for(size_t i = 0; i < val.size(); i++){
+		for(int i = 0; i < total(); i++){
 			val[i] -= v;
 		}
 		return *this;
@@ -648,7 +648,7 @@ public:
 		return *this;
 	}
 	///**************************
-	void randn(double _mean = 0., double _std = 1., double seed = 0.){
+	void randn(double _mean = 0., double _std = 1., int seed = 0){
 		std::normal_distribution< double > nrm(_mean, _std);
 		std::mt19937 gen;
 		gen.seed(seed);
@@ -709,10 +709,10 @@ public:
 			return res;
 		if(axis == 0){
 			res = Mat_<T>::zeros(1, 1);
-			for(int i = 0; i < val.size(); i++){
+			for(int i = 0; i < total(); i++){
 				res.val[0] += val[i];
 			}
-			res.val[0] = 1. / val.size();
+			res.val[0] = 1. / total();
 		}
 		if(axis == 1){
 			res = Mat_<T>::zeros(1, cols);
@@ -739,6 +739,13 @@ public:
 			}
 		}
 		return res;
+	}
+
+	void sqrt(){
+#pragma omp parallel for
+		for(int i = 0; i < total(); i++){
+			val[i] = std::sqrt(val[i]);
+		}
 	}
 
 	///***********************
@@ -800,7 +807,7 @@ public:
 	}
 	static inline Mat_< T > ones(int rows, int cols){
 		Mat_< T > res(rows, cols);
-		for(size_t i = 0; i < res.val.size(); i++)
+		for(int i = 0; i < res.total(); i++)
 			res.val[i] = 1.;
 		return res;
 	}
@@ -1060,7 +1067,7 @@ inline Mat_<T> sigmoid(const Mat_<T>& m)
 }
 
 /**
- * @brief sigmoid
+ * @brief tanh
  * @param m
  * @return
  */
@@ -1078,8 +1085,69 @@ inline Mat_<T> tanh(const Mat_<T>& m)
 	return res;
 }
 
+/**
+ * @brief sqrt
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> elemwiseSqrt(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+//#pragma omp parallel for
+#pragma omp parallel for
+	for(int i = 0; i < m.total(); i++){
+		res.val[i] = std::sqrt(m.val[i]);
+	}
+	return res;
+}
+
+/**
+ * @brief sqr
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> elemwiseSqr(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+//#pragma omp parallel for
+#pragma omp parallel for
+	for(int i = 0; i < m.total(); i++){
+		res.val[i] = m.val[i] * m.val[i];
+	}
+	return res;
+}
+
+/**
+ * @brief division
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> elemwiseDiv(const Mat_<T>& m1, const Mat_<T>& m2)
+{
+	if(m1.rows != m2.rows || m1.cols != m2.cols)
+		return Mat_<T>();
+
+	Mat_<T> res(m1.rows, m1.cols);
+
+//#pragma omp parallel for
+#pragma omp parallel for
+	for(int i = 0; i < m1.total(); i++){
+		res.val[i] = m1.val[i] / m2.val[i];
+	}
+	return res;
+}
+
+//////////////////////////////////////////
+
 typedef Mat_<float> Matf;
 typedef Mat_<double> Matd;
+
+//////////////////////////////////////////
 
 /**
  * @brief get_tangage_mat

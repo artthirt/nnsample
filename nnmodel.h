@@ -20,6 +20,9 @@ public:
 	void setAlpha(double alpha);
 	double alpha() const;
 
+	void setBetha1(double v);
+	void setBetha2(double v);
+
 	ct::Matd forward(const ct::Matd& X) const;
 
 	double L2() const;
@@ -34,6 +37,10 @@ public:
 	ct::Matd& b3();
 	ct::Matd& b4();
 
+	ct::Matd w(int index);
+	ct::Matd b(int index);
+	int count() const;
+
 	void init_weights(int seed = 0);
 	void pass();
 
@@ -43,9 +50,26 @@ public:
 	ct::Matd resultModel(ct::Matd& m);
 	ct::Matd diffModel(ct::Matd& m);
 
+	void setLayers(const std::vector< int >& layers);
+	void init_model(int seed = 0);
+
+	ct::Matd forward_model(const ct::Matd& X) const;
+	void pass_batch_model(const ct::Matd &X, const ct::Matd y);
+	void pass_batch_model(int batch = 100);
+
 private:
 	ct::Matd m_X;
 	ct::Matd m_y;
+	double m_iteration;
+
+	std::vector< ct::Matd > m_W;
+	std::vector< ct::Matd > m_b;
+	std::vector< int > m_layers;
+
+	std::vector< ct::Matd > m_mW;
+	std::vector< ct::Matd > m_mb;
+	std::vector< ct::Matd > m_vW;
+	std::vector< ct::Matd > m_vb;
 
 	ct::Matd m_W1;
 	ct::Matd m_b1;
@@ -68,7 +92,8 @@ private:
 	int m_inputs;
 	int m_outputs;
 	double m_alpha;
-	double m_betha;
+	double m_betha1;
+	double m_betha2;
 
 	double m_L2;
 
