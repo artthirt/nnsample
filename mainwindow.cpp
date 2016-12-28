@@ -68,10 +68,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	//m_nn.init_weights(13);
 	std::vector<int> layers;
 	layers.push_back(5);
-	layers.push_back(16);
-	layers.push_back(21);
-	layers.push_back(28);
-	layers.push_back(9);
+	layers.push_back(15);
+	layers.push_back(50);
+	layers.push_back(15);
+	layers.push_back(5);
 	layers.push_back(1);
 	m_nn.setLayers(layers);
 	m_nn.init_model(0);
