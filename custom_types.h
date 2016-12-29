@@ -1086,6 +1086,42 @@ inline Mat_<T> tanh(const Mat_<T>& m)
 }
 
 /**
+ * @brief relu
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> relu(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+//#pragma omp parallel for
+#pragma omp parallel for
+	for(int i = 0; i < m.total(); i++){
+		res.val[i] = std::max(T(0), m.val[i]);
+	}
+	return res;
+}
+
+/**
+ * @brief derivRelu
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> derivRelu(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+//#pragma omp parallel for
+#pragma omp parallel for
+	for(int i = 0; i < m.total(); i++){
+		res.val[i] = m.val[i] > T(0) ? T(1) : T(0);
+	}
+	return res;
+}
+
+/**
  * @brief sqrt
  * @param m
  * @return

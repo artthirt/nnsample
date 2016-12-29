@@ -277,7 +277,7 @@ Matd nnmodel::forward_model(const Matd &X) const
 		z = x * m_W[i];
 		z.biasPlus(m_b[i]);
 		if(i < m_layers.size() - 1){
-			a = tanh(z);
+			a = relu(z);
 			x = a;
 		}else
 			a = z;
@@ -304,7 +304,7 @@ void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 		z[i] = a[i] * m_W[i];
 		z[i].biasPlus(m_b[i]);
 		if(i < m_layers.size() - 1){
-			a[i + 1] = tanh(z[i]);
+			a[i + 1] = relu(z[i]);
 		}else
 			a[i + 1] = z[i];
 	}
@@ -319,8 +319,9 @@ void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 	/// backward
 
 	for(int i = m_layers.size() - 1; i > -1; --i){
-		Matd sz = elemwiseMult(a[i], a[i]);
-		sz = 1. - sz;
+//		Matd sz = elemwiseMult(a[i], a[i]);
+//		sz = 1. - sz;
+		Matd sz = derivRelu(a[i]);
 
 		Matd di = d * m_W[i].t();
 		di = elemwiseMult(di, sz);
