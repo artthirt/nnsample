@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <QFileDialog>
+
 #include <math.h>
 #include <random>
 
@@ -70,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	layers.push_back(5);
 	layers.push_back(15);
 	layers.push_back(50);
-	layers.push_back(15);
+	layers.push_back(60);
 	layers.push_back(5);
 	layers.push_back(1);
 	m_nn.setLayers(layers);
@@ -175,4 +177,36 @@ void MainWindow::update_scene()
 	}
 
 	ui->pte_out->setPlainText(sout);
+}
+
+void MainWindow::on_pb_load_clicked()
+{
+	QFileDialog dlg;
+	dlg.setAcceptMode(QFileDialog::AcceptOpen);
+
+	if(dlg.exec()){
+		QString fn = dlg.selectedFiles()[0];
+		ui->widgetMNIST->load(fn);
+	}
+}
+
+void MainWindow::on_pb_next_clicked()
+{
+	ui->widgetMNIST->next();
+}
+
+void MainWindow::on_pb_toBegin_clicked()
+{
+	ui->widgetMNIST->toBegin();
+}
+
+void MainWindow::on_pb_load_labels_clicked()
+{
+	QFileDialog dlg;
+	dlg.setAcceptMode(QFileDialog::AcceptOpen);
+
+	if(dlg.exec()){
+		QString fn = dlg.selectedFiles()[0];
+		ui->widgetMNIST->loadLabels(fn);
+	}
 }

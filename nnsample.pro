@@ -15,16 +15,20 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     glview.cpp \
     simple_xml.cpp \
-    nnmodel.cpp
+    nnmodel.cpp \
+    widgetmnist.cpp \
+    custom_types.cpp
 
 HEADERS  += mainwindow.h \
     custom_types.h \
     glview.h \
     simple_xml.hpp \
-    nnmodel.h
+    nnmodel.h \
+    widgetmnist.h
 
 FORMS    += mainwindow.ui \
-    glview.ui
+    glview.ui \
+    widgetmnist.ui
 
 win32{
     LIBS += -lopengl32 -lglu32

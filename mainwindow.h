@@ -25,6 +25,14 @@ private slots:
 
 	void on_dsb_alpha_valueChanged(double arg1);
 
+	void on_pb_load_clicked();
+
+	void on_pb_next_clicked();
+
+	void on_pb_toBegin_clicked();
+
+	void on_pb_load_labels_clicked();
+
 private:
 	uint m_iteration;
 	Ui::MainWindow *ui;
