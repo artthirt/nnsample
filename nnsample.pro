@@ -17,14 +17,16 @@ SOURCES += main.cpp\
     simple_xml.cpp \
     nnmodel.cpp \
     widgetmnist.cpp \
-    custom_types.cpp
+    custom_types.cpp \
+    shared_memory.cpp
 
 HEADERS  += mainwindow.h \
     custom_types.h \
     glview.h \
     simple_xml.hpp \
     nnmodel.h \
-    widgetmnist.h
+    widgetmnist.h \
+    shared_memory.h
 
 FORMS    += mainwindow.ui \
     glview.ui \
