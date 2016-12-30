@@ -56,19 +56,25 @@ public:
 	bool empty() const{
 		return m_val == 0;
 	}
-	T* get(){
+	inline T* get(){
 		return m_val;
 	}
-	T* get() const{
+	inline T* get() const{
 		return m_val;
 	}
-	T& operator*(){
+	inline T& operator*(){
 		return *m_val;
 	}
-	int ref() const{
+	inline T& operator*() const{
+		return *m_val;
+	}
+	inline int ref() const{
 		if(m_ref)
 			return *m_ref;
 		return -1;
+	}
+	inline T& operator() (){
+		return *m_val;
 	}
 
 	template< class N >

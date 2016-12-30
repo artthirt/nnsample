@@ -10,6 +10,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "shared_memory.h"
+
 namespace ct{
 
 template< typename T, int count >
@@ -501,8 +503,11 @@ typedef std::shared_ptr< vector_uchar > shared_uvector;
 template< typename T >
 class Mat_{
 public:
+	typedef std::vector< T > vtype;
+	typedef sm::shared_memory< vtype > shared_vtype;
+
 	enum {depth = sizeof(T)};
-	std::vector< T > val;
+	shared_vtype val;
 	int cols;
 	int rows;
 
@@ -512,7 +517,8 @@ public:
 	Mat_(int rows, int cols){
 		this->rows = rows;
 		this->cols = cols;
-		val.resize(rows * cols);
+		val = sm::make_shared<vtype>();
+		val().resize(rows * cols);
 	}
 	Mat_(const Mat_<T>& m){
 		this->val = m.val;
@@ -522,15 +528,17 @@ public:
 	Mat_(int rows, int cols, void* data){
 		this->rows = rows;
 		this->cols = cols;
-		val.resize(rows * cols);
-		std::copy((char*)data, (char*)data + rows * cols * depth, (char*)&val[0]);
+		val = sm::make_shared<vtype>();
+		val().resize(rows * cols);
+		std::copy((char*)data, (char*)data + rows * cols * depth, (char*)&val()[0]);
 	}
 	template< int count >
 	Mat_(const Vec_< T, count>& v){
 		rows = 1;
 		cols = count;
-		val.resize(rows * cols);
-		std::copy((char*)v.val, (char*)v.val + sizeof(v.val), (char*)&val[0]);
+		val = sm::make_shared<vtype>();
+		val().resize(rows * cols);
+		std::copy((char*)v.val, (char*)v.val + sizeof(v.val), (char*)&val()[0]);
 	}
 	///**********************
 	inline Mat_<T>& operator= (const Mat_<T>& m){
@@ -545,6 +553,7 @@ public:
 	inline Mat_<T>& operator= (const Vec_<T, count>& v){
 		this->rows = count;
 		this->cols = 1;
+		T* val = &(*this->val)[0];
 		for(int i = 0; i < count; i++)
 			val[i] = v.val[i];
 		return *this;
@@ -555,9 +564,11 @@ public:
 	}
 	///********************
 	inline T* ptr(){
+		T* val = &(*this->val)[0];
 		return &val[0];
 	}
 	inline T* ptr() const{
+		T* val = &(*this->val)[0];
 		return &val[0];
 	}
 	inline Size size() const{
@@ -572,36 +583,45 @@ public:
 	}
 	///*********************
 	inline T& at(int i0, int i1){
+		T* val = &(*this->val)[0];
 		return val[i0 * cols + i1];
 	}
 	inline T& at(int i0){
+		T* val = &(*this->val)[0];
 		return val[i0 * cols];
 	}
 	inline const T& at(int i0, int i1)const{
+		T* val = &(*this->val)[0];
 		return val[i0 * cols + i1];
 	}
 	inline const T& at(int i0)const {
+		T* val = &(*this->val)[0];
 		return val[i0 * cols];
 	}
 	///********************
 	inline Mat_<T>& operator += (const Mat_<T>& v){
+		T* val1 = &(*this->val)[0];
+		T* val2 = &(*v.val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
-			val[i] += v.val[i];
+			val1[i] += val2[i];
 		}
 		return *this;
 	}
 	inline Mat_<T>& operator -= (const Mat_<T>& v){
+		T* val1 = &(*this->val)[0];
+		T* val2 = &(*v.val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
-			val[i] -= v.val[i];
+			val1[i] -= val2[i];
 		}
 		return *this;
 	}
 	///********************
 	inline Mat_<T>& operator *= (T v){
+		T* val = &(*this->val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
@@ -610,6 +630,7 @@ public:
 		return *this;
 	}
 	inline Mat_<T>& operator += (T v){
+		T* val = &(*this->val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
@@ -618,6 +639,7 @@ public:
 		return *this;
 	}
 	inline Mat_<T>& operator -= (T v){
+		T* val = &(*this->val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
@@ -628,10 +650,12 @@ public:
 	inline Mat_<T>& biasPlus(const Mat_<T > & m){
 		if(m.cols != 1 || cols != m.rows)
 			return *this;
+		T* val1 = &(*this->val)[0];
+		T* val2 = &(*m.val)[0];
 #pragma omp parallel for
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				val[i * cols + j] += m.val[j];
+				val1[i * cols + j] += val2[j];
 			}
 		}
 		return *this;
@@ -639,10 +663,12 @@ public:
 	inline Mat_<T>& biasMinus(const Mat_<T > & m){
 		if(m.cols != 1 || cols != m.rows)
 			return *this;
+		T* val1 = &(*this->val)[0];
+		T* val2 = &(*m.val)[0];
 #pragma omp parallel for
 		for(int i = 0; i < cols; i++){
 			for(int j = 0; j < rows; j++){
-				val[i * cols + j] -= m.val[j];
+				val1[i * cols + j] -= val2[j];
 			}
 		}
 		return *this;
@@ -652,6 +678,7 @@ public:
 		std::normal_distribution< double > nrm(_mean, _std);
 		std::mt19937 gen;
 		gen.seed(seed);
+		T* val = &(*this->val)[0];
 		for(int i = 0; i < total(); i++){
 			val[i] = nrm(gen);
 		}
@@ -661,10 +688,13 @@ public:
 	Mat_<T> t() const{
 		Mat_<T> res(cols, rows);
 
+		T* val1 = &(*res.val)[0];
+		T* val2 = &(*this->val)[0];
+
 #pragma omp parallel for num_threads(4)
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				res.val[j * rows + i] = val[i * cols + j];
+				val1[j * rows + i] = val2[i * cols + j];
 			}
 		}
 
@@ -675,12 +705,14 @@ public:
 			return Mat_<T>();
 		Mat_<T> res(rowsI.size(), cols);
 
+		T* val1 = &(*res.val)[0];
+		T* val2 = &(*this->val)[0];
 //#pragma omp parallel for
 		for(int i = 0; i < rowsI.size(); i++){
 			int id = rowsI[i];
 			if(id < rows){
 				for(int j = 0; j < cols; j++){
-					res.val[i * cols + j] = val[id * cols + j];
+					val1[i * cols + j] = val2[id * cols + j];
 				}
 			}
 		}
@@ -689,6 +721,7 @@ public:
 	}
 	T sum() const{
 		T res(0);
+		T* val = &(*this->val)[0];
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
 			res += val[i];
@@ -709,39 +742,48 @@ public:
 			return res;
 		if(axis == 0){
 			res = Mat_<T>::zeros(1, 1);
+			T* val1 = &(*res.val)[0];
+			T* val2 = &(*this->val)[0];
 			for(int i = 0; i < total(); i++){
-				res.val[0] += val[i];
+				val1[0] += val2[i];
 			}
-			res.val[0] = 1. / total();
+			val1[0] = 1. / total();
 		}
 		if(axis == 1){
 			res = Mat_<T>::zeros(1, cols);
+			T* val1 = &(*res.val)[0];
+			T* val2 = &(*this->val)[0];
+
 #pragma omp parallel for
 			for(int i = 0; i < rows; i++){
 				for(int j = 0; j < cols; j++){
-					res.val[j] += val[i * cols + j];
+					val1[j] += val2[i * cols + j];
 				}
 			}
 			for(int j = 0; j < cols; j++){
-				res.val[j] *= 1./rows;
+				val1[j] *= 1./rows;
 			}
 		}
 		if(axis == 2){
 			res = Mat_<T>::zeros(rows, 1);
+			T* val1 = &(*res.val)[0];
+			T* val2 = &(*this->val)[0];
+
 #pragma omp parallel for
 			for(int j = 0; j < cols; j++){
 				for(int i = 0; i < rows; i++){
-					res.val[i] += val[i * cols + j];
+					val1[i] += val2[i * cols + j];
 				}
 			}
 			for(int i = 0; i < rows; i++){
-				res.val[i] *= 1./cols;
+				val1[i] *= 1./cols;
 			}
 		}
 		return res;
 	}
 
 	void sqrt(){
+		T* val = &(*this->val)[0];
 #pragma omp parallel for
 		for(int i = 0; i < total(); i++){
 			val[i] = std::sqrt(val[i]);
@@ -756,6 +798,7 @@ public:
 		if(count != rows)
 			return res;
 
+		T* val = &(*this->val)[0];
 		for(int i = 0; i < rows; i++){
 			res.val[i] = val[i * cols + col];
 		}
@@ -768,6 +811,7 @@ public:
 		if(count != cols)
 			return res;
 
+		T* val = &(*this->val)[0];
 		for(int i = 0; i < cols; i++){
 			res.val[i] = val[row * cols + i];
 		}
@@ -780,6 +824,7 @@ public:
 		if((cols == 1 || count == rows) && (rows == 1 || count == cols))
 			return res;
 
+		T* val = &(*this->val)[0];
 		for(int i = 0; i < count; i++){
 			res.val[i] = val[i];
 		}
@@ -787,7 +832,10 @@ public:
 	}
 	///**************************
 	operator std::string() const{
+		if(this->val.empty())
+			return "";
 		std::stringstream res;
+		T* val = &(*this->val)[0];
 		res << "[";
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
@@ -801,14 +849,16 @@ public:
 	///**************************
 	static inline Mat_< T > zeros(int rows, int cols){
 		Mat_< T > res(rows, cols);
-		res.val.clear();
-		res.val.resize(rows * cols, 0);
+		T* val = &(*res.val)[0];
+		for(int i = 0; i < res.total(); i++)
+			val[i] = 0;
 		return res;
 	}
 	static inline Mat_< T > ones(int rows, int cols){
 		Mat_< T > res(rows, cols);
+		T* val = &(*res.val)[0];
 		for(int i = 0; i < res.total(); i++)
-			res.val[i] = 1.;
+			val[i] = 1.;
 		return res;
 	}
 	static inline Mat_< T > zeros(const Size& size){
@@ -819,8 +869,9 @@ public:
 	}
 	static inline Mat_< T > eye(int rows, int cols){
 		Mat_< T > res = zeros(rows, cols);
+		T* val = &(*res.val)[0];
 		for(int i = 0; i < std::min(rows, cols); ++i){
-			res.val[i * cols + i] = 1;
+			val[i * cols + i] = 1;
 		}
 		return res;
 	}
@@ -837,14 +888,19 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Mat_<T>& m2)
 	int c = m2.cols;
 	Mat_<T> res(r, c);
 
+	T* valr = &(*res.val)[0];
+	T* val1 = &(*m1.val)[0];
+	T* val2 = &(*m2.val)[0];
+
 #pragma omp parallel for num_threads(6)
 	for(int i = 0; i < m1.rows; i++){
 		for(int k = 0; k < m2.cols; k++){
 			T s = 0;
 			for(int j = 0; j < m1.cols; j++){
-				s += m1.val[i * m1.cols + j]/*at(i, j)*/ * m2.val[j * m2.cols + k]/*at(j, k)*/;
+				s += val1[i * m1.cols + j]/*at(i, j)*/ * val2[j * m2.cols + k]/*at(j, k)*/;
 			}
-			res.at(i, k) = s;
+			valr[i * res.cols + k] = s;
+//			res.at(i, k) = s;
 		}
 	}
 
@@ -858,8 +914,10 @@ inline Mat_<T> operator* (const Mat_<T>& m1, T v)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* valr = &(*res.val)[0];
+	T* val1 = &(*m1.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] * v;
+		valr[i] = val1[i] * v;
 	}
 
 	return res;
@@ -872,8 +930,10 @@ inline Mat_<T> operator* (T v, const Mat_<T>& m1)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* valr = &(*res.val)[0];
+	T* val1 = &(*m1.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] * v;
+		valr[i] = val1[i] * v;
 	}
 
 	return res;
@@ -886,8 +946,11 @@ inline Mat_<T> operator+ (const Mat_<T>& m1, const Mat_<T>& m2)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* valr = &(*res.val)[0];
+	T* val1 = &(*m1.val)[0];
+	T* val2 = &(*m2.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] + m2.val[i];
+		valr[i] = val1[i] + val2[i];
 	}
 
 	return res;
@@ -900,8 +963,10 @@ inline Mat_<T> operator+ (const Mat_<T>& m1, const T& v)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] + v;
+		res_val[i] = m1_val[i] + v;
 	}
 
 	return res;
@@ -914,8 +979,10 @@ inline Mat_<T> operator+ (const T& v, const Mat_<T>& m1)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] + v;
+		res_val[i] = m1_val[i] + v;
 	}
 
 	return res;
@@ -928,8 +995,11 @@ inline Mat_<T> operator- (const Mat_<T>& m1, const Mat_<T>& m2)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
+	T* m2_val = &(*m2.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] - m2.val[i];
+		res_val[i] = m1_val[i] - m2_val[i];
 	}
 
 	return res;
@@ -942,8 +1012,10 @@ inline Mat_<T> operator- (const Mat_<T>& m1, const T& v)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = m1.val[i] - v;
+		res_val[i] = m1_val[i] - v;
 	}
 
 	return res;
@@ -956,8 +1028,10 @@ inline Mat_<T> operator- (const T& v, const Mat_<T>& m1)
 		return Mat_<T>();
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
 	for(int i = 0; i < m1.rows * m1.cols; i++){
-		res.val[i] = v - m1.val[i];
+		res_val[i] = v - m1_val[i];
 	}
 
 	return res;
@@ -971,13 +1045,16 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Vec_< T, count >& v)
 	if(m1.cols != count)
 		return res;
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
+
 #pragma omp parallel for
 	for(int i = 0; i < m1.rows; i++){
 		T s = 0;
 		for(int j = 0; j < m1.cols; j++){
-			s += m1.val[i * m1.cols + j] * v.val[j];
+			s += m1_val[i * m1.cols + j] * v.val[j];
 		}
-		res.val[i] = s;
+		res_val[i] = s;
 	}
 
 	return res;
@@ -990,9 +1067,14 @@ inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
 	if(m1.cols != m2.cols || m1.rows != m2.rows)
 		return res;
 	res = Mat_<T>(m1.rows, m1.cols);
+
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
+	T* m2_val = &(*m2.val)[0];
+
 #pragma omp parallel for
 	for(int i = 0; i < m1.total(); i++){
-		res.val[i] = m1.val[i] * m2.val[i];
+		res_val[i] = m1_val[i] * m2_val[i];
 	}
 	return res;
 }
@@ -1004,10 +1086,14 @@ inline Mat_<T> sumRows(const Mat_<T > &m)
 	if(m.rows == 0 || m.cols == 0)
 		return res;
 	res = Mat_<T>::zeros(1, m.cols);
+
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
 #pragma omp parallel for
 	for(int i = 0; i < m.rows; i++){
 		for(int j = 0; j < m.cols; j++)
-			res.val[j] += m.val[i * m.cols + j];
+			res_val[j] += m_val[i * m.cols + j];
 	}
 	return res;
 }
@@ -1022,10 +1108,12 @@ inline Mat_<T> exp(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
 //#pragma omp parallel for
 #pragma omp simd
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = exp(m.val[i]);
+		res_val[i] = exp(m_val[i]);
 	}
 	return res;
 }
@@ -1041,9 +1129,12 @@ inline Mat_<T> expi(const Mat_<T>& m)
 	Mat_<T> res(m.rows, m.cols);
 
 //#pragma omp parallel for
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
 #pragma omp simd
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = exp(-m.val[i]);
+		res_val[i] = exp(-m_val[i]);
 	}
 	return res;
 }
@@ -1058,10 +1149,13 @@ inline Mat_<T> sigmoid(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-//#pragma omp parallel for
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = 1. / (1. + std::exp(-m.val[i]));
+		res_val[i] = 1. / (1. + std::exp(-m_val[i]));
 	}
 	return res;
 }
@@ -1076,11 +1170,13 @@ inline Mat_<T> tanh(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
-		T e = std::exp(2 * m.val[i]);
-		res.val[i] = (e - 1.) / (e + 1.);
+		T e = std::exp(2 * m_val[i]);
+		res_val[i] = (e - 1.) / (e + 1.);
 	}
 	return res;
 }
@@ -1095,10 +1191,13 @@ inline Mat_<T> relu(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-//#pragma omp parallel for
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = std::max(T(0), m.val[i]);
+		res_val[i] = std::max(T(0), m_val[i]);
 	}
 	return res;
 }
@@ -1113,10 +1212,13 @@ inline Mat_<T> derivRelu(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-//#pragma omp parallel for
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = m.val[i] > T(0) ? T(1) : T(0);
+		res_val[i] = m_val[i] > T(0) ? T(1) : T(0);
 	}
 	return res;
 }
@@ -1131,10 +1233,13 @@ inline Mat_<T> elemwiseSqrt(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-//#pragma omp parallel for
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = std::sqrt(m.val[i]);
+		res_val[i] = std::sqrt(m_val[i]);
 	}
 	return res;
 }
@@ -1149,10 +1254,13 @@ inline Mat_<T> elemwiseSqr(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
 
-//#pragma omp parallel for
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m.total(); i++){
-		res.val[i] = m.val[i] * m.val[i];
+		res_val[i] = m_val[i] * m_val[i];
 	}
 	return res;
 }
@@ -1170,10 +1278,13 @@ inline Mat_<T> elemwiseDiv(const Mat_<T>& m1, const Mat_<T>& m2)
 
 	Mat_<T> res(m1.rows, m1.cols);
 
+	T* res_val = &(*res.val)[0];
+	T* m1_val = &(*m1.val)[0];
+	T* m2_val = &(*m2.val)[0];
 //#pragma omp parallel for
 #pragma omp parallel for
 	for(int i = 0; i < m1.total(); i++){
-		res.val[i] = m1.val[i] / m2.val[i];
+		res_val[i] = m1_val[i] / m2_val[i];
 	}
 	return res;
 }

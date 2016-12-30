@@ -273,7 +273,7 @@ Matd nnmodel::forward_model(const Matd &X) const
 		return Matd(0, 0);
 	Matd x = X, z, a;
 
-	for(int i = 0; i < m_layers.size(); i++){
+	for(size_t i = 0; i < m_layers.size(); i++){
 		z = x * m_W[i];
 		z.biasPlus(m_b[i]);
 		if(i < m_layers.size() - 1){
@@ -300,7 +300,7 @@ void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 	a.resize(m_layers.size() + 1);
 
 	a[0] = X;
-	for(int i = 0; i < m_layers.size(); i++){
+	for(size_t i = 0; i < m_layers.size(); i++){
 		z[i] = a[i] * m_W[i];
 		z[i].biasPlus(m_b[i]);
 		if(i < m_layers.size() - 1){
