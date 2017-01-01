@@ -3,7 +3,7 @@
 
 #include "shared_memory.h"
 
-typedef std::vector< u_char > vchar;
+typedef std::vector< unsigned char > vchar;
 
 #define CHECK_VALUE(val, str) if(!(val)) std::cout << str << std::endl
 

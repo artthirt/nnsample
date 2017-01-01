@@ -32,10 +32,15 @@ FORMS    += mainwindow.ui \
     glview.ui \
     widgetmnist.ui
 
-win32{
-    LIBS += -lopengl32 -lglu32
+win32-msvc*{
     QMAKE_CXXFLAGS += /openmp
 }else{
-    LIBS += -lGLU -lgomp
+    LIBS += -lgomp
     QMAKE_CXXFLAGS += -fopenmp
+}
+
+win32{
+    LIBS += -lGLU32 -lopengl32
+}else{
+    LIBS += -lGLU
 }

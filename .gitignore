@@ -1,2 +1,16 @@
 build*
 *.pro*.user*
+Debug/
+Release/
+GeneratedFiles/
+*.sln
+*.suo
+*.vcproj
+x64
+.vs
+*.user
+My*
+*.filters
+*.xml
+*.db
+*.vcxproj
