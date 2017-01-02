@@ -53,10 +53,10 @@ WidgetMNIST::~WidgetMNIST()
 void WidgetMNIST::load()
 {
 	if(QFile::exists(train_images_file)){
-		readMnist(train_images_file, m_mnist_train);
+		m_count_train_images = readMnist(train_images_file, m_mnist_train);
 	}
 	if(QFile::exists(test_images_file)){
-		readMnist(test_images_file, m_mnist_test);
+		m_count_test_images = readMnist(test_images_file, m_mnist_test);
 	}
 	if(QFile::exists(train_labels_file)){
 		readMnistLabels(train_labels_file, m_mnist_labels_train);
