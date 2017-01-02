@@ -44,3 +44,14 @@ win32{
 }else{
     LIBS += -lGLU
 }
+
+CONFIG(debug, debug|release){
+    DST = "debug"
+}else{
+    DST = "release"
+}
+
+UI_DIR = tmp/$$DST/ui
+OBJECTS_DIR = tmp/$$DST/obj
+RCC_DIR = tmp/$$DST/rcc
+MOC_DIR = tmp/$$DST/moc

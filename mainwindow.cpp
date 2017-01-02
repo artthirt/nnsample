@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 	m_timer.start(1);
 
-	const int cnt = 7000;
+	const int cnt = 27000;
 	const int cnt_val = 700;
 	const int cnt2 = 5;
 	m_X = ct::Matd(cnt, 2);
@@ -69,11 +69,11 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_nn.setData(m_X, m_y);
 	//m_nn.init_weights(13);
 	std::vector<int> layers;
-	layers.push_back(5);
-	layers.push_back(15);
-	layers.push_back(50);
-	layers.push_back(60);
-	layers.push_back(5);
+	layers.push_back(40);
+	layers.push_back(40);
+	layers.push_back(40);
+//	layers.push_back(5);
+//	layers.push_back(10);
 	layers.push_back(1);
 	m_nn.setLayers(layers);
 	m_nn.init_model(0);
@@ -118,7 +118,7 @@ void MainWindow::onTimeout()
 			update_scene();
 		}
 
-		m_nn.pass_batch_model(150);
+		m_nn.pass_batch_model(300);
 		m_iteration++;
 	}
 }
@@ -181,13 +181,7 @@ void MainWindow::update_scene()
 
 void MainWindow::on_pb_load_clicked()
 {
-	QFileDialog dlg;
-	dlg.setAcceptMode(QFileDialog::AcceptOpen);
 
-	if(dlg.exec()){
-		QString fn = dlg.selectedFiles()[0];
-		ui->widgetMNIST->load(fn);
-	}
 }
 
 void MainWindow::on_pb_next_clicked()
@@ -202,11 +196,5 @@ void MainWindow::on_pb_toBegin_clicked()
 
 void MainWindow::on_pb_load_labels_clicked()
 {
-	QFileDialog dlg;
-	dlg.setAcceptMode(QFileDialog::AcceptOpen);
 
-	if(dlg.exec()){
-		QString fn = dlg.selectedFiles()[0];
-		ui->widgetMNIST->loadLabels(fn);
-	}
 }

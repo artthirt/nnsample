@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include <QDir>
 
 #include "shared_memory.h"
 
@@ -56,6 +57,12 @@ void test_shared()
 
 int main(int argc, char *argv[])
 {
+	QString progpath = argv[0];
+	QDir dir;
+	dir.setPath(progpath);
+	dir.cd("../");
+	QDir::current().setCurrent(dir.canonicalPath());
+
 	test_shared();
 
 	QApplication a(argc, argv);

@@ -18,28 +18,28 @@ public:
 	explicit WidgetMNIST(QWidget *parent = 0);
 	~WidgetMNIST();
 
-	void loadLabels(const QString& labels);
-	void load(const QString& fileName);
+	void load();
 	void next();
 	void toBegin();
 
 private:
 	Ui::WidgetMNIST *ui;
 
-	QVector< QByteArray > m_mnist;
-	QVector< uchar > m_mnist_labels;
+	QVector< QByteArray > m_mnist_train;
+	QVector< uchar > m_mnist_labels_train;
 
-	QString m_fileName;
-	QString m_labelsFile;
+	QVector< QByteArray > m_mnist_test;
+	QVector< uchar > m_mnist_labels_test;
 
 	uint m_index;
-	uint m_count_images;
+	uint m_count_train_images;
+	uint m_count_test_images;
 
-	uint readMnist();
-	uint readMnist(QFile &file);
+	uint readMnist(const QString &fn, QVector< QByteArray >& mnist);
+	uint readMnist(QFile &file, QVector< QByteArray >& mnist);
 
-	uint readMnistLabels();
-	uint readMnistLabels(QFile& file);
+	uint readMnistLabels(const QString &fn, QVector< uchar >& labels);
+	uint readMnistLabels(QFile& file, QVector< uchar >& labels);
 
 	void load_params();
 	void save_params();
