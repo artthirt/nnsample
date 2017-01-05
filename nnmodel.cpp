@@ -5,11 +5,7 @@
 using namespace ct;
 
 nnmodel::nnmodel()
-	: m_alpha(0.01)
-	, m_betha1(0.9)
-	, m_betha2(0.99)
-	, m_iteration(0)
-	, m_resultModel(ESquarError)
+	: m_resultModel(ESquarError)
 {
 }
 
@@ -23,22 +19,22 @@ void nnmodel::setData(const ct::Matd &X, const ct::Matd &y)
 
 void nnmodel::setAlpha(double alpha)
 {
-	m_alpha = alpha;
+	m_AdamOptimizer.setAlpha(alpha);
 }
 
 double nnmodel::alpha() const
 {
-	return m_alpha;
+	return m_AdamOptimizer.alpha();
 }
 
 void nnmodel::setBetha1(double v)
 {
-	m_betha1 = v;
+	m_AdamOptimizer.setBetha1(v);
 }
 
 void nnmodel::setBetha2(double v)
 {
-	m_betha2 = v;
+	m_AdamOptimizer.setBetha2(v);
 }
 
 //ct::Matd nnmodel::forward(const ct::Matd &X) const
@@ -241,12 +237,6 @@ void nnmodel::init_model(int seed)
 	m_W.resize(m_layers.size());
 	m_b.resize(m_layers.size());
 
-	m_mW.resize(m_layers.size());
-	m_mb.resize(m_layers.size());
-
-	m_vW.resize(m_layers.size());
-	m_vb.resize(m_layers.size());
-
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
@@ -257,13 +247,12 @@ void nnmodel::init_model(int seed)
 		m_b[i] = Matd::ones(output, 1);
 		m_b[i].randn(0, n, seed);
 
-		m_mW[i] = Matd::zeros(input, output);
-		m_vW[i] = Matd::zeros(input, output);
-
-		m_mb[i] = Matd::zeros(output, 1);
-		m_vb[i] = Matd::zeros(output, 1);
 
 		input = output;
+	}
+
+	if(!m_AdamOptimizer.init(m_layers, m_X.cols)){
+		std::cout << "optimizer not init\n";
 	}
 }
 
@@ -287,8 +276,8 @@ Matd nnmodel::forward_model(const Matd &X) const
 
 void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 {
-	if(m_W.empty() || m_b.empty() || m_mW.empty() || m_layers.empty() ||
-			m_mb.empty() || m_vW.empty() || m_vb.empty() || m_layers.back() != m_y.cols){
+	if(m_W.empty() || m_b.empty() || m_layers.empty() ||
+			m_layers.back() != m_y.cols){
 		std::cout << "wrong parameters of model\n";
 		return;
 	}
@@ -331,30 +320,8 @@ void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 		d = di;
 	}
 
-	m_iteration++;
-	double sb1 = 1. / (1. - pow(m_betha1, m_iteration));
-	double sb2 = 1. / (1. - pow(m_betha2, m_iteration));
-	double eps = 10e-8;
-
-	for(size_t i = 0; i < m_layers.size(); ++i){
-		m_mW[i] = m_betha1 * m_mW[i] + (1. - m_betha1) * dW[i];
-		m_mb[i] = m_betha1 * m_mb[i] + (1. - m_betha1) * dB[i];
-
-		m_vW[i] = m_betha2 * m_vW[i] + (1. - m_betha2) * elemwiseSqr(dW[i]);
-		m_vb[i] = m_betha2 * m_vb[i] + (1. - m_betha2) * elemwiseSqr(dB[i]);
-
-		Matd mWs = m_mW[i] * sb1;
-		Matd mBs = m_mb[i] * sb1;
-		Matd vWs = m_vW[i] * sb2;
-		Matd vBs = m_vb[i] * sb2;
-
-		vWs.sqrt(); vBs.sqrt();
-		vWs += eps; vBs += eps;
-		mWs = elemwiseDiv(mWs, vWs);
-		mBs = elemwiseDiv(mBs, vBs);
-
-		m_W[i] -= m_alpha * mWs;
-		m_b[i] -= m_alpha * mBs;
+	if(!m_AdamOptimizer.pass(dW, dB, m_W, m_b)){
+		std::cout << "optimizer not work\n";
 	}
 }
 
@@ -383,36 +350,3 @@ void nnmodel::pass_batch_model(int batch)
 	pass_batch_model(X, y);
 }
 
-//void nnmodel::init_weights(int seed)
-//{
-//	double m = m_X.cols;
-
-//	m_W1 = Matd(m_X.cols, m_layer1);
-//	m_W1.randn(0., 1./sqrt(m), seed);
-//	m_b1 = Matd::ones(m_layer1, 1);
-//	m_b1.randn(0, 1./sqrt(m), seed);
-
-//	m_W2 = Matd(m_layer1, m_layer2);
-//	m_W2.randn(0., 1./sqrt(m_layer1), seed);
-//	m_b2 = Matd::ones(m_layer2, 1);
-//	m_b2.randn(0, 1./sqrt(m_layer1), seed);
-
-//	m_W3 = Matd(m_layer2, m_layer3);
-//	m_W3.randn(0., 1./sqrt(m_layer2), seed);
-//	m_b3 = Matd::ones(m_layer3, 1);
-//	m_b3.randn(0, 1./sqrt(m_layer2), seed);
-
-//	m_W4 = Matd(m_layer3, m_y.cols);
-//	m_W4.randn(0., 1./sqrt(m_layer3), seed);
-//	m_b4 = Matd::ones(m_y.cols, 1);
-//	m_b4.randn(0, 1./sqrt(m_layer3), seed);
-
-//	m_dB1 = Matd::zeros(m_b1.size());
-//	m_dB2 = Matd::zeros(m_b2.size());
-//	m_dB3 = Matd::zeros(m_b3.size());
-//	m_dB4 = Matd::zeros(m_b4.size());
-//	m_dW1 = Matd::zeros(m_W1.size());
-//	m_dW2 = Matd::zeros(m_W2.size());
-//	m_dW3 = Matd::zeros(m_W3.size());
-//	m_dW4 = Matd::zeros(m_W4.size());
-//}

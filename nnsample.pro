@@ -18,7 +18,8 @@ SOURCES += main.cpp\
     nnmodel.cpp \
     widgetmnist.cpp \
     custom_types.cpp \
-    shared_memory.cpp
+    shared_memory.cpp \
+    nn.cpp
 
 HEADERS  += mainwindow.h \
     custom_types.h \
@@ -26,7 +27,8 @@ HEADERS  += mainwindow.h \
     simple_xml.hpp \
     nnmodel.h \
     widgetmnist.h \
-    shared_memory.h
+    shared_memory.h \
+    nn.h
 
 FORMS    += mainwindow.ui \
     glview.ui \

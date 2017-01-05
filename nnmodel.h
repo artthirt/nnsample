@@ -3,6 +3,7 @@
 
 #include <custom_types.h>
 #include <random>
+#include "nn.h"
 
 class nnmodel
 {
@@ -64,14 +65,7 @@ private:
 	std::vector< ct::Matd > m_b;
 	std::vector< int > m_layers;
 
-	std::vector< ct::Matd > m_mW;
-	std::vector< ct::Matd > m_mb;
-	std::vector< ct::Matd > m_vW;
-	std::vector< ct::Matd > m_vb;
-
-	double m_alpha;
-	double m_betha1;
-	double m_betha2;
+	nn::AdamOptimizer<double> m_AdamOptimizer;
 
 	EResultModel m_resultModel;
 
