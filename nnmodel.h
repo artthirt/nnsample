@@ -19,6 +19,8 @@ public:
 	void setAlpha(double alpha);
 	double alpha() const;
 
+	uint iteration() const;
+
 	void setBetha1(double v);
 	void setBetha2(double v);
 
@@ -59,7 +61,6 @@ public:
 private:
 	ct::Matd m_X;
 	ct::Matd m_y;
-	double m_iteration;
 
 	std::vector< ct::Matd > m_W;
 	std::vector< ct::Matd > m_b;

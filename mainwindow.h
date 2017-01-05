@@ -7,9 +7,39 @@
 #include "custom_types.h"
 #include "nnmodel.h"
 
+#include <QMutex>
+#include <QRunnable>
+
 namespace Ui {
 class MainWindow;
 }
+
+class PassModel: public QRunnable{
+public:
+	PassModel(nnmodel* model, int batch){
+		this->model = model;
+		this->use = false;
+		this->done = false;
+		this->count_batch = batch;
+		this->lock = false;
+		this->waiting = false;
+	}
+
+	bool setRequestLock();
+	void setRequestUnlock();
+
+	nnmodel* model;
+	QMutex mutex;
+
+	int count_batch;
+	bool use;
+	bool done;
+	bool lock;
+	bool waiting;
+
+protected:
+	virtual void run();
+};
 
 class MainWindow : public QMainWindow
 {
@@ -33,14 +63,17 @@ private slots:
 
 	void on_pb_load_labels_clicked();
 
+	void on_chb_auto_clicked(bool checked);
+
 private:
-	uint m_iteration;
 	Ui::MainWindow *ui;
 	QTimer m_timer;
 
 	ct::Matd m_X;
 	ct::Matd m_X_val;
 	ct::Matd m_y;
+
+	PassModel* m_runmodel;
 
 	std::uniform_real_distribution<double> ud;
 	std::mt19937 gen;

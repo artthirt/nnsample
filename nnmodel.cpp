@@ -27,6 +27,11 @@ double nnmodel::alpha() const
 	return m_AdamOptimizer.alpha();
 }
 
+uint nnmodel::iteration() const
+{
+	return m_AdamOptimizer.iteration();
+}
+
 void nnmodel::setBetha1(double v)
 {
 	m_AdamOptimizer.setBetha1(v);

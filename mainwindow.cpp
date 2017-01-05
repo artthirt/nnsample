@@ -2,9 +2,44 @@
 #include "ui_mainwindow.h"
 
 #include <QFileDialog>
+#include <QDebug>
 
 #include <math.h>
 #include <random>
+#include <QThreadPool>
+
+///////////////////////////////
+
+bool PassModel::setRequestLock()
+{
+	lock = true;
+	return mutex.tryLock(10);
+}
+
+void PassModel::setRequestUnlock()
+{
+	mutex.unlock();
+	lock = false;
+}
+
+void PassModel::run()
+{
+	while(!done){
+		if(use && model && !lock){
+			waiting = false;
+			mutex.lock();
+
+			model->pass_batch_model(count_batch);
+
+			mutex.unlock();
+		}else{
+			waiting = true;
+			QThread::currentThread()->msleep(5);
+		}
+	}
+}
+
+//////////////////////////////
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -13,7 +48,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->setupUi(this);
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
-	m_timer.start(1);
+	m_timer.start(1000);
 
 	const int cnt = 27000;
 	const int cnt_val = 700;
@@ -78,7 +113,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_nn.setLayers(layers);
 	m_nn.init_model(0);
 
-	m_iteration = 0;
+	m_runmodel = new PassModel(&m_nn, 200);
+	QThreadPool::globalInstance()->start(m_runmodel);
 
 	double data[4 * 5] = {
 		0, 1, 2, 3, 4,
@@ -102,24 +138,33 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
 	delete ui;
+
+	if(m_runmodel){
+		m_runmodel->done = true;
+	}
+	QThreadPool::globalInstance()->waitForDone();
 }
 
 void MainWindow::on_pb_calculate_clicked()
 {
-	m_nn.pass_batch_model(150);
-	m_iteration++;
-	update_scene();
+	if(m_runmodel->setRequestLock()){
+		m_nn.pass_batch_model(150);
+		update_scene();
+		m_runmodel->setRequestUnlock();
+	}
 }
 
 void MainWindow::onTimeout()
 {
 	if(ui->chb_auto->isChecked()){
-		if((m_iteration % 20) == 0){
-			update_scene();
-		}
 
-		m_nn.pass_batch_model(300);
-		m_iteration++;
+		qDebug() << "to lock";
+		if(m_runmodel->setRequestLock()){
+			qDebug() << "in lock";
+			update_scene();
+			m_runmodel->setRequestUnlock();
+			qDebug() << "out lock";
+		}
 	}
 }
 
@@ -163,7 +208,7 @@ void MainWindow::update_scene()
 
 	qDebug("L2=%f", L2);
 
-	ui->lb_L2norm->setText(QString("L2=%1;\tIteration=%2").arg(L2, 0, 'f', 6).arg(m_iteration));
+	ui->lb_L2norm->setText(QString("L2=%1;\tIteration=%2").arg(L2, 0, 'f', 6).arg(m_nn.iteration()));
 
 	QString sout;
 	for(int i = m_nn.count() - 1; i >= 0; --i){
@@ -197,4 +242,12 @@ void MainWindow::on_pb_toBegin_clicked()
 void MainWindow::on_pb_load_labels_clicked()
 {
 
+}
+
+
+void MainWindow::on_chb_auto_clicked(bool checked)
+{
+	if(!m_runmodel)
+		return;
+	m_runmodel->use = checked;
 }
