@@ -17,16 +17,31 @@ class WidgetMNIST : public QWidget
 	Q_OBJECT
 
 public:
+	enum {TEST, TRAIN};
+
 	explicit WidgetMNIST(QWidget *parent = 0);
 	~WidgetMNIST();
 
+	void setTestMode();
+	void setTrainMode();
+
+	int mode() const;
+
 	void setMnist(mnist_reader* mnist);
+
+	uint index() const;
+
+	void updatePredictfromIndex(uint index, const QVector<uchar>& predict);
 
 	void next();
 	void toBegin();
 
 private:
 	Ui::WidgetMNIST *ui;
+	int m_mode;
+
+	QVector< uchar > m_prediction_test;
+	QVector< uchar > m_prediction_train;
 
 	mnist_reader* m_mnist;
 

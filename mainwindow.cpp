@@ -50,6 +50,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 	m_timer.start(1000);
 
+	connect(&m_timer_mnist, SIGNAL(timeout()), this, SLOT(onTimeoutMnist()));
+	m_timer_mnist.start(1);
+
 	const int cnt = 27000;
 	const int cnt_val = 700;
 	const int cnt2 = 5;
@@ -137,6 +140,16 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist.load();
 	ui->widgetMNIST->setMnist(&m_mnist);
 	ui->widgetMNIST->update();
+
+	std::vector<int> layers2;
+	layers2.push_back(64);
+	layers2.push_back(128);
+	layers2.push_back(16);
+	layers2.push_back(10);
+
+	m_mnist_train.setLayers(layers2);
+	m_mnist_train.setMnist(&m_mnist);
+	m_mnist_train.init(1);
 }
 
 MainWindow::~MainWindow()
@@ -151,10 +164,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pb_calculate_clicked()
 {
-	if(m_runmodel->setRequestLock()){
-		m_nn.pass_batch_model(150);
-		update_scene();
-		m_runmodel->setRequestUnlock();
+	if(ui->twtabs->currentIndex() == 0){
+		if(m_runmodel->setRequestLock()){
+			m_nn.pass_batch_model(150);
+			update_scene();
+			m_runmodel->setRequestUnlock();
+		}
+	}else if(ui->twtabs->currentIndex() == 2){
+		m_mnist_train.pass_batch(300);
+		update_mnist();
 	}
 }
 
@@ -172,9 +190,23 @@ void MainWindow::onTimeout()
 	}
 }
 
+void MainWindow::onTimeoutMnist()
+{
+	if(ui->pb_pass->isChecked()){
+		m_mnist_train.pass_batch(300);
+		qDebug() << "Iteration" << m_mnist_train.iteration();
+		ui->lb_out->setText("Pass: #" + QString::number(m_mnist_train.iteration()));
+
+		if((m_mnist_train.iteration() % 30) == 0){
+			update_mnist();
+		}
+	}
+}
+
 void MainWindow::on_dsb_alpha_valueChanged(double arg1)
 {
 	m_nn.setAlpha(arg1);
+	m_mnist_train.setAlpha(arg1);
 }
 
 void MainWindow::update_scene()
@@ -212,7 +244,7 @@ void MainWindow::update_scene()
 
 	qDebug("L2=%f", L2);
 
-	ui->lb_L2norm->setText(QString("L2=%1;\tIteration=%2").arg(L2, 0, 'f', 6).arg(m_nn.iteration()));
+	ui->lb_L2norm->setText(QString("L2=%1;\tIteration=%2").arg(L2, 0, 'f', 9).arg(m_nn.iteration()));
 
 	QString sout;
 	for(int i = m_nn.count() - 1; i >= 0; --i){
@@ -226,6 +258,42 @@ void MainWindow::update_scene()
 	}
 
 	ui->pte_out->setPlainText(sout);
+}
+
+void MainWindow::update_mnist()
+{
+	double CE = m_mnist_train.L2(2000);
+	ui->lb_ce->setText(QString("L2=%1;\tIteration=%2").arg(CE, 0, 'f', 9).arg(m_mnist_train.iteration()));
+
+	uint index = ui->widgetMNIST->index();
+
+	if(ui->widgetMNIST->mode() == WidgetMNIST::TRAIN){
+
+		uint count = std::min((uint)2000, m_mnist.count_train_images() - index);
+
+		ct::Matd y = m_mnist_train.forward(index, count);
+
+		QVector< uchar > data;
+
+		data.resize(count);
+
+		for(int i = 0; i < count; i++){
+			data[i] = y.argmax(i, 1);
+		}
+		ui->widgetMNIST->updatePredictfromIndex(index, data);
+	}else{
+		uint count = std::min((uint)2000, m_mnist.count_test_images() - index);
+		ct::Matd y = m_mnist_train.forward_test(index, count);
+
+		QVector< uchar > data;
+
+		data.resize(count);
+
+		for(int i = 0; i < count; i++){
+			data[i] = y.argmax(i, 1);
+		}
+		ui->widgetMNIST->updatePredictfromIndex(index, data);
+	}
 }
 
 void MainWindow::on_pb_load_clicked()
@@ -243,15 +311,29 @@ void MainWindow::on_pb_toBegin_clicked()
 	ui->widgetMNIST->toBegin();
 }
 
-void MainWindow::on_pb_load_labels_clicked()
-{
-
-}
-
-
 void MainWindow::on_chb_auto_clicked(bool checked)
 {
 	if(!m_runmodel)
 		return;
 	m_runmodel->use = checked;
+}
+
+void MainWindow::on_pb_pass_clicked(bool checked)
+{
+
+}
+
+void MainWindow::on_pb_test_clicked()
+{
+	double l2 = m_mnist_train.L2test(2000);
+	ui->lb_out->setText("L2(test)=" + QString::number(l2));
+}
+
+void MainWindow::on_pb_changemodeMnist_clicked(bool checked)
+{
+	if(checked){
+		ui->widgetMNIST->setTestMode();
+	}else{
+		ui->widgetMNIST->setTrainMode();
+	}
 }

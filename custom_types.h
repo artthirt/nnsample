@@ -731,6 +731,27 @@ public:
 
 		return res;
 	}
+	Mat_<T> getRows(int index, int count) const{
+		if(index >= rows)
+			return Mat_<T>();
+		count = std::min(count, rows - index);
+		Mat_<T> res(count, cols);
+
+		T* val1 = &(*res.val)[0];
+		T* val2 = &(*this->val)[0];
+#pragma omp parallel for
+		for(int i = 0; i < count; i++){
+			int id = index + i;
+#ifdef __GNUC__
+#pragma omp simd
+#endif
+			for(int j = 0; j < cols; j++){
+				val1[i * cols + j] = val2[id * cols + j];
+			}
+		}
+
+		return res;
+	}
 	T sum() const{
 		T res(0);
 		T* val = &(*this->val)[0];
@@ -809,6 +830,37 @@ public:
 	}
 
 	///***********************
+	/**
+	 * @brief argmax
+	 * @param index
+	 * @param axes - =0 - in row; =1 - in column
+	 * @return index of maximum element in row or column
+	 */
+	int argmax(int index, int axes){
+		T* val = &(*this->val)[0];
+		int res = 0;
+		if(axes == 0){
+			T mm = val[0 * cols + index];
+			for(int i = 1; i < rows; i++){
+				if(val[i * cols + index] > mm){
+					mm = val[i * cols + index];
+					res = i;
+				}
+			}
+		}
+		if(axes == 1){
+			T mm = val[index * cols + 0];
+			for(int i = 1; i < cols; i++){
+				if(val[index * cols + i] > mm){
+					mm = val[index * cols + i];
+					res = i;
+				}
+			}
+		}
+		return res;
+	}
+
+	///***********************
 	template < int count >
 	inline Vec_<T, count > toVecCol(int col = 0) const{
 		Vec_< T, count > res;
@@ -872,6 +924,8 @@ public:
 		T* val = &(*res.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 		for(int i = 0; i < res.total(); i++)
 			val[i] = 0;
@@ -882,6 +936,8 @@ public:
 		T* val = &(*res.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 		for(int i = 0; i < res.total(); i++)
 			val[i] = 1.;
@@ -898,6 +954,8 @@ public:
 		T* val = &(*res.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 		for(int i = 0; i < std::min(rows, cols); ++i){
 			val[i * cols + i] = 1;
@@ -925,6 +983,8 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Mat_<T>& m2)
 	for(int i = 0; i < m1.rows; i++){
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 		for(int k = 0; k < m2.cols; k++){
 			T s = 0;
@@ -950,6 +1010,8 @@ inline Mat_<T> operator* (const Mat_<T>& m1, T v)
 	T* val1 = &(*m1.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		valr[i] = val1[i] * v;
@@ -969,6 +1031,8 @@ inline Mat_<T> operator* (T v, const Mat_<T>& m1)
 	T* val1 = &(*m1.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		valr[i] = val1[i] * v;
@@ -1162,11 +1226,11 @@ inline Mat_<T> sumRows(const Mat_<T > &m)
 }
 
 /**
- * @brief expi
+ * @brief exp
  * @param m
  * @return exp(m)
  */
-template< typename T, int count >
+template< typename T >
 inline Mat_<T> exp(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
@@ -1178,7 +1242,29 @@ inline Mat_<T> exp(const Mat_<T>& m)
 #pragma omp simd
 #endif
 	for(int i = 0; i < m.total(); i++){
-		res_val[i] = exp(m_val[i]);
+		res_val[i] = std::exp(m_val[i]);
+	}
+	return res;
+}
+
+/**
+ * @brief log
+ * @param m
+ * @return log(m)
+ */
+template< typename T >
+inline Mat_<T> log(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+//#pragma omp parallel for
+#ifdef __GNUC__
+#pragma omp simd
+#endif
+	for(int i = 0; i < m.total(); i++){
+		res_val[i] = std::log(m_val[i]);
 	}
 	return res;
 }
@@ -1188,7 +1274,7 @@ inline Mat_<T> exp(const Mat_<T>& m)
  * @param m
  * @return exp(-m)
  */
-template< typename T, int count >
+template< typename T >
 inline Mat_<T> expi(const Mat_<T>& m)
 {
 	Mat_<T> res(m.rows, m.cols);
@@ -1200,7 +1286,7 @@ inline Mat_<T> expi(const Mat_<T>& m)
 #pragma omp simd
 #endif
 	for(int i = 0; i < m.total(); i++){
-		res_val[i] = exp(-m_val[i]);
+		res_val[i] = std::exp(-m_val[i]);
 	}
 	return res;
 }
@@ -1261,6 +1347,8 @@ inline Mat_<T> relu(const Mat_<T>& m)
 	T* m_val = &(*m.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = std::max(T(0), m_val[i]);
@@ -1284,10 +1372,68 @@ inline Mat_<T> derivRelu(const Mat_<T>& m)
 	//#pragma omp parallel for
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = m_val[i] > T(0) ? T(1) : T(0);
 	}
+	return res;
+}
+
+/**
+ * @brief softmax
+ * @param m
+ * @return softmax(m)
+ */
+template< typename T >
+inline Mat_<T> softmax(const Mat_<T>& m, int axis = 0)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+//#pragma omp parallel for
+
+	if(axis == 0){
+	T Zpart = T(0);
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
+		for(int i = 0; i < m.total(); i++){
+			res_val[i] = std::exp(m_val[i]);
+			Zpart += res_val[i];
+		}
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
+		for(int i = 0; i < m.total(); i++){
+			res_val[i] = res_val[i] / Zpart;
+		}
+	}else if(axis == 1){
+#pragma omp parallel for
+		for(int i = 0; i < m.rows; i++){
+			T Zpart = T(0);
+#ifdef __GNUC__
+#pragma omp simd
+#endif
+			for(int j = 0; j < m.cols; j++){
+				res_val[i * res.cols + j] = std::exp(m_val[i * m.cols + j]);
+				Zpart += res_val[i * res.cols + j];
+			}
+#ifdef __GNUC__
+#pragma omp simd
+#endif
+			for(int j = 0; j < m.cols; j++){
+				res_val[i * res.cols + j] = res_val[i * res.cols + j] / Zpart;
+			}
+		}
+	}
+
 	return res;
 }
 

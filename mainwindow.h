@@ -7,6 +7,7 @@
 #include "custom_types.h"
 #include "nnmodel.h"
 #include "mnist_reader.h"
+#include "mnist_train.h"
 
 #include <QMutex>
 #include <QRunnable>
@@ -53,6 +54,7 @@ public:
 private slots:
 	void on_pb_calculate_clicked();
 	void onTimeout();
+	void onTimeoutMnist();
 
 	void on_dsb_alpha_valueChanged(double arg1);
 
@@ -62,13 +64,18 @@ private slots:
 
 	void on_pb_toBegin_clicked();
 
-	void on_pb_load_labels_clicked();
-
 	void on_chb_auto_clicked(bool checked);
+
+	void on_pb_pass_clicked(bool checked);
+
+	void on_pb_test_clicked();
+
+	void on_pb_changemodeMnist_clicked(bool checked);
 
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
+	QTimer m_timer_mnist;
 
 	ct::Matd m_X;
 	ct::Matd m_X_val;
@@ -80,10 +87,12 @@ private:
 	std::mt19937 gen;
 
 	nnmodel m_nn;
+	mnist_train m_mnist_train;
 
 	mnist_reader m_mnist;
 
 	void update_scene();
+	void update_mnist();
 };
 
 #endif // MAINWINDOW_H

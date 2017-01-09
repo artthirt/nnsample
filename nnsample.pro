@@ -20,7 +20,8 @@ SOURCES += main.cpp\
     custom_types.cpp \
     shared_memory.cpp \
     nn.cpp \
-    mnist_reader.cpp
+    mnist_reader.cpp \
+    mnist_train.cpp
 
 HEADERS  += mainwindow.h \
     custom_types.h \
@@ -30,7 +31,8 @@ HEADERS  += mainwindow.h \
     widgetmnist.h \
     shared_memory.h \
     nn.h \
-    mnist_reader.h
+    mnist_reader.h \
+    mnist_train.h
 
 FORMS    += mainwindow.ui \
     glview.ui \
