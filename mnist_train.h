@@ -36,6 +36,7 @@ private:
 	std::vector< ct::Matd > m_W;
 	std::vector< ct::Matd > m_b;
 	mnist_reader* m_mnist;
+	double m_lambda;
 
 	ct::Matd m_X;
 	ct::Matd m_y;

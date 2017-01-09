@@ -5,6 +5,7 @@ using namespace ct;
 mnist_train::mnist_train()
 {
 	m_mnist = 0;
+	m_lambda = 0.1;
 	m_AdamOptimizer.setAlpha(0.01);
 	m_AdamOptimizer.setBetha2(0.99);
 }
@@ -294,6 +295,7 @@ void mnist_train::pass_batch(const Matd &X, const Matd &y)
 		di = elemwiseMult(di, sz);
 		dW[i] = a[i].t() * d;
 		dW[i] *= 1./m;
+		dW[i] += (m_lambda/m * m_W[i]);
 		dB[i] = (sumRows(d) * (1./m)).t();
 		d = di;
 	}
