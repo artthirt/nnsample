@@ -4,6 +4,10 @@
 #include <custom_types.h>
 #include <vector>
 
+#ifndef __GNUC__
+typedef unsigned int uint;
+#endif
+
 namespace nn{
 
 template< typename T >

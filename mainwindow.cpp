@@ -133,6 +133,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->dsb_alpha->setValue(m_nn.alpha());
 
 	ui->widgetScene->add_graphic(pts, ct::Vec3d(0.7, 0, 0));
+
+	m_mnist.load();
+	ui->widgetMNIST->setMnist(&m_mnist);
+	ui->widgetMNIST->update();
 }
 
 MainWindow::~MainWindow()

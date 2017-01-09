@@ -654,7 +654,9 @@ public:
 		T* val2 = &(*m.val)[0];
 #pragma omp parallel for
 		for(int i = 0; i < rows; i++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 			for(int j = 0; j < cols; j++){
 				val1[i * cols + j] += val2[j];
 			}
@@ -668,7 +670,9 @@ public:
 		T* val2 = &(*m.val)[0];
 #pragma omp parallel for
 		for(int i = 0; i < cols; i++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 			for(int j = 0; j < rows; j++){
 				val1[i * cols + j] -= val2[j];
 			}
@@ -695,7 +699,9 @@ public:
 
 #pragma omp parallel for num_threads(4)
 		for(int i = 0; i < rows; i++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 			for(int j = 0; j < cols; j++){
 				val1[j * rows + i] = val2[i * cols + j];
 			}
@@ -714,7 +720,9 @@ public:
 		for(int i = 0; i < rowsI.size(); i++){
 			int id = rowsI[i];
 			if(id < rows){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 				for(int j = 0; j < cols; j++){
 					val1[i * cols + j] = val2[id * cols + j];
 				}
@@ -760,7 +768,9 @@ public:
 
 #pragma omp parallel for
 			for(int i = 0; i < rows; i++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 				for(int j = 0; j < cols; j++){
 					val1[j] += val2[i * cols + j];
 				}
@@ -776,7 +786,9 @@ public:
 
 #pragma omp parallel for
 			for(int j = 0; j < cols; j++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 				for(int i = 0; i < rows; i++){
 					val1[i] += val2[i * cols + j];
 				}
@@ -858,7 +870,9 @@ public:
 	static inline Mat_< T > zeros(int rows, int cols){
 		Mat_< T > res(rows, cols);
 		T* val = &(*res.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 		for(int i = 0; i < res.total(); i++)
 			val[i] = 0;
 		return res;
@@ -866,7 +880,9 @@ public:
 	static inline Mat_< T > ones(int rows, int cols){
 		Mat_< T > res(rows, cols);
 		T* val = &(*res.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 		for(int i = 0; i < res.total(); i++)
 			val[i] = 1.;
 		return res;
@@ -880,7 +896,9 @@ public:
 	static inline Mat_< T > eye(int rows, int cols){
 		Mat_< T > res = zeros(rows, cols);
 		T* val = &(*res.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 		for(int i = 0; i < std::min(rows, cols); ++i){
 			val[i * cols + i] = 1;
 		}
@@ -905,7 +923,9 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Mat_<T>& m2)
 
 #pragma omp parallel for
 	for(int i = 0; i < m1.rows; i++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 		for(int k = 0; k < m2.cols; k++){
 			T s = 0;
 			for(int j = 0; j < m1.cols; j++){
@@ -928,7 +948,9 @@ inline Mat_<T> operator* (const Mat_<T>& m1, T v)
 
 	T* valr = &(*res.val)[0];
 	T* val1 = &(*m1.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		valr[i] = val1[i] * v;
 	}
@@ -945,7 +967,9 @@ inline Mat_<T> operator* (T v, const Mat_<T>& m1)
 
 	T* valr = &(*res.val)[0];
 	T* val1 = &(*m1.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		valr[i] = val1[i] * v;
 	}
@@ -963,7 +987,9 @@ inline Mat_<T> operator+ (const Mat_<T>& m1, const Mat_<T>& m2)
 	T* valr = &(*res.val)[0];
 	T* val1 = &(*m1.val)[0];
 	T* val2 = &(*m2.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		valr[i] = val1[i] + val2[i];
 	}
@@ -980,7 +1006,9 @@ inline Mat_<T> operator+ (const Mat_<T>& m1, const T& v)
 
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = m1_val[i] + v;
 	}
@@ -997,7 +1025,9 @@ inline Mat_<T> operator+ (const T& v, const Mat_<T>& m1)
 
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = m1_val[i] + v;
 	}
@@ -1015,7 +1045,9 @@ inline Mat_<T> operator- (const Mat_<T>& m1, const Mat_<T>& m2)
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
 	T* m2_val = &(*m2.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = m1_val[i] - m2_val[i];
 	}
@@ -1032,7 +1064,9 @@ inline Mat_<T> operator- (const Mat_<T>& m1, const T& v)
 
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = m1_val[i] - v;
 	}
@@ -1049,7 +1083,9 @@ inline Mat_<T> operator- (const T& v, const Mat_<T>& m1)
 
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = v - m1_val[i];
 	}
@@ -1071,7 +1107,9 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Vec_< T, count >& v)
 #pragma omp parallel for
 	for(int i = 0; i < m1.rows; i++){
 		T s = 0;
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 		for(int j = 0; j < m1.cols; j++){
 			s += m1_val[i * m1.cols + j] * v.val[j];
 		}
@@ -1092,8 +1130,9 @@ inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
 	T* m2_val = &(*m2.val)[0];
-
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m1.total(); i++){
 		res_val[i] = m1_val[i] * m2_val[i];
 	}
@@ -1113,7 +1152,9 @@ inline Mat_<T> sumRows(const Mat_<T > &m)
 
 #pragma omp parallel for
 	for(int i = 0; i < m.rows; i++){
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 		for(int j = 0; j < m.cols; j++)
 			res_val[j] += m_val[i * m.cols + j];
 	}
@@ -1133,7 +1174,9 @@ inline Mat_<T> exp(const Mat_<T>& m)
 	T* res_val = &(*res.val)[0];
 	T* m_val = &(*m.val)[0];
 //#pragma omp parallel for
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = exp(m_val[i]);
 	}
@@ -1153,8 +1196,9 @@ inline Mat_<T> expi(const Mat_<T>& m)
 //#pragma omp parallel for
 	T* res_val = &(*res.val)[0];
 	T* m_val = &(*m.val)[0];
-
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = exp(-m_val[i]);
 	}
@@ -1215,8 +1259,9 @@ inline Mat_<T> relu(const Mat_<T>& m)
 
 	T* res_val = &(*res.val)[0];
 	T* m_val = &(*m.val)[0];
-
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = std::max(T(0), m_val[i]);
 	}
@@ -1237,7 +1282,9 @@ inline Mat_<T> derivRelu(const Mat_<T>& m)
 	T* m_val = &(*m.val)[0];
 
 	//#pragma omp parallel for
+#ifdef __GNUC__
 #pragma omp simd
+#endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = m_val[i] > T(0) ? T(1) : T(0);
 	}

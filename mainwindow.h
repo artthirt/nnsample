@@ -6,6 +6,7 @@
 
 #include "custom_types.h"
 #include "nnmodel.h"
+#include "mnist_reader.h"
 
 #include <QMutex>
 #include <QRunnable>
@@ -79,6 +80,8 @@ private:
 	std::mt19937 gen;
 
 	nnmodel m_nn;
+
+	mnist_reader m_mnist;
 
 	void update_scene();
 };
