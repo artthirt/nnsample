@@ -142,9 +142,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(128);
-	layers2.push_back(64);
-	layers2.push_back(128);
+	layers2.push_back(200);
+	layers2.push_back(100);
+	layers2.push_back(40);
+	layers2.push_back(20);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -262,8 +263,9 @@ void MainWindow::update_scene()
 
 void MainWindow::update_mnist()
 {
-	double CE = m_mnist_train.L2(2000);
-	ui->lb_ce->setText(QString("L2=%1;\tIteration=%2").arg(CE, 0, 'f', 9).arg(m_mnist_train.iteration()));
+	double l2, accuracy;
+	m_mnist_train.getEstimate(2000, l2, accuracy);
+	ui->lb_ce->setText(QString("L2=%1; Acc=%2;\tIteration=%3").arg(l2, 0, 'f', 9).arg(accuracy, 0, 'f', 5).arg(m_mnist_train.iteration()));
 
 	uint index = ui->widgetMNIST->index();
 
@@ -325,8 +327,9 @@ void MainWindow::on_pb_pass_clicked(bool checked)
 
 void MainWindow::on_pb_test_clicked()
 {
-	double l2 = m_mnist_train.L2test(2000);
-	ui->lb_out->setText("L2(test)=" + QString::number(l2));
+	double l2, accuracy;
+	m_mnist_train.getEstimateTest(2000, l2, accuracy);
+	ui->lb_out->setText("L2(test)=" + QString::number(l2) + "; Acc(test)=" + QString::number(accuracy));
 }
 
 void MainWindow::on_pb_changemodeMnist_clicked(bool checked)

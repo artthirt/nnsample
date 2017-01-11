@@ -5,9 +5,9 @@ using namespace ct;
 mnist_train::mnist_train()
 {
 	m_mnist = 0;
-	m_lambda = 0.1;
+	m_lambda = 0.01;
 	m_AdamOptimizer.setAlpha(0.01);
-	m_AdamOptimizer.setBetha2(0.99);
+	m_AdamOptimizer.setBetha2(0.999);
 }
 
 void mnist_train::setMnist(mnist_reader *mnist)
@@ -183,6 +183,102 @@ double mnist_train::cross_entropy(int batch)
 	return ce.sum();
 }
 
+void mnist_train::getEstimate(int batch, double &l2, double &accuracy)
+{
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
+	std::map<int, bool> set;
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	Matd X = m_X.getRows(indexes);
+	Matd yp = m_y.getRows(indexes);
+
+	Matd y = forward(X);
+
+	double m = X.rows;
+
+	Matd d = yp - y;
+
+	Matd ml2 = elemwiseMult(d, d);
+	ml2 = sumRows(ml2);
+	ml2 *= 1./m;
+
+	//////////// l2
+	l2 = ml2.sum();
+
+	int right = 0;
+	for(int i = 0; i < m; i++){
+		int k1 = y.argmax(i, 1);
+		int k2 = yp.argmax(i, 1);
+		right += (int)(k1 == k2);
+	}
+	///////////// accuracy
+	accuracy = (double)right / m;
+}
+
+void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy)
+{
+	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
+		return;
+
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->test().size() - 1);
+	std::map<int, bool> set;
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	Matd X = Matd::zeros(batch, m_X.cols);
+	Matd yp = Matd::zeros(batch, m_y.cols);
+
+	for(int i = 0; i < batch; i++){
+		int id = indexes[i];
+		QByteArray& data = m_mnist->test()[id];
+		uint lb = m_mnist->lb_test()[id];
+
+		for(int j = 0; j < data.size(); j++){
+			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		}
+		yp.at(i, lb) = 1.;
+	}
+
+	Matd y = forward(X);
+
+	double m = X.rows;
+
+	Matd d = yp - y;
+
+	Matd ml2 = elemwiseMult(d, d);
+	ml2 = sumRows(ml2);
+	ml2 *= 1./m;
+
+	//////////// l2
+	l2 = ml2.sum();
+
+	int right = 0;
+	for(int i = 0; i < m; i++){
+		int k1 = y.argmax(i, 1);
+		int k2 = yp.argmax(i, 1);
+		right += (int)(k1 == k2);
+	}
+	///////////// accuracy
+	accuracy = (double)right / m;
+}
+
 void mnist_train::init(int seed)
 {
 	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size())
@@ -227,6 +323,27 @@ void mnist_train::init(int seed)
 	}
 }
 
+void translate28x28(int x, int y, double *X)
+{
+	Matd d = Matd::zeros(28, 28);
+
+#pragma omp parallel for
+	for(int i = 0; i < d.rows; i++){
+		int newi = i + x;
+		if(newi >= 0 && newi < d.rows){
+			for(int j = 0; j < d.cols; j++){
+				int newj = j + y;
+				if(newj >= 0 && newj < d.cols){
+					d.at(newi, newj) = X[i * d.cols + j];
+				}
+			}
+		}
+	}
+	for(int i = 0; i < d.total(); i++){
+		X[i] = d.ptr()[i];
+	}
+}
+
 void mnist_train::pass_batch(int batch)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
@@ -249,6 +366,16 @@ void mnist_train::pass_batch(int batch)
 
 	X = m_X.getRows(indexes);
 	y = m_y.getRows(indexes);
+
+	int w = X.cols;
+	w = sqrt(w);
+	std::uniform_int_distribution<int> udtr(-5, 5);
+	for(int i = 0; i < X.rows; i++){
+		double *Xi = &X.at(i, 0);
+		int x = udtr(m_generator);
+		int y = udtr(m_generator);
+		translate28x28(x, y, Xi);
+	}
 
 	pass_batch(X, y);
 }

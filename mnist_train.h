@@ -29,6 +29,9 @@ public:
 	double L2test(int batch = 1000);
 	double cross_entropy(int batch = 1000);
 
+	void getEstimate(int batch, double &l2, double &accuracy);
+	void getEstimateTest(int batch, double &l2, double &accuracy);
+
 	void init(int seed);
 	void pass_batch(int batch);
 private:
