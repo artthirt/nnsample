@@ -194,11 +194,11 @@ void MainWindow::onTimeout()
 void MainWindow::onTimeoutMnist()
 {
 	if(ui->pb_pass->isChecked()){
-		m_mnist_train.pass_batch(300);
+		m_mnist_train.pass_batch(100);
 		qDebug() << "Iteration" << m_mnist_train.iteration();
 		ui->lb_out->setText("Pass: #" + QString::number(m_mnist_train.iteration()));
 
-		if((m_mnist_train.iteration() % 30) == 0){
+		if((m_mnist_train.iteration() % 100) == 0){
 			update_mnist();
 		}
 	}
@@ -328,7 +328,7 @@ void MainWindow::on_pb_pass_clicked(bool checked)
 void MainWindow::on_pb_test_clicked()
 {
 	double l2, accuracy;
-	m_mnist_train.getEstimateTest(2000, l2, accuracy);
+	m_mnist_train.getEstimateTest(6000, l2, accuracy);
 	ui->lb_out->setText("L2(test)=" + QString::number(l2) + "; Acc(test)=" + QString::number(accuracy));
 }
 

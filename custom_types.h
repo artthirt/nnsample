@@ -1070,9 +1070,7 @@ inline Mat_<T> operator+ (const Mat_<T>& m1, const T& v)
 
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
-#ifdef __GNUC__
-#pragma omp simd
-#endif
+#pragma omp parallel for
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = m1_val[i] + v;
 	}
@@ -1089,9 +1087,7 @@ inline Mat_<T> operator+ (const T& v, const Mat_<T>& m1)
 
 	T* res_val = &(*res.val)[0];
 	T* m1_val = &(*m1.val)[0];
-#ifdef __GNUC__
-#pragma omp simd
-#endif
+#pragma omp parallel for
 	for(int i = 0; i < m1.rows * m1.cols; i++){
 		res_val[i] = m1_val[i] + v;
 	}

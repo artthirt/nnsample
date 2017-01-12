@@ -323,24 +323,25 @@ void mnist_train::init(int seed)
 	}
 }
 
-void translate28x28(int x, int y, double *X)
+void translate(int x, int y, int w, int h, double *X)
 {
-	Matd d = Matd::zeros(28, 28);
+	std::vector<double>d;
+	d.resize(w * h);
 
 #pragma omp parallel for
-	for(int i = 0; i < d.rows; i++){
+	for(int i = 0; i < h; i++){
 		int newi = i + x;
-		if(newi >= 0 && newi < d.rows){
-			for(int j = 0; j < d.cols; j++){
+		if(newi >= 0 && newi < h){
+			for(int j = 0; j < w; j++){
 				int newj = j + y;
-				if(newj >= 0 && newj < d.cols){
-					d.at(newi, newj) = X[i * d.cols + j];
+				if(newj >= 0 && newj < w){
+					d[newi * w + newj] = X[i * w + j];
 				}
 			}
 		}
 	}
-	for(int i = 0; i < d.total(); i++){
-		X[i] = d.ptr()[i];
+	for(int i = 0; i < d.size(); i++){
+		X[i] = d[i];
 	}
 }
 
@@ -355,6 +356,8 @@ void mnist_train::pass_batch(int batch)
 	indexes.resize(batch);
 	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
 	std::map<int, bool> set;
+
+#pragma omp parallel for
 	for(int i = 0; i < batch; i++){
 		int v = ud(m_generator);
 		while(set.find(v) != set.end()){
@@ -367,14 +370,14 @@ void mnist_train::pass_batch(int batch)
 	X = m_X.getRows(indexes);
 	y = m_y.getRows(indexes);
 
-	int w = X.cols;
-	w = sqrt(w);
-	std::uniform_int_distribution<int> udtr(-5, 5);
+	std::uniform_int_distribution<int> udtr(-7, 7);
+
+#pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
 		double *Xi = &X.at(i, 0);
 		int x = udtr(m_generator);
 		int y = udtr(m_generator);
-		translate28x28(x, y, Xi);
+		translate(x, y, 28, 28, Xi);
 	}
 
 	pass_batch(X, y);
