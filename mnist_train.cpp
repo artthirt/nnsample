@@ -357,7 +357,6 @@ void mnist_train::pass_batch(int batch)
 	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
 	std::map<int, bool> set;
 
-#pragma omp parallel for
 	for(int i = 0; i < batch; i++){
 		int v = ud(m_generator);
 		while(set.find(v) != set.end()){
