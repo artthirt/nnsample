@@ -185,6 +185,9 @@ double mnist_train::cross_entropy(int batch)
 
 void mnist_train::getEstimate(int batch, double &l2, double &accuracy)
 {
+	if(m_X.empty() || m_y.empty())
+		return;
+
 	std::vector<int> indexes;
 	indexes.resize(batch);
 	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
