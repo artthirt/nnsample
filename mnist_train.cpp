@@ -372,8 +372,8 @@ void mnist_train::pass_batch(int batch)
 	X = m_X.getRows(indexes);
 	y = m_y.getRows(indexes);
 
-#if 0
-	std::uniform_int_distribution<int> udtr(-7, 7);
+#if 1
+	std::uniform_int_distribution<int> udtr(-3, 3);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
