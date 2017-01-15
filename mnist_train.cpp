@@ -423,9 +423,12 @@ void mnist_train::pass_batch(const Matd &X, const Matd &y)
 //		sz = 1. - sz;
 		Matd sz = derivRelu(a[i]);
 
-		Matd di = d * m_W[i].t();
+		//Matd di = d * m_W[i].t();
+		Matd di;
+		matmulT2(d, m_W[i], di);
 		di = elemwiseMult(di, sz);
-		dW[i] = a[i].t() * d;
+		//dW[i] = a[i].t() * d;
+		matmulT1(a[i], d, dW[i]);
 		dW[i] *= 1./m;
 		dW[i] += (m_lambda/m * m_W[i]);
 		dB[i] = (sumRows(d) * (1./m)).t();

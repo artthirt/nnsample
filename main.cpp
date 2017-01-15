@@ -3,6 +3,7 @@
 #include <QDir>
 
 #include "shared_memory.h"
+#include "custom_types.h"
 
 typedef std::vector< unsigned char > vchar;
 
@@ -55,6 +56,40 @@ void test_shared()
 	(*data)[0] = 1;
 }
 
+void test_mat()
+{
+	using namespace ct;
+	using namespace std;
+
+	double dA[] = {
+		1, 2, 3, 4,
+		5, 6, 7, 8,
+		9, 6, 5, 4
+	};
+	double dB[] = {
+		4, 3,
+		1, 6,
+		4, 2
+	};
+	double dCtest1[] = {
+		45, 51,
+		38, 54,
+		39, 61,
+		40, 68
+	};
+
+	Matd At(3, 4, dA), B(3, 2, dB), C, Ctest1(4, 2, dCtest1);
+	matmulT1(At, B, C);
+	CHECK_VALUE(C == Ctest1, "matmulT1 wrong");
+
+	Matd A, Bt;
+	A = At.t();
+	Bt = B.t();
+
+	matmulT2(A, Bt, C);
+	CHECK_VALUE(C == Ctest1, "matmulT2 wrong");
+}
+
 int main(int argc, char *argv[])
 {
 	QString progpath = argv[0];
@@ -64,6 +99,7 @@ int main(int argc, char *argv[])
 	QDir::current().setCurrent(dir.canonicalPath());
 
 	test_shared();
+	test_mat();
 
 	QApplication a(argc, argv);
 	MainWindow w;

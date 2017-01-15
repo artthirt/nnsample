@@ -14,7 +14,7 @@ template< typename T >
 class AdamOptimizer{
 public:
 	AdamOptimizer(){
-		m_alpha = 0.01;
+		m_alpha = 0.001;
 		m_betha1 = 0.9;
 		m_betha2 = 0.999;
 		m_iteration = 0;
