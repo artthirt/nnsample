@@ -1582,6 +1582,45 @@ void matmulT2(const Mat_<T>& A, const Mat_<T>& Bt, Mat_<T>& C)
 
 }
 
+template< typename T >
+void dropout(Mat_<T>& mat, T p, Mat_<T>& D, Mat_<T>& Dt, int seed = 0)
+{
+	std::binomial_distribution<int> bi(1, p);
+	//std::normal_distribution< double > nrm(0, 1);
+	std::mt19937 gen;
+	gen.seed(seed);
+
+	D = Mat_<T>::ones(mat.rows, mat.cols);
+	Dt = Mat_<T>::ones(mat.cols, mat.rows);
+
+	T* val1 = &(*D.val)[0];
+	T* val2 = &(*Dt.val)[0];
+
+#pragma omp parallel for
+	for(int i = 0; i < mat.rows; i++){
+		int pi = bi(gen);
+		if(!pi){
+#pragma omp parallel for
+			for(int j = 0; j < mat.cols; j++){
+				val1[i * D.cols + j] = 0;
+				val2[j * D.rows + i] = 0;
+			}
+		}
+	}
+	elemwiseMult(mat, D);
+}
+
+/**
+ * @brief dropout_transpose
+ * @param mat
+ * @param D
+ */
+template< typename T >
+void dropout_transpose(Mat_<T>& mat, const Mat_<T>& D)
+{
+	elemwiseMult(mat, D);
+}
+
 //////////////////////////////////////////
 
 template< typename T >

@@ -372,6 +372,7 @@ void mnist_train::pass_batch(int batch)
 	X = m_X.getRows(indexes);
 	y = m_y.getRows(indexes);
 
+#if 0
 	std::uniform_int_distribution<int> udtr(-7, 7);
 
 #pragma omp parallel for
@@ -381,7 +382,7 @@ void mnist_train::pass_batch(int batch)
 		int y = udtr(m_generator);
 		translate(x, y, 28, 28, Xi);
 	}
-
+#endif
 	pass_batch(X, y);
 }
 
@@ -400,9 +401,22 @@ void mnist_train::pass_batch(const Matd &X, const Matd &y)
 	a.resize(m_layers.size() + 1);
 
 	a[0] = X;
+
+	Matd D1, Dt1, D2, Dt2, D3, Dt3;
+
 	for(size_t i = 0; i < m_layers.size(); i++){
 		z[i] = a[i] * m_W[i];
 		z[i].biasPlus(m_b[i]);
+
+		if(i == 0){
+			dropout(z[i], 0.5, D1, Dt1);
+		}
+		if(i == 1){
+			dropout(z[i], 0.5, D2, Dt2);
+		}
+		if(i == 2){
+			dropout(z[i], 0.5, D3, Dt3);
+		}
 		if(i < m_layers.size() - 1){
 			a[i + 1] = relu(z[i]);
 		}else
@@ -431,6 +445,17 @@ void mnist_train::pass_batch(const Matd &X, const Matd &y)
 		matmulT1(a[i], d, dW[i]);
 		dW[i] *= 1./m;
 		dW[i] += (m_lambda/m * m_W[i]);
+
+		if(i == 2){
+			dropout_transpose(dW[i], Dt3);
+		}
+		if(i == 1){
+			dropout_transpose(dW[i], Dt2);
+		}
+		if(i == 0){
+			dropout_transpose(dW[i], Dt1);
+		}
+
 		dB[i] = (sumRows(d) * (1./m)).t();
 		d = di;
 	}
