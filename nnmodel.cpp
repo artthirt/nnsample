@@ -27,7 +27,7 @@ double nnmodel::alpha() const
 	return m_AdamOptimizer.alpha();
 }
 
-uint nnmodel::iteration() const
+uint32_t nnmodel::iteration() const
 {
 	return m_AdamOptimizer.iteration();
 }

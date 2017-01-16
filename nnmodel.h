@@ -19,7 +19,7 @@ public:
 	void setAlpha(double alpha);
 	double alpha() const;
 
-	uint iteration() const;
+	uint32_t iteration() const;
 
 	void setBetha1(double v);
 	void setBetha2(double v);

@@ -44,7 +44,7 @@ public:
 		m_betha2 = v;
 	}
 
-	uint iteration() const{
+	uint32_t iteration() const{
 		return m_iteration;
 	}
 
@@ -117,7 +117,7 @@ public:
 	}
 
 private:
-	uint m_iteration;
+	uint32_t m_iteration;
 	T m_betha1;
 	T m_betha2;
 	T m_alpha;

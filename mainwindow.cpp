@@ -142,9 +142,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(400);
 	layers2.push_back(200);
-	layers2.push_back(100);
+	layers2.push_back(300);
+	layers2.push_back(300);
+	layers2.push_back(50);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -327,7 +328,7 @@ void MainWindow::on_pb_pass_clicked(bool checked)
 void MainWindow::on_pb_test_clicked()
 {
 	double l2, accuracy;
-	m_mnist_train.getEstimateTest(6000, l2, accuracy);
+	m_mnist_train.getEstimateTest(-1, l2, accuracy);
 	ui->lb_out->setText("L2(test)=" + QString::number(l2) + "; Acc(test)=" + QString::number(accuracy));
 }
 

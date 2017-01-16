@@ -233,16 +233,28 @@ void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy)
 		return;
 
 	std::vector<int> indexes;
-	indexes.resize(batch);
-	std::uniform_int_distribution<int> ud(0, m_mnist->test().size() - 1);
-	std::map<int, bool> set;
-	for(int i = 0; i < batch; i++){
-		int v = ud(m_generator);
-		while(set.find(v) != set.end()){
-			v = ud(m_generator);
+
+	if(batch > 0){
+
+		indexes.resize(batch);
+		std::uniform_int_distribution<int> ud(0, m_mnist->test().size() - 1);
+		std::map<int, bool> set;
+		for(int i = 0; i < batch; i++){
+			int v = ud(m_generator);
+			while(set.find(v) != set.end()){
+				v = ud(m_generator);
+			}
+			set[v] = true;
+			indexes[i] = v;
 		}
-		set[v] = true;
-		indexes[i] = v;
+
+	}else{
+		batch = m_mnist->test().size();
+		indexes.resize(batch);
+
+		for(size_t i = 0; i < batch; i++){
+			indexes[i] = i;
+		}
 	}
 
 	Matd X = Matd::zeros(batch, m_X.cols);
