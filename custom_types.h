@@ -696,7 +696,7 @@ public:
 	}
 	///**************************
 	void randn(double _mean = 0., double _std = 1., int seed = 0){
-		std::normal_distribution< double > nrm(_mean, _std);
+		std::normal_distribution< T > nrm(_mean, _std);
 		std::mt19937 gen;
 		gen.seed(seed);
 		T* val = &(*this->val)[0];
