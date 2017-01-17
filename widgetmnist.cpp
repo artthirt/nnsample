@@ -7,6 +7,9 @@
 #include <QVariant>
 #include <QMap>
 
+#include <time.h>
+#include <random>
+
 const int wim		= 28;
 const int him		= 28;
 
@@ -86,6 +89,34 @@ void WidgetMNIST::toBegin()
 	update();
 }
 
+void rotate_mnist(const QByteArray& in, QByteArray& out, int w, int h, float angle)
+{
+	if(in.size() != w * h)
+		return;
+
+	float cw = w / 2;
+	float ch = h / 2;
+
+	out.resize(in.size());
+	out.fill(0);
+
+	for(int y = 0; y < h; y++){
+		for(int x = 0; x < w; x++){
+			float x1 = x - cw;
+			float y1 = y - ch;
+
+			float nx = x1 * cos(angle) + y1 * sin(angle);
+			float ny = -x1 * sin(angle) + y1 * cos(angle);
+			nx += cw; ny += ch;
+			int ix = nx, iy = ny;
+			if(ix >= 0 && ix < w && iy >= 0 && iy < h){
+				char c = in[y * w + x];
+				out[iy * w + ix] = c;
+			}
+		}
+	}
+}
+
 void WidgetMNIST::paintEvent(QPaintEvent *event)
 {
 	QPainter painter(this);
@@ -99,9 +130,22 @@ void WidgetMNIST::paintEvent(QPaintEvent *event)
 	QVector< uchar > &lb_data = m_mode == TRAIN? m_mnist->lb_train() : m_mnist->lb_test();
 	QVector< uchar >& prediction = m_mode == TRAIN? m_prediction_train : m_prediction_test;
 
+#define PI	3.1415926535897932384626433832795
+
+	std::uniform_real_distribution<float> ur(-PI / 10.f, PI / 10.f);
+	std::mt19937 gen;
+	gen.seed(time(0));
+
 	int x = 0, y = 0;
 	for(int i = m_index; i < data.size() && y * him + him < height(); i++){
-		QImage im((uchar*)data[i].data(), wim, him, QImage::Format_Grayscale8);
+
+		QByteArray _out;
+#if 0
+		rotate_mnist(data[i], _out, wim, him, ur(gen));
+#else
+		_out = data[i];
+#endif;
+		QImage im((uchar*)_out.data(), wim, him, QImage::Format_Grayscale8);
 
 		painter.setPen(Qt::red);
 		painter.drawImage(x * wim, y * him, im);

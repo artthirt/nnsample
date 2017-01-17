@@ -89,16 +89,16 @@ public:
 		using namespace ct;
 
 		m_iteration++;
-		double sb1 = 1. / (1. - pow(m_betha1, m_iteration));
-		double sb2 = 1. / (1. - pow(m_betha2, m_iteration));
-		double eps = 10e-8;
+		T sb1 = 1. / (1. - pow(m_betha1, m_iteration));
+		T sb2 = 1. / (1. - pow(m_betha2, m_iteration));
+		T eps = 10e-8;
 
 		for(size_t i = 0; i < gradW.size(); ++i){
-			m_mW[i] = m_betha1 * m_mW[i] + (1. - m_betha1) * gradW[i];
-			m_mb[i] = m_betha1 * m_mb[i] + (1. - m_betha1) * gradB[i];
+			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
+			m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
 
-			m_vW[i] = m_betha2 * m_vW[i] + (1. - m_betha2) * elemwiseSqr(gradW[i]);
-			m_vb[i] = m_betha2 * m_vb[i] + (1. - m_betha2) * elemwiseSqr(gradB[i]);
+			m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
+			m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
 
 			Mat_<T> mWs = m_mW[i] * sb1;
 			Mat_<T> mBs = m_mb[i] * sb1;
@@ -122,10 +122,10 @@ private:
 	T m_betha2;
 	T m_alpha;
 
-	std::vector< ct::Matd > m_mW;
-	std::vector< ct::Matd > m_mb;
-	std::vector< ct::Matd > m_vW;
-	std::vector< ct::Matd > m_vb;
+	std::vector< ct::Mat_<T> > m_mW;
+	std::vector< ct::Mat_<T> > m_mb;
+	std::vector< ct::Mat_<T> > m_vW;
+	std::vector< ct::Mat_<T> > m_vb;
 };
 
 }

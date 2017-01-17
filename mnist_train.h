@@ -14,10 +14,10 @@ public:
 
 	void setMnist(mnist_reader* mnist);
 
-	ct::Matd forward(const ct::Matd& X) const;
+	ct::Matf forward(const ct::Matf& X) const;
 
-	ct::Matd forward(int index, int count) const;
-	ct::Matd forward_test(int index, int count) const;
+	ct::Matf forward(int index, int count) const;
+	ct::Matf forward_test(int index, int count) const;
 
 	void setAlpha(double alpha);
 
@@ -36,19 +36,19 @@ public:
 	void pass_batch(int batch);
 private:
 	std::vector< int > m_layers;
-	std::vector< ct::Matd > m_W;
-	std::vector< ct::Matd > m_b;
+	std::vector< ct::Matf > m_W;
+	std::vector< ct::Matf > m_b;
 	mnist_reader* m_mnist;
-	double m_lambda;
+	float m_lambda;
 
-	ct::Matd m_X;
-	ct::Matd m_y;
+	ct::Matf m_X;
+	ct::Matf m_y;
 
-	nn::AdamOptimizer<double> m_AdamOptimizer;
+	nn::AdamOptimizer<float> m_AdamOptimizer;
 
 	std::mt19937 m_generator;
 
-	void pass_batch(const ct::Matd& X, const ct::Matd& y);
+	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 };
 
 #endif // MNIST_TRAIN_H

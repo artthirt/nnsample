@@ -142,9 +142,11 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(200);
-	layers2.push_back(300);
-	layers2.push_back(300);
+	layers2.push_back(100);
+	layers2.push_back(100);
+	layers2.push_back(100);
+	layers2.push_back(100);
+	layers2.push_back(100);
 	layers2.push_back(50);
 	layers2.push_back(10);
 
@@ -271,9 +273,9 @@ void MainWindow::update_mnist()
 
 	if(ui->widgetMNIST->mode() == WidgetMNIST::TRAIN){
 
-		uint count = std::min((uint)2000, m_mnist.count_train_images() - index);
+		int count = std::min((uint)2000, m_mnist.count_train_images() - index);
 
-		ct::Matd y = m_mnist_train.forward(index, count);
+		ct::Matf y = m_mnist_train.forward(index, count);
 
 		QVector< uchar > data;
 
@@ -285,7 +287,7 @@ void MainWindow::update_mnist()
 		ui->widgetMNIST->updatePredictfromIndex(index, data);
 	}else{
 		uint count = std::min((uint)2000, m_mnist.count_test_images() - index);
-		ct::Matd y = m_mnist_train.forward_test(index, count);
+		ct::Matf y = m_mnist_train.forward_test(index, count);
 
 		QVector< uchar > data;
 
