@@ -415,8 +415,8 @@ void mnist_train::pass_batch(int batch)
 	y = m_y.getRows(indexes);
 
 #if 1
-	std::uniform_int_distribution<int> udtr(-3, 3);
-	std::uniform_real_distribution<float> uar(-5, 5);
+	std::uniform_int_distribution<int> udtr(-5, 5);
+	std::uniform_real_distribution<float> uar(-7, 7);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
@@ -426,8 +426,8 @@ void mnist_train::pass_batch(int batch)
 		float ang = uar(m_generator);
 		ang = angle2rad(ang);
 
-		translate<float>(x, y, 28, 28, Xi);
 		rotate_mnist<float>(28, 28, ang, Xi);
+		translate<float>(x, y, 28, 28, Xi);
 	}
 #endif
 	pass_batch(X, y);

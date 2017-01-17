@@ -142,12 +142,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(300);
 	layers2.push_back(200);
+	layers2.push_back(300);
+	layers2.push_back(300);
 	layers2.push_back(100);
-	layers2.push_back(100);
-	layers2.push_back(100);
-	layers2.push_back(50);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
