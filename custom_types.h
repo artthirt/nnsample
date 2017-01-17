@@ -770,7 +770,7 @@ public:
 	T sum() const{
 		T res(0);
 		T* val = &(*this->val)[0];
-#pragma omp parallel for
+//#pragma omp parallel for shared(res)
 		for(int i = 0; i < total(); i++){
 			res += val[i];
 		}
@@ -1204,6 +1204,8 @@ inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
 	T* m2_val = &(*m2.val)[0];
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 	for(int i = 0; i < m1.total(); i++){
 		res_val[i] = m1_val[i] * m2_val[i];
@@ -1222,10 +1224,11 @@ inline Mat_<T> sumRows(const Mat_<T > &m)
 	T* res_val = &(*res.val)[0];
 	T* m_val = &(*m.val)[0];
 
-#pragma omp parallel for
 	for(int i = 0; i < m.rows; i++){
 #ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
 #endif
 		for(int j = 0; j < m.cols; j++)
 			res_val[j] += m_val[i * m.cols + j];
