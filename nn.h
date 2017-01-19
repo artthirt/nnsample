@@ -244,6 +244,9 @@ public:
 			if(i > 0)
 				d = di;
 		}
+		dW[0] += dW[1].t();
+		dW[1] = dW[0].t();
+
 		adam.pass(dW, db, W, b, 2);
 	}
 	T l2(const ct::Mat_<T>& X) const{
