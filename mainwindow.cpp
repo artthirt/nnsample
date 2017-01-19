@@ -143,8 +143,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	std::vector<int> layers2;
 	layers2.push_back(200);
-	layers2.push_back(300);
-	layers2.push_back(300);
+	layers2.push_back(100);
+	layers2.push_back(100);
+	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(10);
 
@@ -194,7 +195,7 @@ void MainWindow::onTimeout()
 void MainWindow::onTimeoutMnist()
 {
 	if(ui->pb_pass->isChecked()){
-		m_mnist_train.pass_batch(200);
+		m_mnist_train.pass_batch(100);
 		qDebug() << "Iteration" << m_mnist_train.iteration();
 		ui->lb_out->setText("Pass: #" + QString::number(m_mnist_train.iteration()));
 
