@@ -34,6 +34,8 @@ public:
 
 	void init(int seed);
 	void pass_batch(int batch);
+
+	void pass_batch_autoencoder(int batch);
 private:
 	std::vector< int > m_layers;
 	std::vector< ct::Matf > m_W;
@@ -46,9 +48,14 @@ private:
 
 	nn::AdamOptimizer<float> m_AdamOptimizer;
 
+	std::vector< nn::SimpleAutoencoder<float> > enc;
+
+
 	std::mt19937 m_generator;
 
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
+
+	void getX(ct::Matf& X, int batch);
 };
 
 #endif // MNIST_TRAIN_H

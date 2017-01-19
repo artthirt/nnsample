@@ -252,7 +252,7 @@ void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy)
 		batch = m_mnist->test().size();
 		indexes.resize(batch);
 
-		for(size_t i = 0; i < batch; i++){
+		for(int i = 0; i < batch; i++){
 			indexes[i] = (int)i;
 		}
 	}
@@ -356,7 +356,7 @@ void translate(int x, int y, int w, int h, T *X)
 			}
 		}
 	}
-	for(int i = 0; i < d.size(); i++){
+	for(size_t i = 0; i < d.size(); i++){
 		X[i] = d[i];
 	}
 }
@@ -385,7 +385,7 @@ void rotate_mnist(int w, int h, T angle, T *X)
 			}
 		}
 	}
-	for(int i = 0; i < d.size(); i++){
+	for(size_t i = 0; i < d.size(); i++){
 		X[i] = d[i];
 	}
 }
@@ -415,8 +415,8 @@ void mnist_train::pass_batch(int batch)
 	y = m_y.getRows(indexes);
 
 #if 1
-	std::uniform_int_distribution<int> udtr(-5, 5);
-	std::uniform_real_distribution<float> uar(-7, 7);
+	std::uniform_int_distribution<int> udtr(-3, 3);
+	std::uniform_real_distribution<float> uar(-5, 5);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
@@ -431,6 +431,66 @@ void mnist_train::pass_batch(int batch)
 	}
 #endif
 	pass_batch(X, y);
+}
+
+void mnist_train::pass_batch_autoencoder(int batch)
+{
+	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
+		return;
+
+	Matf X;
+
+	Matf a, z;
+
+	qDebug("<<<<<begin>>>>");
+
+	if(enc.empty()){
+		enc.resize(m_layers.size() - 1);
+		int input = m_X.cols;
+		for(int i = 0; i < enc.size(); i++){
+			enc[i].init(m_W[i], m_b[i], input, m_layers[i], &relu, &derivRelu);
+			input = m_layers[i];
+		}
+	}
+
+	for(int i = 0; i < (int)m_layers.size() - 1; i++){
+
+		getX(X, batch);
+		a = X;
+		for(int j = 0; j < i; j++){
+			z = a * m_W[j];
+			z.biasPlus(m_b[j]);
+			a = relu(z);
+		}
+
+		enc[i].pass(a);
+
+		float l2 = enc[i].l2(a);
+		qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc[i].W[0].rows, enc[i].W[0].cols);
+		m_W[i] = enc[i].W[0];
+		m_b[i] = enc[i].b[0];
+	}
+	qDebug("<<<<<end>>>>");
+}
+
+
+void mnist_train::getX(Matf &X, int batch)
+{
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
+	std::map<int, bool> set;
+
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	X = m_X.getRows(indexes);
 }
 
 void mnist_train::pass_batch(const Matf &X, const Matf &y)
@@ -482,12 +542,14 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 	for(int i = (int)m_layers.size() - 1; i > -1; --i){
 //		Matf sz = elemwiseMult(a[i], a[i]);
 //		sz = 1. - sz;
-		Matf sz = derivRelu(a[i]);
+		Matf di, sz;
+		if(i > 0){
+			sz = derivRelu(a[i]);
 
-		//Matf di = d * m_W[i].t();
-		Matf di;
-		matmulT2(d, m_W[i], di);
-		di = elemwiseMult(di, sz);
+			//Matf di = d * m_W[i].t();
+			matmulT2(d, m_W[i], di);
+			di = elemwiseMult(di, sz);
+		}
 		//dW[i] = a[i].t() * d;
 		matmulT1(a[i], d, dW[i]);
 		dW[i] *= 1./m;
@@ -504,7 +566,9 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 		}
 
 		dB[i] = (sumRows(d) * (1.f/m)).t();
-		d = di;
+
+		if(i > 0)
+			d = di;
 	}
 
 	if(!m_AdamOptimizer.pass(dW, dB, m_W, m_b)){

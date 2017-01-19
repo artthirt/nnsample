@@ -55,6 +55,7 @@ private slots:
 	void on_pb_calculate_clicked();
 	void onTimeout();
 	void onTimeoutMnist();
+	void onTimeoutPretrain();
 
 	void on_dsb_alpha_valueChanged(double arg1);
 
@@ -72,10 +73,13 @@ private slots:
 
 	void on_pb_changemodeMnist_clicked(bool checked);
 
+	void on_pb_pretrain_clicked(bool checked);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
 	QTimer m_timer_mnist;
+	QTimer m_timer_pretraint;
 
 	ct::Matd m_X;
 	ct::Matd m_X_val;

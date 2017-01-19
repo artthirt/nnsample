@@ -154,6 +154,16 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pb_pretrain">
+            <property name="text">
+             <string>Pretrain</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pb_pass">
             <property name="text">
              <string>Pass</string>

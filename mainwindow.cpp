@@ -53,6 +53,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_timer_mnist, SIGNAL(timeout()), this, SLOT(onTimeoutMnist()));
 	m_timer_mnist.start(1);
 
+	connect(&m_timer_pretraint, SIGNAL(timeout()), this, SLOT(onTimeoutPretrain()));
+	m_timer_pretraint.start(10);
+
 	const int cnt = 27000;
 	const int cnt_val = 700;
 	const int cnt2 = 5;
@@ -142,9 +145,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(200);
-	layers2.push_back(300);
-	layers2.push_back(300);
+	layers2.push_back(500);
+	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(10);
 
@@ -194,7 +196,7 @@ void MainWindow::onTimeout()
 void MainWindow::onTimeoutMnist()
 {
 	if(ui->pb_pass->isChecked()){
-		m_mnist_train.pass_batch(200);
+		m_mnist_train.pass_batch(100);
 		qDebug() << "Iteration" << m_mnist_train.iteration();
 		ui->lb_out->setText("Pass: #" + QString::number(m_mnist_train.iteration()));
 
@@ -202,6 +204,12 @@ void MainWindow::onTimeoutMnist()
 			update_mnist();
 		}
 	}
+}
+
+void MainWindow::onTimeoutPretrain()
+{
+	if(ui->pb_pretrain->isChecked())
+		m_mnist_train.pass_batch_autoencoder(100);
 }
 
 void MainWindow::on_dsb_alpha_valueChanged(double arg1)
@@ -291,7 +299,7 @@ void MainWindow::update_mnist()
 
 		data.resize(count);
 
-		for(int i = 0; i < count; i++){
+		for(uint i = 0; i < count; i++){
 			data[i] = y.argmax(i, 1);
 		}
 		ui->widgetMNIST->updatePredictfromIndex(index, data);
@@ -339,4 +347,9 @@ void MainWindow::on_pb_changemodeMnist_clicked(bool checked)
 	}else{
 		ui->widgetMNIST->setTrainMode();
 	}
+}
+
+void MainWindow::on_pb_pretrain_clicked(bool checked)
+{
+
 }

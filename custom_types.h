@@ -732,7 +732,7 @@ public:
 		T* val1 = &(*res.val)[0];
 		T* val2 = &(*this->val)[0];
 #pragma omp parallel for
-		for(int i = 0; i < rowsI.size(); i++){
+		for(int i = 0; i < (int)rowsI.size(); i++){
 			int id = rowsI[i];
 			if(id < rows){
 #ifdef __GNUC__
