@@ -145,7 +145,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(500);
+	layers2.push_back(200);
+	layers2.push_back(100);
+	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(10);
