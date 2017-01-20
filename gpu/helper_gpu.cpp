@@ -1,5 +1,7 @@
 #include "helper_gpu.h"
 
+#include <QDebug>
+
 namespace gpumat{
 
 void convert_to_gpu(const ct::Matf& mat, gpumat::GpuMat& gmat)
@@ -104,6 +106,11 @@ bool AdamOptimizer::init(const std::vector<int> &layers, int samples, int type)
 		m_mb[i].resize(output, 1, type);
 		m_vb[i].resize(output, 1, type);
 
+		m_mW[i].zeros();
+		m_vW[i].zeros();
+		m_mb[i].zeros();
+		m_vb[i].zeros();
+
 		input = output;
 	}
 	return true;
@@ -120,20 +127,20 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 	m_iteration++;
 	double sb1 = (1. / (1. - pow(m_betha1, m_iteration)));
 	double sb2 = (1. / (1. - pow(m_betha2, m_iteration)));
-	double eps = (10e-8);
 
 	for(size_t i = 0; i < gradW.size(); ++i){
 
 		gpumat::add(m_mW[i], gradW[i], m_betha1, (1. - m_betha1));
 		gpumat::add(m_mb[i], gradB[i], m_betha1, (1. - m_betha1));
+
 		//m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
 		//m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
 
-//		gpumat::elemiseSqr(gradW[i], sW);
-//		gpumat::elemiseSqr(gradB[i], sB);
+		gpumat::elemiseSqr(gradW[i], sW);
+		gpumat::elemiseSqr(gradB[i], sB);
 
-//		gpumat::add(m_vW[i], sW, m_betha2, (1. - m_betha2));
-//		gpumat::add(m_vb[i], sB, m_betha2, (1. - m_betha2));
+		gpumat::add(m_vW[i], sW, m_betha2, (1. - m_betha2));
+		gpumat::add(m_vb[i], sB, m_betha2, (1. - m_betha2));
 		//m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
 		//m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
 
@@ -147,8 +154,10 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 //		mWs = elemwiseDiv(mWs, vWs);
 //		mBs = elemwiseDiv(mBs, vBs);
 
-		gpumat::sub(W[i], m_mW[i], 1, m_alpha);
-		gpumat::sub(b[i], m_mb[i], 1, m_alpha);
+		/// W = -alpha * (sb1 * mW / (sqrt(sb2 * vW) + eps))
+
+		gpumat::sub_adamGrad(W[i], m_mW[i], m_vW[i], m_alpha, sb1, sb2);
+		gpumat::sub_adamGrad(b[i], m_mb[i], m_vb[i], m_alpha, sb1, sb2);
 		//W[i] -= m_alpha * mWs;
 		//b[i] -= m_alpha * mBs;
 	}

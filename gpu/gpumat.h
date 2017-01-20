@@ -196,6 +196,12 @@ void biasPlus(GpuMat& A, const GpuMat& bias);
  */
 void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
+ * @brief elemiseMul
+ * @param A = A.* B
+ * @param B
+ */
+void elemiseMul(GpuMat& A, const GpuMat& B);
+/**
  * @brief elemiseDiv
  * @param A
  * @param B
@@ -250,6 +256,13 @@ void deriv_reLu(const GpuMat& A, GpuMat& C);
  * @param partZ = sum(exp(A), axis)
  */
 void softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
+/**
+ * @brief sub
+ * @param A
+ * @param B
+ * @param C - out C = A .- B
+ */
+void sub_adamGrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, double sb1, double sb2);
 
 }
 

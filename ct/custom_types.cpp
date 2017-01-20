@@ -1,3 +1,7 @@
 #include <custom_types.h>
 
-using namespace ct;
+namespace ct{
+
+std::mt19937 generator;
+
+}

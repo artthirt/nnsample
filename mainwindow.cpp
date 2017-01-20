@@ -145,8 +145,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(10);
-	layers2.push_back(10);
+	layers2.push_back(500);
+	layers2.push_back(250);
+	layers2.push_back(100);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -195,7 +196,15 @@ void MainWindow::onTimeout()
 void MainWindow::onTimeoutMnist()
 {
 	if(ui->pb_pass->isChecked()){
+#ifdef _USE_GPU
+		if(m_use_gpu){
+			m_mnist_train.pass_batch_gpu(2000);
+		}else{
+			m_mnist_train.pass_batch(100);
+		}
+#else
 		m_mnist_train.pass_batch(100);
+#endif
 		qDebug() << "Iteration" << m_mnist_train.iteration();
 		ui->lb_out->setText("Pass: #" + QString::number(m_mnist_train.iteration()));
 
@@ -271,7 +280,7 @@ void MainWindow::update_scene()
 void MainWindow::update_mnist()
 {
 	double l2, accuracy;
-	m_mnist_train.getEstimate(2000, l2, accuracy);
+	m_mnist_train.getEstimate(2000, l2, accuracy, m_use_gpu);
 	ui->lb_ce->setText(QString("L2=%1; Acc=%2;\tIteration=%3").arg(l2, 0, 'f', 9).arg(accuracy, 0, 'f', 5).arg(m_mnist_train.iteration()));
 
 	uint index = ui->widgetMNIST->index();
@@ -280,7 +289,7 @@ void MainWindow::update_mnist()
 
 		int count = std::min((uint)2000, m_mnist.count_train_images() - index);
 
-		ct::Matf y = m_mnist_train.forward(index, count);
+		ct::Matf y = m_mnist_train.forward(index, count, m_use_gpu);
 
 		QVector< uchar > data;
 
@@ -292,7 +301,7 @@ void MainWindow::update_mnist()
 		ui->widgetMNIST->updatePredictfromIndex(index, data);
 	}else{
 		uint count = std::min((uint)2000, m_mnist.count_test_images() - index);
-		ct::Matf y = m_mnist_train.forward_test(index, count);
+		ct::Matf y = m_mnist_train.forward_test(index, count, m_use_gpu);
 
 		QVector< uchar > data;
 
@@ -330,7 +339,7 @@ void MainWindow::on_pb_pass_clicked(bool checked)
 void MainWindow::on_pb_test_clicked()
 {
 	double l2, accuracy;
-	m_mnist_train.getEstimateTest(-1, l2, accuracy);
+	m_mnist_train.getEstimateTest(-1, l2, accuracy, m_use_gpu);
 	ui->lb_out->setText("L2(test)=" + QString::number(l2) + "; Acc(test)=" + QString::number(accuracy));
 }
 
@@ -361,10 +370,19 @@ void MainWindow::on_pb_load_clicked()
 void MainWindow::on_pb_passGPU_clicked()
 {
 #ifdef _USE_GPU
-	m_mnist_train.pass_batch_gpu(400);
 	double l2, accuracy;
+
+	m_mnist_train.getEstimate(3000, l2, accuracy, true);
+
+	m_mnist_train.pass_batch_gpu(400);
 	m_mnist_train.getEstimate(3000, l2, accuracy, true);
 	ui->lb_out->setText("L2=" + QString::number(l2) + "; Acc=" + QString::number(accuracy));
 
 #endif
+}
+
+void MainWindow::on_pb_pass_gpu_clicked(bool checked)
+{
+	m_use_gpu = checked;
+	ui->pb_pass->setChecked(checked);
 }

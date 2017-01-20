@@ -413,6 +413,14 @@ extern "C"
 void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
+ * @brief elemiseMul
+ * @param A = A .* B
+ * @param B
+ */
+extern "C"
+void cuda_elemiseMulA(GpuMat& A, const GpuMat& B);
+
+/**
  * @brief elemiseDiv
  * @param A
  * @param B
@@ -477,6 +485,18 @@ void cuda_derivReLu(const GpuMat& A, GpuMat& C);
  */
 extern "C"
 void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
+
+/**
+ * @brief cuda_adamgrad
+ * @param A = -alpha * (sb1 * mA / (sqrt(sb2 * vA) + eps)
+ * @param mA
+ * @param vA
+ * @param alpha
+ * @param sb1
+ * @param sb2
+ */
+extern "C"
+void cuda_adamgrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, double sb1, double sb2);
 
 /////////////////////////////////////////////////
 
@@ -651,6 +671,15 @@ void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	cuda_elemiseMul(A, B, C);
 }
 
+
+void elemiseMul(GpuMat &A, const GpuMat &B)
+{
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
+		return;
+
+	cuda_elemiseMulA(A, B);
+}
+
 void elemiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
@@ -746,10 +775,21 @@ void sumRows(const GpuMat &A, GpuMat &C, double val)
 		return;
 
 	if(A.rows != C.rows || C.cols != 1 || A.type != C.type){
-		C.resize(A.rows, 1, A.type);
+		C.resize(1, A.cols, A.type);
 	}
 
 	cuda_sumrows(A, C, val);
+}
+
+void sub_adamGrad(GpuMat &A, const GpuMat &mA, const GpuMat &vA, double alpha, double sb1, double sb2)
+{
+	if(A.empty() || mA.empty() || vA.empty() ||
+			A.type != mA.type || A.type != vA.type ||
+			A.rows != mA.rows || A.cols != mA.cols ||
+			A.rows != vA.rows || A.cols != vA.cols)
+		return;
+
+	cuda_adamgrad(A, mA, vA, alpha, sb1, sb2);
 }
 
 }

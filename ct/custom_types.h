@@ -12,7 +12,15 @@
 
 #include "shared_memory.h"
 
+#define PRINT_MAT10(mat) {		\
+	std::string s = mat.print(10);			\
+	qDebug("%s\n", s.c_str());	\
+}
+
+
 namespace ct{
+
+extern std::mt19937 generator;
 
 template< typename T, int count >
 class Vec_{
@@ -697,11 +705,10 @@ public:
 	///**************************
 	void randn(double _mean = 0., double _std = 1., int seed = 0){
 		std::normal_distribution< T > nrm(_mean, _std);
-		std::mt19937 gen;
-		gen.seed(seed);
+		generator.seed(seed);
 		T* val = &(*this->val)[0];
 		for(int i = 0; i < total(); i++){
-			val[i] = nrm(gen);
+			val[i] = nrm(generator);
 		}
 	}
 
@@ -712,7 +719,7 @@ public:
 		T* val1 = &(*res.val)[0];
 		T* val2 = &(*this->val)[0];
 
-#pragma omp parallel for num_threads(4)
+#pragma omp parallel for
 		for(int i = 0; i < rows; i++){
 #ifdef __GNUC__
 #pragma omp simd
@@ -933,6 +940,28 @@ public:
 		res << "]";
 		return res.str();
 	}
+	std::string print(int _rows) const{
+		if(this->val.empty())
+			return "";
+
+		if(_rows < 0)
+			_rows = rows;
+		if(_rows > rows)
+			_rows = rows;
+
+		std::stringstream res;
+		T* val = &(*this->val)[0];
+		res << "[";
+		for(int i = 0; i < _rows; i++){
+			for(int j = 0; j < cols; j++){
+				res << std::setprecision(4) << val[i * cols + j] << "\t";
+			}
+			res << ";\n";
+		}
+		res << "]";
+		return res.str();
+	}
+
 	///**************************
 	static inline Mat_< T > zeros(int rows, int cols){
 		Mat_< T > res(rows, cols);
@@ -1590,8 +1619,7 @@ void dropout(Mat_<T>& mat, T p, Mat_<T>& D, Mat_<T>& Dt, int seed = 0)
 {
 	std::binomial_distribution<int> bi(1, p);
 	//std::normal_distribution< double > nrm(0, 1);
-	std::mt19937 gen;
-	gen.seed(seed);
+	generator.seed(seed);
 
 	D = Mat_<T>::ones(mat.rows, mat.cols);
 	Dt = Mat_<T>::ones(mat.cols, mat.rows);
@@ -1601,7 +1629,7 @@ void dropout(Mat_<T>& mat, T p, Mat_<T>& D, Mat_<T>& Dt, int seed = 0)
 
 #pragma omp parallel for
 	for(int i = 0; i < mat.rows; i++){
-		int pi = bi(gen);
+		int pi = bi(generator);
 		if(!pi){
 #pragma omp parallel for
 			for(int j = 0; j < mat.cols; j++){
@@ -1611,6 +1639,29 @@ void dropout(Mat_<T>& mat, T p, Mat_<T>& D, Mat_<T>& Dt, int seed = 0)
 		}
 	}
 	elemwiseMult(mat, D);
+}
+
+template< typename T >
+void dropout(int rows, int cols, T p, Mat_<T>& D, int seed = 0)
+{
+	std::binomial_distribution<int> bi(1, p);
+	//std::normal_distribution< double > nrm(0, 1);
+	generator.seed(seed);
+
+	D = Mat_<T>::ones(rows, cols);
+
+	T* val1 = &(*D.val)[0];
+
+#pragma omp parallel for
+	for(int i = 0; i < rows; i++){
+		int pi = bi(generator);
+		if(!pi){
+#pragma omp parallel for
+			for(int j = 0; j < cols; j++){
+				val1[i * D.cols + j] = 0;
+			}
+		}
+	}
 }
 
 /**

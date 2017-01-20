@@ -4,6 +4,11 @@
 #include "custom_types.h"
 #include "gpumat.h"
 
+#define PRINT_GMAT10(mat) {		\
+	std::string s = mat.print(10);			\
+	qDebug("%s\n", s.c_str());	\
+}
+
 namespace gpumat{
 
 /**

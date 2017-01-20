@@ -79,6 +79,8 @@ private slots:
 
 	void on_pb_passGPU_clicked();
 
+	void on_pb_pass_gpu_clicked(bool checked);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
@@ -88,6 +90,8 @@ private:
 	ct::Matd m_X;
 	ct::Matd m_X_val;
 	ct::Matd m_y;
+
+	bool m_use_gpu;
 
 	PassModel* m_runmodel;
 

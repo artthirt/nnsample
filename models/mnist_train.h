@@ -21,8 +21,8 @@ public:
 
 	ct::Matf forward(const ct::Matf& X) const;
 
-	ct::Matf forward(int index, int count) const;
-	ct::Matf forward_test(int index, int count) const;
+	ct::Matf forward(int index, int count, bool use_gpu = false);
+	ct::Matf forward_test(int index, int count, bool use_gpu = false);
 
 	void setAlpha(double alpha);
 
@@ -46,9 +46,6 @@ public:
 	void pass_batch_autoencoder(int batch);
 
 #ifdef _USE_GPU
-	double L2_gpu(int batch = 1000);
-	double L2test_gpu(int batch = 1000);
-	ct::Matf forward_gpu(int index, int count);
 	ct::Matf forward_gpu(const ct::Matf& X);
 	ct::Matf forward_test_gpu(int index, int count);
 	void init_gpu(int seed);
@@ -62,6 +59,7 @@ private:
 	std::vector< ct::Matf > m_b;
 	mnist_reader* m_mnist;
 	float m_lambda;
+	uint m_iteration;
 
 	ct::Matf m_X;
 	ct::Matf m_y;
@@ -77,12 +75,15 @@ private:
 	void getX(ct::Matf& X, int batch);
 
 #ifdef _USE_GPU
+	int m_dropout_count;
 	gpumat::GpuMat m_gX;
 	gpumat::GpuMat m_gy;
 	gpumat::GpuMat partZ;
 	gpumat::GpuMat g_d;
 	gpumat::GpuMat g_di, g_sz, g_tmp;
 	std::vector< gpumat::GpuMat > m_gW;
+	std::vector< gpumat::GpuMat > m_Dropout;
+	std::vector< gpumat::GpuMat > m_DropoutT;
 	std::vector< gpumat::GpuMat > m_gb;
 	std::vector< gpumat::GpuMat > g_z, g_a;
 	std::vector< gpumat::GpuMat > g_dW, g_dB;
