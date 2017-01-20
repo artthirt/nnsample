@@ -14,9 +14,9 @@ template< typename T >
 class AdamOptimizer{
 public:
 	AdamOptimizer(){
-		m_alpha = 0.001;
-		m_betha1 = 0.9;
-		m_betha2 = 0.999;
+		m_alpha = (T)0.001;
+		m_betha1 = (T)0.9;
+		m_betha2 = (T)0.999;
 		m_iteration = 0;
 	}
 
@@ -87,9 +87,9 @@ public:
 		using namespace ct;
 
 		m_iteration++;
-		T sb1 = 1. / (1. - pow(m_betha1, m_iteration));
-		T sb2 = 1. / (1. - pow(m_betha2, m_iteration));
-		T eps = 10e-8;
+		T sb1 = (T)(1. / (1. - pow(m_betha1, m_iteration)));
+		T sb2 = (T)(1. / (1. - pow(m_betha2, m_iteration)));
+		T eps = (T)(10e-8);
 
 		for(size_t i = 0; i < gradW.size(); ++i){
 			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
@@ -121,9 +121,9 @@ public:
 		using namespace ct;
 
 		m_iteration++;
-		T sb1 = 1. / (1. - pow(m_betha1, m_iteration));
-		T sb2 = 1. / (1. - pow(m_betha2, m_iteration));
-		T eps = 10e-8;
+		T sb1 = (T)(1. / (1. - pow(m_betha1, m_iteration)));
+		T sb2 = (T)(1. / (1. - pow(m_betha2, m_iteration)));
+		T eps = (T)(10e-8);
 
 		for(int i = 0; i < count; ++i){
 			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
@@ -228,7 +228,7 @@ public:
 			}
 		}
 
-		T m = X.rows;
+		T m = (T)X.rows;
 
 		d = a[2] - X;
 
@@ -267,7 +267,7 @@ public:
 				a[i + 1] = z[i];
 			}
 		}
-		T m = X.rows;
+		T m = (T)X.rows;
 		d = a[2] - X;
 		d = elemwiseMult(d, d);
 		T res = d.sum() / m;

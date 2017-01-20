@@ -727,7 +727,7 @@ public:
 	Mat_<T> getRows(std::vector<int> rowsI) const{
 		if((int)rowsI.size() > rows)
 			return Mat_<T>();
-		Mat_<T> res(rowsI.size(), cols);
+		Mat_<T> res((int)rowsI.size(), cols);
 
 		T* val1 = &(*res.val)[0];
 		T* val2 = &(*this->val)[0];

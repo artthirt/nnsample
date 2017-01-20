@@ -80,7 +80,7 @@ Matd nnmodel::b(int index)
 
 int nnmodel::count() const
 {
-	return m_W.size();
+	return (int)m_W.size();
 }
 
 //void nnmodel::pass()
@@ -312,7 +312,7 @@ void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 
 	/// backward
 
-	for(int i = m_layers.size() - 1; i > -1; --i){
+	for(int i = (int)m_layers.size() - 1; i > -1; --i){
 //		Matd sz = elemwiseMult(a[i], a[i]);
 //		sz = 1. - sz;
 		Matd sz = derivRelu(a[i]);

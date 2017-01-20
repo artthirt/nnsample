@@ -7,6 +7,10 @@
 #include "custom_types.h"
 #include "mnist_reader.h"
 
+#ifdef _USE_GPU
+#include "gpumat.h"
+#endif
+
 class mnist_train
 {
 public:
@@ -39,6 +43,12 @@ public:
 	void save(const QString& fn);
 
 	void pass_batch_autoencoder(int batch);
+
+#ifdef _USE_GPU
+	void pass_batch_gpu(int batch);
+	void pass_batch_gpu(const gpumat::GpuMat& X, const gpumat::GpuMat& y);
+#endif
+
 private:
 	std::vector< int > m_layers;
 	std::vector< ct::Matf > m_W;
@@ -53,12 +63,23 @@ private:
 
 	std::vector< nn::SimpleAutoencoder<float> > enc;
 
-
 	std::mt19937 m_generator;
 
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 
 	void getX(ct::Matf& X, int batch);
+
+#ifdef _USE_GPU
+	gpumat::GpuMat m_gX;
+	gpumat::GpuMat m_gy;
+	gpumat::GpuMat partZ;
+	gpumat::GpuMat g_d;
+	gpumat::GpuMat g_di, g_sz, g_tmp;
+	std::vector< gpumat::GpuMat > m_gW;
+	std::vector< gpumat::GpuMat > m_gb;
+	std::vector< gpumat::GpuMat > g_z, g_a;
+	std::vector< gpumat::GpuMat > g_dW, g_dB;
+#endif
 };
 
 #endif // MNIST_TRAIN_H

@@ -1,5 +1,9 @@
 #include "mnist_train.h"
 
+#ifdef _USE_GPU
+#include "helper_gpu.h"
+#endif
+
 using namespace ct;
 
 mnist_train::mnist_train()
@@ -575,7 +579,6 @@ void mnist_train::pass_batch_autoencoder(int batch)
 	qDebug("<<<<<end>>>>");
 }
 
-
 void mnist_train::getX(Matf &X, int batch)
 {
 	std::vector<int> indexes;
@@ -677,3 +680,152 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 		std::cout << "optimizer not work\n";
 	}
 }
+
+#ifdef _USE_GPU
+
+void mnist_train::pass_batch_gpu(int batch)
+{
+	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
+		return;
+
+	Matf X, y;
+
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
+	std::map<int, bool> set;
+
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	X = m_X.getRows(indexes);
+	y = m_y.getRows(indexes);
+
+#if 1
+	std::uniform_int_distribution<int> udtr(-3, 3);
+	std::uniform_real_distribution<float> uar(-5, 5);
+
+#pragma omp parallel for
+	for(int i = 0; i < X.rows; i++){
+		float *Xi = &X.at(i, 0);
+		int x = udtr(m_generator);
+		int y = udtr(m_generator);
+		float ang = uar(m_generator);
+		ang = angle2rad(ang);
+
+		rotate_mnist<float>(28, 28, ang, Xi);
+		translate<float>(x, y, 28, 28, Xi);
+	}
+#endif
+	gpumat::convert_to_gpu(X, m_gX);
+	gpumat::convert_to_gpu(y, m_gy);
+
+	pass_batch_gpu(m_gX, m_gy);
+}
+
+void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
+{
+	if(m_W.empty() || m_b.empty() || m_layers.empty() ||
+			m_layers.back() != y.cols){
+		std::cout << "wrong parameters of model\n";
+		return;
+	}
+
+	/// forward
+
+//	std::vector< Matf > z, a;
+//	z.resize(m_layers.size());
+//	a.resize(m_layers.size() + 1);
+
+
+	g_a[0] = X;
+
+//	Matf D1, Dt1, D2, Dt2, D3, Dt3;
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
+		gpumat::biasPlus(m_gb[i], g_z[i]);
+		//z[i] = a[i] * m_W[i];
+		//z[i].biasPlus(m_b[i]);
+
+//		if(i == 0){
+//			dropout(z[i], 0.5f, D1, Dt1);
+//		}
+//		if(i == 1){
+//			dropout(z[i], 0.5f, D2, Dt2);
+//		}
+//		if(i == 2){
+//			dropout(z[i], 0.5f, D3, Dt3);
+//		}
+		if(i < m_layers.size() - 1){
+			gpumat::reLu(g_z[i], g_a[i + 1]);
+			//a[i + 1] = relu(z[i]);
+		}else
+			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
+			//a[i + 1] = softmax(z[i], 1);
+	}
+
+//	std::vector< Matf > dW, dB;
+	g_dW.resize(m_layers.size());
+	g_dB.resize(m_layers.size());
+
+	float m = X.rows;
+
+	gpumat::sub(g_a.back(), y, g_d);
+	//Matf d = a.back() - y;
+
+	/// backward
+
+	for(int i = (int)m_layers.size() - 1; i > -1; --i){
+//		Matf sz = elemwiseMult(a[i], a[i]);
+//		sz = 1. - sz;
+//		Matf di, sz;
+		if(i > 0){
+			gpumat::deriv_reLu(g_a[i], g_sz);
+			//sz = derivRelu(a[i]);
+
+			//Matf di = d * m_W[i].t();
+			gpumat::matmulT2(g_d, m_gW[i], g_di);
+			//matmulT2(d, m_W[i], di);
+			gpumat::elemiseMul(g_di, g_sz, g_di);
+			//di = elemwiseMult(di, sz);
+		}
+		//dW[i] = a[i].t() * d;
+		gpumat::matmulT1(g_a[i], g_d, g_dW[i]);
+		//matmulT1(a[i], d, dW[i]);
+		gpumat::mulval(g_dW[i], 1./m);
+		//dW[i] *= 1./m;
+		gpumat::add(g_dW[i], m_gW[i], m_lambda/m, 1.);
+		//dW[i] += (m_lambda/m * m_W[i]);
+
+//		if(i == 2){
+//			dropout_transpose(dW[i], Dt3);
+//		}
+//		if(i == 1){
+//			dropout_transpose(dW[i], Dt2);
+//		}
+//		if(i == 0){
+//			dropout_transpose(dW[i], Dt1);
+//		}
+
+		gpumat::sumRows(g_d, g_dB[i], (1.f/m));
+
+		g_dB[i].swap_dims();
+		//dB[i] = (sumRows(d) * (1.f/m)).t();
+
+		if(i > 0)
+			g_d = g_di;
+	}
+
+//	if(!m_AdamOptimizer.pass(dW, dB, m_W, m_b)){
+//		std::cout << "optimizer not work\n";
+//	}
+}
+
+#endif
