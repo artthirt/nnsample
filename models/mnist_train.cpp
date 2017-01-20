@@ -662,7 +662,7 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < D.size()){
-			dropout(m_W[i].rows, m_W[i].cols, 0.5f, D[i]);
+			dropout(m_W[i].rows, m_W[i].cols, 0.98f, D[i]);
 			Wi = elemwiseMult(m_W[i], D[i]);
 			z[i] = a[i] * Wi;
 		}else{
@@ -700,7 +700,7 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 		matmulT1(a[i], d, dW[i]);
 
 		dW[i] *= 1./m;
-		dW[i] += (m_lambda/m * m_W[i]);
+		//dW[i] += (m_lambda/m * m_W[i]);
 
 		if(i < D.size()){
 			dW[i] = elemwiseMult(dW[i], D[i]);
@@ -867,7 +867,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < m_dropout_count){
 			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.5f, d);
+			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.98f, d);
 			gpumat::convert_to_gpu(d, m_Dropout[i]);
 //			gpumat::transpose(m_Dropout[i], m_DropoutT[i]);
 			m_DropoutT[i] = m_Dropout[i];

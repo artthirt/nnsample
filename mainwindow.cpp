@@ -145,8 +145,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(500);
-	layers2.push_back(250);
+	layers2.push_back(200);
+	layers2.push_back(200);
 	layers2.push_back(100);
 	layers2.push_back(10);
 
@@ -385,4 +385,10 @@ void MainWindow::on_pb_pass_gpu_clicked(bool checked)
 {
 	m_use_gpu = checked;
 	ui->pb_pass->setChecked(checked);
+	ui->chb_usegpu->setChecked(m_use_gpu);
+}
+
+void MainWindow::on_chb_usegpu_clicked(bool checked)
+{
+	m_use_gpu = checked;
 }
