@@ -207,7 +207,7 @@ public:
 //		W[0].randn(0, 0.1, 1);
 //		b[0].randn(0, 0.1, 1);
 //		W[1].randn(0, 0.1, 1);
-		b[1].randn(0, 0.1, 1);
+//		b[1].randn(0, 0.1, 1);
 	}
 
 	void pass(const ct::Mat_<T>& X){

@@ -35,6 +35,9 @@ public:
 	void init(int seed);
 	void pass_batch(int batch);
 
+	void load(const QString& fn);
+	void save(const QString& fn);
+
 	void pass_batch_autoencoder(int batch);
 private:
 	std::vector< int > m_layers;

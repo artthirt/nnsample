@@ -75,6 +75,8 @@ private slots:
 
 	void on_pb_pretrain_clicked(bool checked);
 
+	void on_pb_save_clicked();
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;

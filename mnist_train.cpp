@@ -433,6 +433,108 @@ void mnist_train::pass_batch(int batch)
 	pass_batch(X, y);
 }
 
+template< typename T >
+void read_mat(QFile&f, Mat_<T>& mat, QString& capt)
+{
+	QString str = f.readLine();
+	str = str.trimmed();
+	QStringList sl = str.split(' ');
+	if(sl.size() == 3){
+		capt = sl[0];
+		int rows = sl[1].toInt();
+		int cols = sl[2].toInt();
+
+		mat.setSize(rows, cols);
+
+		for(int i = 0; i < rows; i++){
+			QString str = f.readLine();
+			str = str.trimmed();
+			QStringList sl = str.split(' ');
+			if(sl.size() < cols)
+				return;
+			for(int j = 0; j < cols; j++){
+				mat.at(i, j) = (T)sl[j].toDouble();
+			}
+		}
+	}
+}
+
+void mnist_train::load(const QString &fn)
+{
+	if(!QFile::exists(fn))
+		return;
+
+	QFile f(fn);
+	if(!f.open(QIODevice::ReadOnly))
+		return;
+
+	QString str = f.readLine();
+	str = str.trimmed();
+	QStringList sl = str.split(' ');
+	if(sl.size() != 2)
+		return;
+
+	if(sl[0] != "layers")
+		return;
+
+	int layers = sl[1].toInt();
+
+	m_W.resize(layers);
+	m_b.resize(layers);
+
+	m_layers.resize(layers);
+
+	for(int i = 0; i < layers; i++){
+		Matf mat1, mat2;
+		QString capt1, capt2;
+		read_mat(f, mat1, capt1);
+		read_mat(f, mat2, capt2);
+		if(capt1 == "W")
+			m_W[i] = mat1;
+		else
+			m_b[i] = mat1;
+
+		if(capt2 == "b")
+			m_b[i] = mat2;
+		else
+			m_W[i] = mat2;
+
+		m_layers[i] = m_W[i].cols;
+	}
+	f.close();
+}
+
+template< typename T >
+void write_mat(QFile &f, const Mat_<T>& mat, const QString& capt)
+{
+	QString str = capt + QString(" %1 %2").arg(mat.rows).arg(mat.cols) + "\n";
+	f.write(str.toLatin1());
+	for(int i = 0; i < mat.rows; i++){
+		QString str;
+		for(int j = 0; j < mat.cols; j++){
+			str += QString::number(mat.at(i, j)) + " ";
+		}
+		str += "\n";
+		f.write(str.toLatin1());
+	}
+}
+
+void mnist_train::save(const QString &fn)
+{
+	QFile f(fn);
+
+	if(!f.open(QIODevice::WriteOnly))
+		return;
+
+	f.write(QString("layers %1\n").arg(m_W.size()).toLatin1());
+	for(int i = 0; i < m_W.size(); i++){
+		write_mat(f, m_W[i], "W");
+		write_mat(f, m_b[i], "b");
+	}
+
+	f.close();
+}
+
 void mnist_train::pass_batch_autoencoder(int batch)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)

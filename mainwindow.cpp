@@ -145,9 +145,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
+	layers2.push_back(400);
+	layers2.push_back(300);
 	layers2.push_back(200);
-	layers2.push_back(100);
-	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(10);
@@ -211,7 +211,7 @@ void MainWindow::onTimeoutMnist()
 void MainWindow::onTimeoutPretrain()
 {
 	if(ui->pb_pretrain->isChecked())
-		m_mnist_train.pass_batch_autoencoder(100);
+		m_mnist_train.pass_batch_autoencoder(500);
 }
 
 void MainWindow::on_dsb_alpha_valueChanged(double arg1)
@@ -308,11 +308,6 @@ void MainWindow::update_mnist()
 	}
 }
 
-void MainWindow::on_pb_load_clicked()
-{
-
-}
-
 void MainWindow::on_pb_next_clicked()
 {
 	ui->widgetMNIST->next();
@@ -354,4 +349,14 @@ void MainWindow::on_pb_changemodeMnist_clicked(bool checked)
 void MainWindow::on_pb_pretrain_clicked(bool checked)
 {
 
+}
+
+void MainWindow::on_pb_save_clicked()
+{
+	m_mnist_train.save("model.txt");
+}
+
+void MainWindow::on_pb_load_clicked()
+{
+	m_mnist_train.load("model.txt");
 }
