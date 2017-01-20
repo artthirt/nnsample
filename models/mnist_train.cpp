@@ -958,7 +958,6 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	for(size_t i = 0; i < m_layers.size(); i++){
 		gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
 		gpumat::biasPlus(g_z[i], m_gb[i]);
-		PRINT_GMAT10(g_z[i]);
 		//z[i] = a[i] * m_W[i];
 		//z[i].biasPlus(m_b[i]);
 
@@ -973,11 +972,11 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //		}
 		if(i < m_layers.size() - 1){
 			gpumat::reLu(g_z[i], g_a[i + 1]);
-			PRINT_GMAT10(g_a[i]);
 			//a[i + 1] = relu(z[i]);
 		}else{
 			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
-			PRINT_GMAT10(g_a[i]);
+			PRINT_GMAT10(g_z[i]);
+			PRINT_GMAT10(g_a[i + 1]);
 		}
 			//a[i + 1] = softmax(z[i], 1);
 	}
@@ -990,6 +989,9 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 	gpumat::sub(g_a.back(), y, g_d);
 	//Matf d = a.back() - y;
+	PRINT_GMAT10(g_a.back());
+	PRINT_GMAT10(y);
+	PRINT_GMAT10(g_d);
 
 	/// backward
 
@@ -999,20 +1001,27 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //		Matf di, sz;
 		if(i > 0){
 			gpumat::deriv_reLu(g_a[i], g_sz);
+			PRINT_GMAT10(g_sz);
 			//sz = derivRelu(a[i]);
 
 			//Matf di = d * m_W[i].t();
+			PRINT_GMAT10(m_gW[i]);
 			gpumat::matmulT2(g_d, m_gW[i], g_di);
+			PRINT_GMAT10(g_di);
 			//matmulT2(d, m_W[i], di);
 			gpumat::elemiseMul(g_di, g_sz, g_di);
+			PRINT_GMAT10(g_di);
 			//di = elemwiseMult(di, sz);
 		}
 		//dW[i] = a[i].t() * d;
 		gpumat::matmulT1(g_a[i], g_d, g_dW[i]);
+		PRINT_GMAT10(g_dW[i]);
 		//matmulT1(a[i], d, dW[i]);
 		gpumat::mulval(g_dW[i], 1./m);
+		PRINT_GMAT10(g_dW[i]);
 		//dW[i] *= 1./m;
-		gpumat::add(g_dW[i], m_gW[i], m_lambda/m, 1.);
+		//gpumat::add(g_dW[i], m_gW[i], m_lambda/m, 1.);
+		//PRINT_GMAT10(g_dW[i]);
 		//dW[i] += (m_lambda/m * m_W[i]);
 
 //		if(i == 2){
@@ -1026,6 +1035,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //		}
 
 		gpumat::sumRows(g_d, g_dB[i], (1.f/m));
+		PRINT_GMAT10(g_dB[i]);
 
 		g_dB[i].swap_dims();
 		//dB[i] = (sumRows(d) * (1.f/m)).t();
