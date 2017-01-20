@@ -6,6 +6,11 @@
 
 using namespace ct;
 
+#define PRINT_GMAT10(mat) {		\
+	std::string s = mat.print(10);			\
+	qDebug("%s\n", s.c_str());	\
+}
+
 mnist_train::mnist_train()
 {
 	m_mnist = 0;
@@ -811,7 +816,7 @@ Matf mnist_train::forward_gpu(const Matf &X)
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
-		gpumat::biasPlus(m_gb[i], g_z[i]);
+		gpumat::biasPlus(g_z[i], m_gb[i]);
 		if(i < m_layers.size() - 1){
 			gpumat::reLu(g_z[i], g_a[i + 1]);
 		}else
@@ -939,6 +944,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	if(m_gW.empty()){
 		init_gpu(1);
 	}
+	PRINT_GMAT10(m_gW[0]);
 
 	if(g_a.empty()){
 		g_z.resize(m_layers.size());
@@ -951,7 +957,8 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
-		gpumat::biasPlus(m_gb[i], g_z[i]);
+		gpumat::biasPlus(g_z[i], m_gb[i]);
+		PRINT_GMAT10(g_z[i]);
 		//z[i] = a[i] * m_W[i];
 		//z[i].biasPlus(m_b[i]);
 
@@ -966,9 +973,12 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //		}
 		if(i < m_layers.size() - 1){
 			gpumat::reLu(g_z[i], g_a[i + 1]);
+			PRINT_GMAT10(g_a[i]);
 			//a[i + 1] = relu(z[i]);
-		}else
+		}else{
 			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
+			PRINT_GMAT10(g_a[i]);
+		}
 			//a[i + 1] = softmax(z[i], 1);
 	}
 

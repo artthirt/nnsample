@@ -211,6 +211,25 @@ std::string GpuMat::operator()() const
 	return "";
 }
 
+std::string GpuMat::print(int _rows) const
+{
+	if(!data)
+		return "";
+
+	if(_rows < 0)
+		_rows = rows;
+	if(_rows > rows)
+		_rows = rows;
+
+	switch (type) {
+		case GPU_FLOAT:
+			return getString<float>(data, _rows, cols);
+		case GPU_DOUBLE:
+			return getString<double>(data, _rows, cols);
+	}
+	return "";
+}
+
 void GpuMat::release()
 {
 	rows = cols = type = 0;

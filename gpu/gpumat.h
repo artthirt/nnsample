@@ -59,6 +59,8 @@ public:
 
 	std::string operator()() const;
 
+	std::string print(int _rows = -1) const;
+
 	void release();
 
 private:
