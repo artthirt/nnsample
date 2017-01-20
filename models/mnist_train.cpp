@@ -527,7 +527,7 @@ void mnist_train::save(const QString &fn)
 		return;
 
 	f.write(QString("layers %1\n").arg(m_W.size()).toLatin1());
-	for(int i = 0; i < m_W.size(); i++){
+	for(uint i = 0; i < m_W.size(); i++){
 		write_mat(f, m_W[i], "W");
 		write_mat(f, m_b[i], "b");
 	}
@@ -549,7 +549,7 @@ void mnist_train::pass_batch_autoencoder(int batch)
 	if(enc.empty()){
 		enc.resize(m_layers.size() - 1);
 		int input = m_X.cols;
-		for(int i = 0; i < enc.size(); i++){
+		for(uint i = 0; i < enc.size(); i++){
 			enc[i].init(m_W[i], m_b[i], input, m_layers[i], &relu, &derivRelu);
 			input = m_layers[i];
 		}

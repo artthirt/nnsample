@@ -725,7 +725,7 @@ public:
 		return res;
 	}
 	Mat_<T> getRows(std::vector<int> rowsI) const{
-		if(rowsI.size() > rows)
+		if((int)rowsI.size() > rows)
 			return Mat_<T>();
 		Mat_<T> res(rowsI.size(), cols);
 

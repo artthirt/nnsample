@@ -1,0 +1,9 @@
+INCLUDEPATH += $$PWD
+
+SOURCES += $$PWD/custom_types.cpp \
+    $$PWD/shared_memory.cpp \
+    $$PWD/nn.cpp
+
+HEADERS  += $$PWD/custom_types.h \
+    $$PWD/shared_memory.h \
+    $$PWD/nn.h \

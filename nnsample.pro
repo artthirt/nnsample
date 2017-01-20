@@ -11,29 +11,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = nnsample
 TEMPLATE = app
 
-SOURCES += main.cpp\
-        mainwindow.cpp \
-    glview.cpp \
-    simple_xml.cpp \
-    nnmodel.cpp \
-    widgetmnist.cpp \
-    custom_types.cpp \
-    shared_memory.cpp \
-    nn.cpp \
-    mnist_reader.cpp \
-    mnist_train.cpp
-
-HEADERS  += mainwindow.h \
-    custom_types.h \
-    glview.h \
-    simple_xml.hpp \
-    nnmodel.h \
-    widgetmnist.h \
-    shared_memory.h \
-    nn.h \
-    mnist_reader.h \
-    mnist_train.h
-
 FORMS    += mainwindow.ui \
     glview.ui \
     widgetmnist.ui
@@ -61,3 +38,6 @@ UI_DIR = tmp/$$DST/ui
 OBJECTS_DIR = tmp/$$DST/obj
 RCC_DIR = tmp/$$DST/rcc
 MOC_DIR = tmp/$$DST/moc
+
+include(nsample.pri)
+include(ct/ct.pri)

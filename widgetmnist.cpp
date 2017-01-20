@@ -144,7 +144,7 @@ void WidgetMNIST::paintEvent(QPaintEvent *event)
 		rotate_mnist(data[i], _out, wim, him, ur(gen));
 #else
 		_out = data[i];
-#endif;
+#endif
 		QImage im((uchar*)_out.data(), wim, him, QImage::Format_Grayscale8);
 
 		painter.setPen(Qt::red);
