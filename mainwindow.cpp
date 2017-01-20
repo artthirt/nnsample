@@ -360,3 +360,14 @@ void MainWindow::on_pb_load_clicked()
 {
 	m_mnist_train.load("model.txt");
 }
+
+void MainWindow::on_pb_passGPU_clicked()
+{
+#ifdef _USE_GPU
+	m_mnist_train.pass_batch_gpu(400);
+	double l2, accuracy;
+	m_mnist_train.getEstimate(3000, l2, accuracy, true);
+	ui->lb_out->setText("L2=" + QString::number(l2) + "; Acc=" + QString::number(accuracy));
+
+#endif
+}

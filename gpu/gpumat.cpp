@@ -155,7 +155,7 @@ void GpuMat::setData(void *data)
 	cudaMemcpy(this->data, data, size(), cudaMemcpyHostToDevice);
 }
 
-void GpuMat::getData(void *data)
+void GpuMat::getData(void *data) const
 {
 	if(!this->data || !data || !rows || !cols)
 		return;

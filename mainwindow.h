@@ -77,6 +77,8 @@ private slots:
 
 	void on_pb_save_clicked();
 
+	void on_pb_passGPU_clicked();
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;

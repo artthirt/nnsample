@@ -144,6 +144,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pb_passGPU">
+            <property name="text">
+             <string>Pass GPU</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pb_pretrain">
             <property name="text">
              <string>Pretrain</string>

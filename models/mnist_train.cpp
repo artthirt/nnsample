@@ -187,29 +187,46 @@ double mnist_train::cross_entropy(int batch)
 	return ce.sum();
 }
 
-void mnist_train::getEstimate(int batch, double &l2, double &accuracy)
+void mnist_train::getEstimate(int batch, double &l2, double &accuracy, bool use_gpu)
 {
 	if(m_X.empty() || m_y.empty())
 		return;
 
 	std::vector<int> indexes;
-	indexes.resize(batch);
-	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
-	std::map<int, bool> set;
-	for(int i = 0; i < batch; i++){
-		int v = ud(m_generator);
-		while(set.find(v) != set.end()){
-			v = ud(m_generator);
+	if(batch < 0){
+		batch = m_mnist->train().size();
+		indexes.resize(batch);
+		for(int i = 0; i < batch; i++){
+			indexes[i] = i;
 		}
-		set[v] = true;
-		indexes[i] = v;
+	}else{
+		indexes.resize(batch);
+		std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
+		std::map<int, bool> set;
+		for(int i = 0; i < batch; i++){
+			int v = ud(m_generator);
+			while(set.find(v) != set.end()){
+				v = ud(m_generator);
+			}
+			set[v] = true;
+			indexes[i] = v;
+		}
 	}
 
 	Matf X = m_X.getRows(indexes);
 	Matf yp = m_y.getRows(indexes);
 
-	Matf y = forward(X);
+#ifdef _USE_GPU
+	Matf y;
 
+	if(use_gpu){
+		y = forward_gpu(X);
+	}else{
+		y = forward(X);
+	}
+#else
+	Matf y = forward(X);
+#endif
 	double m = X.rows;
 
 	Matf d = yp - y;
@@ -231,7 +248,7 @@ void mnist_train::getEstimate(int batch, double &l2, double &accuracy)
 	accuracy = (double)right / m;
 }
 
-void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy)
+void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu)
 {
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
@@ -275,7 +292,17 @@ void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy)
 		yp.at(i, lb) = 1.;
 	}
 
+#ifdef _USE_GPU
+	Matf y;
+
+	if(use_gpu){
+		y = forward_gpu(X);
+	}else{
+		y = forward(X);
+	}
+#else
 	Matf y = forward(X);
+#endif
 
 	float m = X.rows;
 
@@ -683,6 +710,173 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 
 #ifdef _USE_GPU
 
+double mnist_train::L2_gpu(int batch)
+{
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
+	std::map<int, bool> set;
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	Matf X = m_X.getRows(indexes);
+	Matf yp = m_y.getRows(indexes);
+
+	Matf y = forward_gpu(X);
+
+	double m = X.rows;
+
+	Matf d = yp - y;
+
+	Matf l2 = elemwiseMult(d, d);
+	l2 = sumRows(l2);
+	l2 *= 1./m;
+	return l2.sum();
+
+}
+
+double mnist_train::L2test_gpu(int batch)
+{
+	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
+		return -1;
+
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->test().size() - 1);
+	std::map<int, bool> set;
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	Matf X = Matf::zeros(batch, m_X.cols);
+	Matf yp = Matf::zeros(batch, m_y.cols);
+
+	for(int i = 0; i < batch; i++){
+		int id = indexes[i];
+		QByteArray& data = m_mnist->test()[id];
+		uint lb = m_mnist->lb_test()[id];
+
+		for(int j = 0; j < data.size(); j++){
+			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		}
+		yp.at(i, lb) = 1.;
+	}
+
+	Matf y = forward_gpu(X);
+
+	double m = X.rows;
+
+	Matf d = yp - y;
+
+	Matf l2 = elemwiseMult(d, d);
+	l2 = sumRows(l2);
+	l2 *= 1./m;
+	return l2.sum();
+}
+
+Matf mnist_train::forward_gpu(int index, int count)
+{
+	if(m_W.empty() || m_b.empty() || m_layers.empty())
+		return Matf(0, 0);
+
+	Matf X = m_X.getRows(index, count);
+
+	return forward_gpu(X);
+}
+
+Matf mnist_train::forward_gpu(const Matf &X)
+{
+	if(m_gW.empty() || m_gb.empty() || m_layers.empty())
+		return Matf(0, 0);
+
+	Matf a;
+
+	if(g_a.empty()){
+		g_z.resize(m_layers.size());
+		g_a.resize(m_layers.size() + 1);
+	}
+
+	gpumat::convert_to_gpu(X, g_a[0]);
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
+		gpumat::biasPlus(m_gb[i], g_z[i]);
+		if(i < m_layers.size() - 1){
+			gpumat::reLu(g_z[i], g_a[i + 1]);
+		}else
+			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
+	}
+
+	gpumat::convert_to_mat(g_a.back(), a);
+
+	return a;
+}
+
+Matf mnist_train::forward_test_gpu(int index, int count)
+{
+	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
+		return Matf(0, 0);
+
+	Matf X = Matf::zeros(count, m_X.cols);
+
+	count = std::min(count, m_mnist->test().size() - index);
+
+	for(int i = 0; i < count; i++){
+		int id = index + i;
+		QByteArray& data = m_mnist->test()[id];
+		//uint lb = m_mnist->lb_test()[id];
+
+		for(int j = 0; j < data.size(); j++){
+			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		}
+	}
+
+	return forward_gpu(X);
+}
+
+void mnist_train::init_gpu(int seed)
+{
+	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size())
+		return;
+
+	int input = m_X.cols;
+	int output = m_layers[0];
+
+	m_gW.resize(m_layers.size());
+	m_gb.resize(m_layers.size());
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		output = m_layers[i];
+
+		double n = 1./sqrt(input);
+
+		Matf Wi = Matf(input, output);
+		Matf bi = Matf::ones(output, 1);
+		Wi.randn(0., n, seed);
+		bi.randn(0, n, seed);
+
+		gpumat::convert_to_gpu(Wi, m_gW[i]);
+		gpumat::convert_to_gpu(bi, m_gb[i]);
+
+		input = output;
+	}
+
+	if(!m_gpu_adam.init(m_layers, m_X.cols, gpumat::GPU_FLOAT)){
+		std::cout << "optimizer not init\n";
+	}
+}
+
 void mnist_train::pass_batch_gpu(int batch)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
@@ -742,7 +936,14 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //	std::vector< Matf > z, a;
 //	z.resize(m_layers.size());
 //	a.resize(m_layers.size() + 1);
+	if(m_gW.empty()){
+		init_gpu(1);
+	}
 
+	if(g_a.empty()){
+		g_z.resize(m_layers.size());
+		g_a.resize(m_layers.size() + 1);
+	}
 
 	g_a[0] = X;
 
@@ -822,6 +1023,8 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		if(i > 0)
 			g_d = g_di;
 	}
+
+	m_gpu_adam.pass(g_dW, g_dB, m_gW, m_gb);
 
 //	if(!m_AdamOptimizer.pass(dW, dB, m_W, m_b)){
 //		std::cout << "optimizer not work\n";

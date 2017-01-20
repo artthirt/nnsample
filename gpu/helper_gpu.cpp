@@ -4,15 +4,37 @@ namespace gpumat{
 
 void convert_to_gpu(const ct::Matf& mat, gpumat::GpuMat& gmat)
 {
+	if(mat.empty())
+		return;
 	gmat.resize(mat.rows, mat.cols, GPU_FLOAT);
 	gmat.setData(mat.ptr());
 }
 
 void convert_to_gpu(const ct::Matd& mat, gpumat::GpuMat& gmat)
 {
+	if(mat.empty())
+		return;
 	gmat.resize(mat.rows, mat.cols, GPU_DOUBLE);
 	gmat.setData(mat.ptr());
 }
+
+void convert_to_mat(const GpuMat &gmat, ct::Matf &mat)
+{
+	if(gmat.empty() || gmat.type != GPU_FLOAT)
+		return;
+	mat.setSize(gmat.rows, gmat.cols);
+	gmat.getData((void*)mat.ptr());
+}
+
+void convert_to_mat(const GpuMat &gmat, ct::Matd &mat)
+{
+	if(gmat.empty() || gmat.type != GPU_DOUBLE)
+		return;
+	mat.setSize(gmat.rows, gmat.cols);
+	gmat.getData((void*)mat.ptr());
+}
+
+///////////////////////////////
 
 AdamOptimizer::AdamOptimizer()
 {
@@ -48,6 +70,11 @@ void AdamOptimizer::setBetha2(double v){
 
 uint32_t AdamOptimizer::iteration() const{
 	return m_iteration;
+}
+
+bool AdamOptimizer::empty() const
+{
+	return m_mW.empty() || m_mb.empty();
 }
 
 bool AdamOptimizer::init(const std::vector<int> &layers, int samples, int type)

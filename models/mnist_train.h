@@ -9,6 +9,7 @@
 
 #ifdef _USE_GPU
 #include "gpumat.h"
+#include "helper_gpu.h"
 #endif
 
 class mnist_train
@@ -33,8 +34,8 @@ public:
 	double L2test(int batch = 1000);
 	double cross_entropy(int batch = 1000);
 
-	void getEstimate(int batch, double &l2, double &accuracy);
-	void getEstimateTest(int batch, double &l2, double &accuracy);
+	void getEstimate(int batch, double &l2, double &accuracy, bool use_gpu = false);
+	void getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu = false);
 
 	void init(int seed);
 	void pass_batch(int batch);
@@ -45,6 +46,12 @@ public:
 	void pass_batch_autoencoder(int batch);
 
 #ifdef _USE_GPU
+	double L2_gpu(int batch = 1000);
+	double L2test_gpu(int batch = 1000);
+	ct::Matf forward_gpu(int index, int count);
+	ct::Matf forward_gpu(const ct::Matf& X);
+	ct::Matf forward_test_gpu(int index, int count);
+	void init_gpu(int seed);
 	void pass_batch_gpu(int batch);
 	void pass_batch_gpu(const gpumat::GpuMat& X, const gpumat::GpuMat& y);
 #endif
@@ -79,6 +86,8 @@ private:
 	std::vector< gpumat::GpuMat > m_gb;
 	std::vector< gpumat::GpuMat > g_z, g_a;
 	std::vector< gpumat::GpuMat > g_dW, g_dB;
+
+	gpumat::AdamOptimizer m_gpu_adam;
 #endif
 };
 

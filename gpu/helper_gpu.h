@@ -18,6 +18,20 @@ void convert_to_gpu(const ct::Matf& mat, gpumat::GpuMat& gmat);
  * @param gmat
  */
 void convert_to_gpu(const ct::Matd& mat, gpumat::GpuMat& gmat);
+/**
+ * @brief convert_to_mat
+ * @param gmat
+ * @param mat
+ */
+void convert_to_mat(const gpumat::GpuMat& gmat, ct::Matf& mat);
+/**
+ * @brief convert_to_mat
+ * @param gmat
+ * @param mat
+ */
+void convert_to_mat(const gpumat::GpuMat& gmat, ct::Matd& mat);
+
+/////////////////////////////////////////
 
 class AdamOptimizer{
 public:
@@ -36,6 +50,8 @@ public:
 	void setBetha2(double v);
 
 	uint32_t iteration() const;
+
+	bool empty() const;
 
 	bool init(const std::vector< int >& layers, int samples, int type);
 

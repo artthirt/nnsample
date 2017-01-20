@@ -53,7 +53,7 @@ public:
 	void resize(const GpuMat& mat);
 
 	void setData(void* data);
-	void getData(void* data);
+	void getData(void *data) const;
 
 	void swap_dims();
 
