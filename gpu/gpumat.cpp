@@ -733,12 +733,10 @@ void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)
 		}
 	}
 	if(axis == 1){
-		if(axis == 1 || partZ.rows != A.rows || partZ.cols != 1){
+		if(partZ.rows != A.rows || partZ.cols != 1){
 			partZ.resize(A.rows, 1, A.type);
 		}
 	}
-	partZ.zeros();
-
 	cuda_softmax(A, axis, C, partZ);
 }
 

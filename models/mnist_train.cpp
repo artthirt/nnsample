@@ -976,6 +976,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		}else{
 			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
 			PRINT_GMAT10(g_z[i]);
+			PRINT_GMAT10(partZ);
 			PRINT_GMAT10(g_a[i + 1]);
 		}
 			//a[i + 1] = softmax(z[i], 1);
