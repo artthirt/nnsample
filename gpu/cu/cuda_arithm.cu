@@ -666,7 +666,7 @@ __global__ void adamgrad(Mtx A, const Mtx mA, const Mtx vA, T alpha, T sb1, T sb
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
-	__const__ T eps = 10e-8;
+	const T eps = 10e-8;
 
 	T* dA = (T*)A.data;
 	T* dmA = (T*)mA.data;
@@ -1422,10 +1422,10 @@ void cuda_adamgrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, 
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::adamgrad<double> <<<dimGrid, dimBlock>>>(A, mA, vA, alpha, sb1, sb2);
+		internal::adamgrad<double> <<<dimGrid, dimBlock>>>(A, mA, vA, (double)alpha, (double)sb1, (double)sb2);
 		break;
 	case GPU_FLOAT:
-		internal::adamgrad<float> <<<dimGrid, dimBlock>>>(A, mA, vA, alpha, sb1, sb2);
+		internal::adamgrad<float> <<<dimGrid, dimBlock>>>(A, mA, vA, (float)alpha, (float)sb1, (float)sb2);
 		break;
 	}
 }
