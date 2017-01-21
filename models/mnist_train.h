@@ -16,6 +16,7 @@ class mnist_train
 {
 public:
 	mnist_train();
+	~mnist_train();
 
 	void setMnist(mnist_reader* mnist);
 

@@ -18,6 +18,11 @@ mnist_train::mnist_train()
 #endif
 }
 
+mnist_train::~mnist_train()
+{
+
+}
+
 void mnist_train::setMnist(mnist_reader *mnist)
 {
 	m_mnist = mnist;
