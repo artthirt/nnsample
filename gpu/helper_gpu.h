@@ -95,7 +95,7 @@ public:
 	tfunc func;
 	tfunc deriv;
 
-	void init(GpuMat& _W, GpuMat& _b, int samples, int neurons, int type, tfunc fn, tfunc dfn);
+	void init(GpuMat& _W, GpuMat& _b, int samples, int neurons, tfunc fn, tfunc dfn);
 
 	void pass(const GpuMat& X);
 	double l2(const GpuMat& X);

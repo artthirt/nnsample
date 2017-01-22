@@ -505,7 +505,7 @@ void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 			int input = m_X.cols;
 			for(uint i = 0; i < enc_gpu.size(); i++){
 				gpumat::SimpleAutoencoder& enc = enc_gpu[i];
-				enc.init(m_gW[i], m_gb[i], input, m_layers[i], gpumat::GPU_FLOAT, &gpumat::reLu, &gpumat::deriv_reLu);
+				enc.init(m_gW[i], m_gb[i], input, m_layers[i], &gpumat::reLu, &gpumat::deriv_reLu);
 				input = m_layers[i];
 			}
 		}
@@ -543,9 +543,9 @@ void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 			enc_gpu[i].pass(g_a[i]);
 
 			float l2 = enc_gpu[i].l2(g_a[i]);
-			qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc_gpu[i].W[0].rows, enc_gpu[i].W[0].cols);
-			enc_gpu[i].W[0].copyTo(m_gW[i]);
-			enc_gpu[i].b[0].copyTo(m_gb[i]);
+			qDebug("l[%d]: l2=%f; W.rows=%d; W.cols=%d", i, l2, enc_gpu[i].W[0].rows, enc_gpu[i].W[0].cols);
+			m_gW[i] = enc_gpu[i].W[0];
+			m_gb[i] = enc_gpu[i].b[0];
 #endif
 		}else{
 			getX(X, batch);

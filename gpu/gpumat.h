@@ -63,6 +63,8 @@ public:
 
 	std::string print(int _rows = -1) const;
 
+	void save(const std::string filename) const;
+
 	void release();
 
 private:

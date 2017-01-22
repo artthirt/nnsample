@@ -248,6 +248,16 @@ std::string GpuMat::print(int _rows) const
 	return res;
 }
 
+void GpuMat::save(const std::__cxx11::string filename) const
+{
+	std::string res = (*this)();
+
+	std::fstream fs;
+	fs.open(filename.c_str(), std::ios_base::out);
+	fs.write(res.c_str(), res.size());
+	fs.close();
+}
+
 void GpuMat::release()
 {
 	rows = cols = type = 0;

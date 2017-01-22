@@ -220,8 +220,8 @@ __global__ void matmulT2(Mtx A, Mtx Bt, Mtx C)
 	float sC = 0;
 
 //	s += val1[i * A.cols + j]/*at(i, j)*/ * val2[k * Bt.cols + j]/*at(j, k)*/;
-	if(row < A.rows && col < Bt.rows){
-		for(int i = 0; i < Bt.cols; i++){
+	if(row < A.rows && col < C.cols){
+		for(int i = 0; i < A.cols; i++){
 //			sC += DA[row * B.rows + i] * DB[i * B.cols + col];
 			sC += DA[row * A.cols + i] * DB[col * Bt.cols + i];
 		}
@@ -570,7 +570,7 @@ __global__ void _exp(Mtx A, Mtx C)
  * @param rows = sum(C)
  */
 template< class T >
-__global__ void sum_col(Mtx C, Mtx cols, T val = (T)1.)
+__global__ void sum_rows(Mtx C, Mtx cols, T val = (T)1.)
 {
 	//int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -593,7 +593,7 @@ __global__ void sum_col(Mtx C, Mtx cols, T val = (T)1.)
  * @param rows = sum(C)
  */
 template< class T >
-__global__ void sum_row(Mtx C, Mtx rows, T val = (T)1.)
+__global__ void sum_cols(Mtx C, Mtx rows, T val = (T)1.)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	//int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -841,8 +841,8 @@ void cuda_subA(GpuMat& A, const GpuMat& B, double valA, double valB)
 extern "C"
 void cuda_matmul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
-	int x1 = A.cols / BLOCKSIZE + 1;
-	int x2 = A.rows / BLOCKSIZE + 1;
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -868,8 +868,8 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 	//	int r = At.cols;
 	//	int c = B.cols;
 
-	int x1 = B.cols / BLOCKSIZE + 1;
-	int x2 = At.cols / BLOCKSIZE + 1;
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -892,8 +892,8 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 extern "C"
 void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
 {
-	int x1 = Bt.rows / BLOCKSIZE + 1;
-	int x2 = A.rows / BLOCKSIZE + 1;
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
@@ -1294,10 +1294,10 @@ void cuda_sumrows(const GpuMat& A, GpuMat& sums, double val)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-			internal::sum_col<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (double)val);
+			internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (double)val);
 		break;
 	case GPU_FLOAT:
-			internal::sum_col<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (float)val);
+			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, sums, (float)val);
 		break;
 	}
 }
@@ -1376,11 +1376,11 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 			{
 				switch (A.type) {
 				case GPU_DOUBLE:
-						internal::sum_col<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+						internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
 						internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				case GPU_FLOAT:
-						internal::sum_col<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+						internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
 						internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				}
@@ -1390,11 +1390,11 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 			{
 				switch (A.type) {
 				case GPU_DOUBLE:
-						internal::sum_row<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+						internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
 						internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				case GPU_FLOAT:
-						internal::sum_row<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+						internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
 						internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
 					break;
 				}
