@@ -526,6 +526,9 @@ void mnist_train::pass_batch_autoencoder(int batch)
 void mnist_train::copyWbMat2GpuMat()
 {
 #ifdef _USE_GPU
+	if(m_gW.empty())
+		init_gpu(1);
+
 	for(int i = 0; i < m_W.size(); i++){
 		gpumat::convert_to_gpu(m_W[i], m_gW[i]);
 		gpumat::convert_to_gpu(m_b[i], m_gb[i]);
@@ -536,6 +539,9 @@ void mnist_train::copyWbMat2GpuMat()
 void mnist_train::copyWbGpuMat2Mat()
 {
 #ifdef _USE_GPU
+	if(m_gW.empty())
+		init_gpu(1);
+
 	for(int i = 0; i < m_W.size(); i++){
 		gpumat::convert_to_mat(m_gW[i], m_W[i]);
 		gpumat::convert_to_mat(m_gb[i], m_b[i]);
