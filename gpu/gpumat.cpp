@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include <cuda_runtime.h>
+#include <assert.h>
 
 using namespace gpumat;
 
@@ -25,6 +26,7 @@ GpuMat::GpuMat(int rows, int cols, int type)
 		int size = rows * cols * depth();
 
 		cudaError_t err = cudaMalloc(&data, size);
+		assert(err == cudaSuccess);
 	}
 }
 
@@ -39,9 +41,10 @@ GpuMat::GpuMat(int rows, int cols, int type, void *data)
 
 		cudaError_t err = cudaMalloc(&this->data, size);
 
-		if(data){
-			cudaMemcpy(this->data, data, size, cudaMemcpyHostToDevice);
+		if(data && this->data){
+			err = cudaMemcpy(this->data, data, size, cudaMemcpyHostToDevice);
 		}
+		assert(err == cudaSuccess);
 	}
 }
 
@@ -53,7 +56,9 @@ GpuMat::GpuMat(const GpuMat &mat)
 
 	if(mat.data){
 		cudaError_t err = cudaMalloc((void**)&data, mat.size());
-		err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
+		if(data && mat.data)
+			err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
+		assert(err == cudaSuccess);
 	}
 }
 
@@ -76,10 +81,12 @@ GpuMat &GpuMat::operator =(const GpuMat &mat)
 		type = mat.type;
 
 		err = cudaMalloc(&data, mat.size());
+		assert(err == cudaSuccess);
 	}
 
 	if(mat.data && err == cudaSuccess ){
 		err = cudaMemcpy(data, mat.data, mat.size(), cudaMemcpyDeviceToDevice);
+		assert(err == cudaSuccess);
 	}
 	return *this;
 }
@@ -96,7 +103,8 @@ GpuMat &GpuMat::ones()
 GpuMat &GpuMat::zeros()
 {
 	if(data){
-		cudaMemset(data, 0, size());
+		cudaError_t err = cudaMemset(data, 0, size());
+		assert(err == cudaSuccess);
 	}
 	return *this;
 }
@@ -135,6 +143,7 @@ void GpuMat::resize(int rows, int cols, int type)
 	this->type = type;
 
 	cudaError_t err = cudaMalloc(&data, size());
+	assert(err == cudaSuccess);
 }
 
 void GpuMat::resize(const GpuMat &mat)
@@ -146,6 +155,7 @@ void GpuMat::resize(const GpuMat &mat)
 	this->type = mat.type;
 
 	cudaError_t err = cudaMalloc(&data, size());
+	assert(err == cudaSuccess);
 }
 
 void GpuMat::copyTo(GpuMat &mat)
@@ -161,7 +171,8 @@ void GpuMat::setData(void *data)
 	if(!data || !this->data || !rows || !cols)
 		return;
 
-	cudaMemcpy(this->data, data, size(), cudaMemcpyHostToDevice);
+	cudaError_t err = cudaMemcpy(this->data, data, size(), cudaMemcpyHostToDevice);
+	assert(err == cudaSuccess);
 }
 
 void GpuMat::getData(void *data) const
@@ -169,7 +180,8 @@ void GpuMat::getData(void *data) const
 	if(!this->data || !data || !rows || !cols)
 		return;
 
-	cudaMemcpy(data, this->data, size(), cudaMemcpyDeviceToHost);
+	cudaError_t err = cudaMemcpy(data, this->data, size(), cudaMemcpyDeviceToHost);
+	assert(err == cudaSuccess);
 }
 
 void GpuMat::swap_dims()
@@ -189,7 +201,8 @@ std::string getString(void* data, int rows, int cols)
 
 	int size = rows * cols * sizeof(T);
 
-	cudaMemcpy(&vec[0], data, size, cudaMemcpyDeviceToHost);
+	cudaError_t err = cudaMemcpy(&vec[0], data, size, cudaMemcpyDeviceToHost);
+	assert(err == cudaSuccess);
 
 	std::stringstream stream;
 
@@ -262,7 +275,8 @@ void GpuMat::release()
 {
 	rows = cols = type = 0;
 	if(data){
-		cudaFree(data);
+		cudaError_t err = cudaFree(data);
+		assert(err == cudaSuccess);
 		data = 0;
 	}
 }

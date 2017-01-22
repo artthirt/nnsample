@@ -172,9 +172,8 @@ SimpleAutoencoder::SimpleAutoencoder(){
 	m_neurons = 0;
 }
 
-void SimpleAutoencoder::init(GpuMat &_W, GpuMat &_b, int samples, int neurons, SimpleAutoencoder::tfunc fn, SimpleAutoencoder::tfunc dfn){
-	using namespace ct;
-
+void SimpleAutoencoder::init(GpuMat &_W, GpuMat &_b, int samples, int neurons, SimpleAutoencoder::tfunc fn, SimpleAutoencoder::tfunc dfn)
+{
 	func = fn;
 	deriv = dfn;
 	m_neurons = neurons;
@@ -203,7 +202,8 @@ void SimpleAutoencoder::init(GpuMat &_W, GpuMat &_b, int samples, int neurons, S
 	//		b[1].randn(0, 0.1, 1);
 }
 
-void SimpleAutoencoder::pass(const GpuMat &X){
+void SimpleAutoencoder::pass(const GpuMat &X)
+{
 	if(X.empty() || X.cols != W[0].rows || !func || !deriv)
 		return;
 
@@ -257,6 +257,8 @@ void SimpleAutoencoder::pass(const GpuMat &X){
 	transpose(dW[1], tw1);
 	add(dW[0], tw1);
 	transpose(dW[0], dW[1]);
+
+	db[1].zeros();
 
 //	PRINT_GMAT10(dW[0]);
 //	PRINT_GMAT10(dW[1]);
