@@ -483,10 +483,10 @@ void mnist_train::save(const QString &fn)
 	f.close();
 }
 
-void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
+double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
-		return;
+		return -1;
 
 	Matf X;
 
@@ -523,6 +523,8 @@ void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 
 	gpumat::GpuMat gX;
 
+	double res = 0;
+
 	for(int i = 0; i < (int)m_layers.size() - 1; i++){
 
 		if(use_gpu){
@@ -543,6 +545,7 @@ void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 			enc_gpu[i].pass(g_a[i]);
 
 			float l2 = enc_gpu[i].l2(g_a[i]);
+			res += l2;
 			qDebug("l[%d]: l2=%f; W.rows=%d; W.cols=%d", i, l2, enc_gpu[i].W[0].rows, enc_gpu[i].W[0].cols);
 			m_gW[i] = enc_gpu[i].W[0];
 			m_gb[i] = enc_gpu[i].b[0];
@@ -559,12 +562,14 @@ void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 			enc[i].pass(a);
 
 			float l2 = enc[i].l2(a);
+			res += l2;
 			qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc[i].W[0].rows, enc[i].W[0].cols);
 			m_W[i] = enc[i].W[0];
 			m_b[i] = enc[i].b[0];
 		}
 	}
 	qDebug("<<<<<end>>>>");
+	return res;
 }
 
 void mnist_train::copyWbMat2GpuMat()

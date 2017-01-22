@@ -102,7 +102,7 @@ public:
 	 * @brief pass_batch_autoencoder
 	 * @param batch
 	 */
-	void pass_batch_autoencoder(int batch, bool use_gpu = false);
+	double pass_batch_autoencoder(int batch, bool use_gpu = false);
 	/**
 	 * @brief copyWbMat2GpuMat
 	 */

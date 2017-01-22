@@ -218,8 +218,11 @@ void MainWindow::onTimeoutMnist()
 
 void MainWindow::onTimeoutPretrain()
 {
-	if(ui->pb_pretrain->isChecked())
-		m_mnist_train.pass_batch_autoencoder(500, m_use_gpu);
+	if(ui->pb_pretrain->isChecked()){
+		int batch = m_use_gpu? 2000 : 500;
+		double res = m_mnist_train.pass_batch_autoencoder(batch, m_use_gpu);
+		ui->lb_out->setText(QString("l2_norm = %1").arg(res));
+	}
 }
 
 void MainWindow::on_dsb_alpha_valueChanged(double arg1)
