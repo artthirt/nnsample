@@ -76,6 +76,35 @@ private:
 	std::vector< gpumat::GpuMat > m_vb;
 };
 
+class SimpleAutoencoder
+{
+public:
+
+	typedef void (*tfunc)(const GpuMat& _in, GpuMat& _out);
+
+	SimpleAutoencoder();
+
+	double m_alpha;
+	int m_neurons;
+
+	std::vector<GpuMat> W;
+	std::vector<GpuMat> b;
+	std::vector<GpuMat> dW;
+	std::vector<GpuMat> db;
+
+	tfunc func;
+	tfunc deriv;
+
+	void init(GpuMat& _W, GpuMat& _b, int samples, int neurons, int type, tfunc fn, tfunc dfn);
+
+	void pass(const GpuMat& X);
+	double l2(const GpuMat& X);
+private:
+	AdamOptimizer adam;
+	GpuMat a[3], tw1;
+	GpuMat z[2], d, di, sz;
+};
+
 }
 
 #endif // HELPER_GPU_H

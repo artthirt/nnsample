@@ -136,8 +136,8 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 		//m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
 		//m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
 
-		gpumat::elemiseSqr(gradW[i], sW);
-		gpumat::elemiseSqr(gradB[i], sB);
+		gpumat::elemwiseSqr(gradW[i], sW);
+		gpumat::elemwiseSqr(gradB[i], sB);
 
 		gpumat::add(m_vW[i], sW, m_betha2, (1. - m_betha2));
 		gpumat::add(m_vb[i], sB, m_betha2, (1. - m_betha2));
@@ -162,6 +162,120 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 		//b[i] -= m_alpha * mBs;
 	}
 	return true;
+}
+
+///////////////////////////////////////////
+///////////////////////////////////////////
+
+SimpleAutoencoder::SimpleAutoencoder(){
+	func = 0;
+	deriv = 0;
+	m_neurons = 0;
+	W.resize(2);
+	b.resize(2);
+	dW.resize(2);
+	db.resize(2);
+}
+
+void SimpleAutoencoder::init(GpuMat &_W, GpuMat &_b, int samples, int neurons, int type, SimpleAutoencoder::tfunc fn, SimpleAutoencoder::tfunc dfn){
+	using namespace ct;
+
+	func = fn;
+	deriv = dfn;
+	m_neurons = neurons;
+
+	std::vector< int > layers;
+	layers.push_back(neurons);
+	layers.push_back(samples);
+	adam.init(layers, samples, type);
+	adam.setAlpha(0.001);
+
+	W[0] = _W;
+	b[0] = _b;
+
+	transpose(_W, W[1]);
+	b[1].resize(samples, 1, type);
+	b[1].zeros();
+
+	//		W[0].randn(0, 0.1, 1);
+	//		b[0].randn(0, 0.1, 1);
+	//		W[1].randn(0, 0.1, 1);
+	//		b[1].randn(0, 0.1, 1);
+}
+
+void SimpleAutoencoder::pass(const GpuMat &X){
+	if(X.empty() || X.cols != W[0].rows || !func || !deriv)
+		return;
+
+	a[0] = X;
+	for(int i = 0; i < 2; i++){
+		matmul(a[i], W[i], z[i]);
+		biasPlus(z[i], b[i]);
+		if(i == 0){
+			(*func)(z[i], a[i + 1]);
+		}else{
+			a[i + 1] = z[i];
+		}
+	}
+
+	double m = X.rows;
+
+	sub(a[2], X, d);
+
+	for(int i = 1; i > -1; --i){
+		if(i > 0){
+			(*deriv)(a[i], sz);
+			matmulT2(d, W[i], di);
+			elemwiseMult(di, sz);
+		}
+		matmulT1(a[i], d, dW[i]);
+		mulval(dW[i], 1./m);
+		sumRows(d, db[i], 1./m);
+		db[i].swap_dims();
+		if(i > 0)
+			d = di;
+	}
+	transpose(dW[1], tw1);
+	add(dW[0], tw1);
+	transpose(dW[0], dW[1]);
+	PRINT_GMAT10(dW[0]);
+	PRINT_GMAT10(dW[1]);
+
+	adam.pass(dW, db, W, b);
+}
+
+double SimpleAutoencoder::l2(const GpuMat &X)
+{
+	if(X.empty() || W[0].empty())
+		return -1.;
+
+	a[0] = X;
+	for(int i = 0; i < 2; i++){
+		matmul(a[i], W[i], z[i]);
+		biasPlus(z[i], b[i]);
+		if(i == 0){
+			(*func)(z[i], a[i + 1]);
+		}else{
+			a[i + 1] = z[i];
+		}
+	}
+	double m = X.rows;
+	sub(a[2], X, d);
+	elemwiseMult(d, d);
+	double res = 0;
+	if(d.type == GPU_FLOAT){
+		ct::Matf df;
+		convert_to_mat(d, df);
+		res = df.sum() / m;
+
+	}
+	if(d.type == GPU_DOUBLE){
+		ct::Matf dd;
+		convert_to_mat(d, dd);
+		res = dd.sum() / m;
+
+	}
+	return res;
 }
 
 }

@@ -154,7 +154,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	m_mnist_train.setLayers(layers2);
 	m_mnist_train.setMnist(&m_mnist);
-	m_mnist_train.init(1);
+	m_mnist_train.init_weights();
 }
 
 MainWindow::~MainWindow()
@@ -219,7 +219,7 @@ void MainWindow::onTimeoutMnist()
 void MainWindow::onTimeoutPretrain()
 {
 	if(ui->pb_pretrain->isChecked())
-		m_mnist_train.pass_batch_autoencoder(500);
+		m_mnist_train.pass_batch_autoencoder(500, m_use_gpu);
 }
 
 void MainWindow::on_dsb_alpha_valueChanged(double arg1)

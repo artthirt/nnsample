@@ -1,6 +1,7 @@
 #include "gpumat.h"
 
 #include <sstream>
+#include <fstream>
 
 #include <cuda_runtime.h>
 
@@ -147,6 +148,14 @@ void GpuMat::resize(const GpuMat &mat)
 	cudaError_t err = cudaMalloc(&data, size());
 }
 
+void GpuMat::copyTo(GpuMat &mat)
+{
+	if(empty())
+		return;
+
+	mat = *this;
+}
+
 void GpuMat::setData(void *data)
 {
 	if(!data || !this->data || !rows || !cols)
@@ -221,13 +230,22 @@ std::string GpuMat::print(int _rows) const
 	if(_rows > rows)
 		_rows = rows;
 
+	std::string res;
 	switch (type) {
 		case GPU_FLOAT:
-			return getString<float>(data, _rows, cols);
+			res = getString<float>(data, _rows, cols);
+		break;
 		case GPU_DOUBLE:
-			return getString<double>(data, _rows, cols);
+			res = getString<double>(data, _rows, cols);
+		break;
 	}
-	return "";
+
+//	std::fstream fs;
+//	fs.open("temp.txt", std::ios_base::out);
+//	fs.write(res.c_str(), res.size());
+//	fs.close();
+
+	return res;
 }
 
 void GpuMat::release()
@@ -404,46 +422,46 @@ extern "C"
 void cuda_biasPlus(GpuMat& A, const GpuMat& bias);
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  * @param C - out C = A .* B
  */
 extern "C"
-void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void cuda_elemwiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A = A .* B
  * @param B
  */
 extern "C"
-void cuda_elemiseMulA(GpuMat& A, const GpuMat& B);
+void cuda_elemwiseMulA(GpuMat& A, const GpuMat& B);
 
 /**
- * @brief elemiseDiv
+ * @brief elemwiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
 extern "C"
-void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void cuda_elemwiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
 
 /**
- * @brief elemiseSqrt
+ * @brief elemwiseSqrt
  * @param A
  * @param C - out C = sqrt(A)
  */
 extern "C"
-void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C);
+void cuda_elemwiseSqrt(const GpuMat& A, GpuMat& C);
 
 /**
- * @brief elemiseSqr
+ * @brief elemwiseSqr
  * @param A
  * @param C - out C = A .* A
  */
 extern "C"
-void cuda_elemiseSqr(const GpuMat& A, GpuMat& C);
+void cuda_elemwiseSqr(const GpuMat& A, GpuMat& C);
 
 /**
  * @brief cuda_sumrows
@@ -660,7 +678,7 @@ void biasPlus(GpuMat &A, const GpuMat &bias)
 	cuda_biasPlus(A, bias);
 }
 
-void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
+void elemwiseMult(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
@@ -668,19 +686,19 @@ void elemiseMul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseMul(A, B, C);
+	cuda_elemwiseMul(A, B, C);
 }
 
 
-void elemiseMul(GpuMat &A, const GpuMat &B)
+void elemwiseMult(GpuMat &A, const GpuMat &B)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
 
-	cuda_elemiseMulA(A, B);
+	cuda_elemwiseMulA(A, B);
 }
 
-void elemiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
+void elemwiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
 	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
 		return;
@@ -688,7 +706,7 @@ void elemiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseDiv(A, B, C);
+	cuda_elemwiseDiv(A, B, C);
 }
 
 
@@ -704,7 +722,7 @@ void transpose(const GpuMat &A, GpuMat &C)
 
 }
 
-void elemiseSqrt(const GpuMat &A, GpuMat &C)
+void elemwiseSqrt(const GpuMat &A, GpuMat &C)
 {
 	if(A.empty())
 		return;
@@ -712,10 +730,10 @@ void elemiseSqrt(const GpuMat &A, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseSqrt(A, C);
+	cuda_elemwiseSqrt(A, C);
 }
 
-void elemiseSqr(const GpuMat &A, GpuMat &C)
+void elemwiseSqr(const GpuMat &A, GpuMat &C)
 {
 	if(A.empty())
 		return;
@@ -723,7 +741,7 @@ void elemiseSqr(const GpuMat &A, GpuMat &C)
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
 
-	cuda_elemiseSqr(A, C);
+	cuda_elemwiseSqr(A, C);
 }
 
 void reLu(const GpuMat &A, GpuMat &C)

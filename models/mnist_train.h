@@ -102,7 +102,7 @@ public:
 	 * @brief pass_batch_autoencoder
 	 * @param batch
 	 */
-	void pass_batch_autoencoder(int batch);
+	void pass_batch_autoencoder(int batch, bool use_gpu = false);
 	/**
 	 * @brief copyWbMat2GpuMat
 	 */
@@ -114,7 +114,7 @@ public:
 	/**
 	 * @brief init_weights
 	 */
-	void init_weights();
+	void init_weights(int seed = 1);
 
 #ifdef _USE_GPU
 	/**
@@ -182,6 +182,8 @@ private:
 	std::vector< gpumat::GpuMat > m_gb;
 	std::vector< gpumat::GpuMat > g_z, g_a;
 	std::vector< gpumat::GpuMat > g_dW, g_dB;
+
+	std::vector< gpumat::SimpleAutoencoder > enc_gpu;
 
 	gpumat::AdamOptimizer m_gpu_adam;
 #endif

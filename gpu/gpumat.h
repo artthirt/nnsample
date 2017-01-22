@@ -52,6 +52,8 @@ public:
 	void resize(int rows, int cols, int type);
 	void resize(const GpuMat& mat);
 
+	void copyTo(GpuMat& mat);
+
 	void setData(void* data);
 	void getData(void *data) const;
 
@@ -194,34 +196,34 @@ void biasPlus(GpuMat& A, const GpuMat& bias);
  * @param B
  * @param C - out C = A .* B
  */
-void elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void elemwiseMult(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief elemiseMul
  * @param A = A.* B
  * @param B
  */
-void elemiseMul(GpuMat& A, const GpuMat& B);
+void elemwiseMult(GpuMat& A, const GpuMat& B);
 /**
  * @brief elemiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
-void elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
+void elemwiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C);
 /**
  * @brief elemiseSqrt
  * @param A
  * @param B
  * @param C - out C = sqrt(A)
  */
-void elemiseSqrt(const GpuMat& A, GpuMat& C);
+void elemwiseSqrt(const GpuMat& A, GpuMat& C);
 /**
  * @brief elemiseSqr
  * @param A
  * @param B
  * @param C - out C = sqrt(A)
  */
-void elemiseSqr(const GpuMat& A, GpuMat& C);
+void elemwiseSqr(const GpuMat& A, GpuMat& C);
 /**
  * @brief sumRows
  * @param A

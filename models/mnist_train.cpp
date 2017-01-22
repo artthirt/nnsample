@@ -483,7 +483,7 @@ void mnist_train::save(const QString &fn)
 	f.close();
 }
 
-void mnist_train::pass_batch_autoencoder(int batch)
+void mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
 		return;
@@ -494,31 +494,75 @@ void mnist_train::pass_batch_autoencoder(int batch)
 
 	qDebug("<<<<<begin>>>>");
 
-	if(enc.empty()){
-		enc.resize(m_layers.size() - 1);
-		int input = m_X.cols;
-		for(uint i = 0; i < enc.size(); i++){
-			enc[i].init(m_W[i], m_b[i], input, m_layers[i], &relu, &derivRelu);
-			input = m_layers[i];
+#ifndef _USE_GPU
+	use_gpu = false;
+#endif
+
+	if(use_gpu){
+#ifdef _USE_GPU
+		if(enc_gpu.empty()){
+			enc_gpu.resize(m_layers.size() - 1);
+			int input = m_X.cols;
+			for(uint i = 0; i < enc_gpu.size(); i++){
+				gpumat::SimpleAutoencoder& enc = enc_gpu[i];
+				enc.init(m_gW[i], m_gb[i], input, m_layers[i], gpumat::GPU_FLOAT, &gpumat::reLu, &gpumat::deriv_reLu);
+				input = m_layers[i];
+			}
+		}
+#endif
+	}else{
+		if(enc.empty()){
+			enc.resize(m_layers.size() - 1);
+			int input = m_X.cols;
+			for(uint i = 0; i < enc.size(); i++){
+				enc[i].init(m_W[i], m_b[i], input, m_layers[i], &relu, &derivRelu);
+				input = m_layers[i];
+			}
 		}
 	}
 
+	gpumat::GpuMat gX;
+
 	for(int i = 0; i < (int)m_layers.size() - 1; i++){
 
-		getX(X, batch);
-		a = X;
-		for(int j = 0; j < i; j++){
-			z = a * m_W[j];
-			z.biasPlus(m_b[j]);
-			a = relu(z);
+		if(use_gpu){
+#ifdef _USE_GPU
+			getX(X, batch);
+
+			gpumat::convert_to_gpu(X, gX);
+			g_a[0] = gX;
+			for(int j = 0; j < i; j++){
+				gpumat::matmul(g_a[j], m_gW[j], g_z[j]);
+				gpumat::biasPlus(g_z[j], m_gb[j]);
+				gpumat::reLu(g_z[j], g_a[j + 1]);
+//				z = a[j] * m_W[j];
+//				z.biasPlus(m_b[j]);
+//				a = relu(z);
+			}
+
+			enc_gpu[i].pass(g_a[i]);
+
+			float l2 = enc_gpu[i].l2(g_a[i]);
+			qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc_gpu[i].W[0].rows, enc_gpu[i].W[0].cols);
+			enc_gpu[i].W[0].copyTo(m_gW[i]);
+			enc_gpu[i].b[0].copyTo(m_gb[i]);
+#endif
+		}else{
+			getX(X, batch);
+			a = X;
+			for(int j = 0; j < i; j++){
+				z = a * m_W[j];
+				z.biasPlus(m_b[j]);
+				a = relu(z);
+			}
+
+			enc[i].pass(a);
+
+			float l2 = enc[i].l2(a);
+			qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc[i].W[0].rows, enc[i].W[0].cols);
+			m_W[i] = enc[i].W[0];
+			m_b[i] = enc[i].b[0];
 		}
-
-		enc[i].pass(a);
-
-		float l2 = enc[i].l2(a);
-		qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc[i].W[0].rows, enc[i].W[0].cols);
-		m_W[i] = enc[i].W[0];
-		m_b[i] = enc[i].b[0];
 	}
 	qDebug("<<<<<end>>>>");
 }
@@ -526,9 +570,6 @@ void mnist_train::pass_batch_autoencoder(int batch)
 void mnist_train::copyWbMat2GpuMat()
 {
 #ifdef _USE_GPU
-	if(m_gW.empty())
-		init_gpu(1);
-
 	for(int i = 0; i < m_W.size(); i++){
 		gpumat::convert_to_gpu(m_W[i], m_gW[i]);
 		gpumat::convert_to_gpu(m_b[i], m_gb[i]);
@@ -539,9 +580,6 @@ void mnist_train::copyWbMat2GpuMat()
 void mnist_train::copyWbGpuMat2Mat()
 {
 #ifdef _USE_GPU
-	if(m_gW.empty())
-		init_gpu(1);
-
 	for(int i = 0; i < m_W.size(); i++){
 		gpumat::convert_to_mat(m_gW[i], m_W[i]);
 		gpumat::convert_to_mat(m_gb[i], m_b[i]);
@@ -549,11 +587,16 @@ void mnist_train::copyWbGpuMat2Mat()
 #endif
 }
 
-void mnist_train::init_weights()
+void mnist_train::init_weights(int seed)
 {
-	init(1);
+	init(seed);
 #ifdef _USE_GPU
-	init_gpu(1);
+	init_gpu(seed);
+
+	if(g_z.size() != m_layers.size()){
+		g_z.resize(m_layers.size());
+		g_a.resize(m_layers.size() + 1);
+	}
 #endif
 }
 
@@ -662,15 +705,6 @@ Matf mnist_train::forward_gpu(const Matf &X)
 		return Matf(0, 0);
 
 	Matf a;
-
-	if(m_gW.empty()){
-		init_gpu(1);
-	}
-
-	if(g_z.size() != m_layers.size()){
-		g_z.resize(m_layers.size());
-		g_a.resize(m_layers.size() + 1);
-	}
 
 	gpumat::convert_to_gpu(X, g_a[0]);
 
@@ -782,15 +816,6 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //	std::vector< Matf > z, a;
 //	z.resize(m_layers.size());
 //	a.resize(m_layers.size() + 1);
-	if(m_gW.empty()){
-		init_gpu(1);
-	}
-
-	if(g_z.size() != m_layers.size()){
-		g_z.resize(m_layers.size());
-		g_a.resize(m_layers.size() + 1);
-	}
-
 	g_a[0] = X;
 
 //	Matf D1, Dt1, D2, Dt2, D3, Dt3;
@@ -808,7 +833,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //			gpumat::transpose(m_Dropout[i], m_DropoutT[i]);
 			m_DropoutT[i] = m_Dropout[i];
 
-			gpumat::elemiseMul(m_Dropout[i], m_gW[i]);
+			gpumat::elemwiseMult(m_Dropout[i], m_gW[i]);
 			gpumat::matmul(g_a[i], m_Dropout[i], g_z[i]);
 		}else{
 			gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
@@ -857,7 +882,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 			//Matf di = d * m_W[i].t();
 			gpumat::matmulT2(g_d, m_gW[i], g_di);
 			//matmulT2(d, m_W[i], di);
-			gpumat::elemiseMul(g_di, g_sz, g_di);
+			gpumat::elemwiseMult(g_di, g_sz, g_di);
 			//di = elemwiseMult(di, sz);
 		}
 		//dW[i] = a[i].t() * d;
@@ -870,7 +895,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		//dW[i] += (m_lambda/m * m_W[i]);
 
 		if(i < m_dropout_count){
-			gpumat::elemiseMul(g_dW[i], m_DropoutT[i]);
+			gpumat::elemwiseMult(g_dW[i], m_DropoutT[i]);
 		}
 
 //		if(i == 2){

@@ -394,13 +394,13 @@ __global__ void biasPlus(Mtx A, const Mtx bias)
 }
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  * @param C - out C = A .* B
  */
 template< class T >
-__global__ void elemiseMul(Mtx A, Mtx B, Mtx C)
+__global__ void elemwiseMul(Mtx A, Mtx B, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -414,12 +414,12 @@ __global__ void elemiseMul(Mtx A, Mtx B, Mtx C)
 }
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  */
 template< class T >
-__global__ void elemiseMul(Mtx A, Mtx B)
+__global__ void elemwiseMul(Mtx A, Mtx B)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -432,13 +432,13 @@ __global__ void elemiseMul(Mtx A, Mtx B)
 }
 
 /**
- * @brief elemiseDiv
+ * @brief elemwiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
 template< class T >
-__global__ void elemiseDiv(Mtx A, Mtx B, Mtx C)
+__global__ void elemwiseDiv(Mtx A, Mtx B, Mtx C)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -1141,13 +1141,13 @@ void cuda_biasPlus(GpuMat& A, const GpuMat& bias)
 }
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A
  * @param B
  * @param C - out C = A .* B
  */
 extern "C"
-void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
+void cuda_elemwiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1156,21 +1156,21 @@ void cuda_elemiseMul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::elemiseMul<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseMul<double> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	case GPU_FLOAT:
-		internal::elemiseMul<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseMul<float> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	}
 }
 
 /**
- * @brief elemiseMul
+ * @brief elemwiseMul
  * @param A = A .* B
  * @param B
  */
 extern "C"
-void cuda_elemiseMulA(GpuMat& A, const GpuMat& B)
+void cuda_elemwiseMulA(GpuMat& A, const GpuMat& B)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1179,23 +1179,23 @@ void cuda_elemiseMulA(GpuMat& A, const GpuMat& B)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::elemiseMul<double> <<<dimGrid, dimBlock>>>(A, B);
+		internal::elemwiseMul<double> <<<dimGrid, dimBlock>>>(A, B);
 		break;
 	case GPU_FLOAT:
-		internal::elemiseMul<float> <<<dimGrid, dimBlock>>>(A, B);
+		internal::elemwiseMul<float> <<<dimGrid, dimBlock>>>(A, B);
 		break;
 	}
 }
 
 
 /**
- * @brief elemiseDiv
+ * @brief elemwiseDiv
  * @param A
  * @param B
  * @param C - out C = A ./ B
  */
 extern "C"
-void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C)
+void cuda_elemwiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1204,10 +1204,10 @@ void cuda_elemiseDiv(const GpuMat& A, const GpuMat& B, GpuMat& C)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::elemiseDiv<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseDiv<double> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	case GPU_FLOAT:
-		internal::elemiseDiv<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		internal::elemwiseDiv<float> <<<dimGrid, dimBlock>>>(A, B, C);
 		break;
 	}
 }
@@ -1236,12 +1236,12 @@ void cuda_transpose(const GpuMat& A, GpuMat& C)
 }
 
 /**
- * @brief cuda_elemiseSqrt
+ * @brief cuda_elemwiseSqrt
  * @param A
  * @param C = sqrt(A)
  */
 extern "C"
-void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C)
+void cuda_elemwiseSqrt(const GpuMat& A, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
@@ -1259,12 +1259,12 @@ void cuda_elemiseSqrt(const GpuMat& A, GpuMat& C)
 }
 
 /**
- * @brief cuda_elemiseSqr
+ * @brief cuda_elemwiseSqr
  * @param A
  * @param C =  A .* a
  */
 extern "C"
-void cuda_elemiseSqr(const GpuMat& A, GpuMat& C)
+void cuda_elemwiseSqr(const GpuMat& A, GpuMat& C)
 {
 	int x1 = A.cols / BLOCKSIZE + 1;
 	int x2 = A.rows / BLOCKSIZE + 1;
