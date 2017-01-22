@@ -27,7 +27,7 @@ public:
 	int type;
 	int rows;
 	int cols;
-	u_char* data;
+	uint8_t* data;
 
 	GpuMat();
 	GpuMat(int rows, int cols, int type);
