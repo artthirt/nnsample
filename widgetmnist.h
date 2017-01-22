@@ -21,19 +21,44 @@ public:
 
 	explicit WidgetMNIST(QWidget *parent = 0);
 	~WidgetMNIST();
-
+	/**
+	 * @brief setTestMode
+	 */
 	void setTestMode();
+	/**
+	 * @brief setTrainMode
+	 */
 	void setTrainMode();
-
+	/**
+	 * @brief mode
+	 * @return TEST or TRAIN
+	 */
 	int mode() const;
-
+	/**
+	 * @brief setMnist
+	 * set ref to reader mnist data
+	 * @param mnist
+	 */
 	void setMnist(mnist_reader* mnist);
-
+	/**
+	 * @brief index
+	 * @return index of beginning of the representation
+	 */
 	uint index() const;
-
+	/**
+	 * @brief updatePredictfromIndex
+	 * update predict values from index
+	 * @param index
+	 * @param predict - array of predicted values
+	 */
 	void updatePredictfromIndex(uint index, const QVector<uchar>& predict);
-
+	/**
+	 * @brief next
+	 */
 	void next();
+	/**
+	 * @brief toBegin
+	 */
 	void toBegin();
 
 private:

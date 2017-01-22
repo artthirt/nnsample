@@ -161,16 +161,6 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pb_pass_gpu">
-            <property name="text">
-             <string>Pass GPU</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QPushButton" name="pb_pass">
             <property name="text">
              <string>Pass</string>
@@ -184,30 +174,6 @@
            <widget class="QPushButton" name="pb_test">
             <property name="text">
              <string>Test</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pb_changemodeMnist">
-            <property name="text">
-             <string>Mode test/train</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pb_next">
-            <property name="text">
-             <string>Next</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pb_toBegin">
-            <property name="text">
-             <string>To begin</string>
             </property>
            </widget>
           </item>
@@ -249,6 +215,61 @@
            </spacer>
           </item>
           <item>
+           <widget class="QPushButton" name="pb_next">
+            <property name="text">
+             <string>Next</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_toBegin">
+            <property name="text">
+             <string>To begin</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="Line" name="line">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_copy_mats">
+            <property name="text">
+             <string>Copy Cpu Matrixs
+ to Gpu Matrixs</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_copy_mats_2">
+            <property name="text">
+             <string>Copy Gpu Matrixs
+ to Cpu Matrixs</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_init_weights">
+            <property name="text">
+             <string>Init Weights
+ and biases</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_changemodeMnist">
+            <property name="text">
+             <string>Mode test/train</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pb_save">
             <property name="text">
              <string>Save</string>
@@ -276,7 +297,7 @@
      <x>0</x>
      <y>0</y>
      <width>986</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

@@ -67,8 +67,6 @@ private slots:
 
 	void on_chb_auto_clicked(bool checked);
 
-	void on_pb_pass_clicked(bool checked);
-
 	void on_pb_test_clicked();
 
 	void on_pb_changemodeMnist_clicked(bool checked);
@@ -79,9 +77,13 @@ private slots:
 
 	void on_pb_passGPU_clicked();
 
-	void on_pb_pass_gpu_clicked(bool checked);
-
 	void on_chb_usegpu_clicked(bool checked);
+
+	void on_pb_copy_mats_clicked();
+
+	void on_pb_init_weights_clicked();
+
+	void on_pb_copy_mats_2_clicked();
 
 private:
 	Ui::MainWindow *ui;

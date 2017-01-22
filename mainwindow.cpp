@@ -145,9 +145,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(200);
-	layers2.push_back(200);
-	layers2.push_back(200);
+	layers2.push_back(500);
+	layers2.push_back(300);
+	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(10);
@@ -333,11 +333,6 @@ void MainWindow::on_chb_auto_clicked(bool checked)
 	m_runmodel->use = checked;
 }
 
-void MainWindow::on_pb_pass_clicked(bool checked)
-{
-
-}
-
 void MainWindow::on_pb_test_clicked()
 {
 	double l2, accuracy;
@@ -356,7 +351,6 @@ void MainWindow::on_pb_changemodeMnist_clicked(bool checked)
 
 void MainWindow::on_pb_pretrain_clicked(bool checked)
 {
-
 }
 
 void MainWindow::on_pb_save_clicked()
@@ -383,14 +377,22 @@ void MainWindow::on_pb_passGPU_clicked()
 #endif
 }
 
-void MainWindow::on_pb_pass_gpu_clicked(bool checked)
-{
-	m_use_gpu = checked;
-	ui->pb_pass->setChecked(checked);
-	ui->chb_usegpu->setChecked(m_use_gpu);
-}
-
 void MainWindow::on_chb_usegpu_clicked(bool checked)
 {
 	m_use_gpu = checked;
+}
+
+void MainWindow::on_pb_copy_mats_clicked()
+{
+	m_mnist_train.copyWbMat2GpuMat();
+}
+
+void MainWindow::on_pb_init_weights_clicked()
+{
+	m_mnist_train.init_weights();
+}
+
+void MainWindow::on_pb_copy_mats_2_clicked()
+{
+	m_mnist_train.copyWbGpuMat2Mat();
 }
