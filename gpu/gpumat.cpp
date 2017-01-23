@@ -261,7 +261,7 @@ std::string GpuMat::print(int _rows) const
 	return res;
 }
 
-void GpuMat::save(const std::__cxx11::string filename) const
+void GpuMat::save(const std::string filename) const
 {
 	std::string res = (*this)();
 
