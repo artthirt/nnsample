@@ -120,6 +120,15 @@ void sub(GpuMat& A, const GpuMat& B, double valA = 1., double valB = 1.);
  * @param C - out C = A * B
  */
 void matmul(const GpuMat& A, const GpuMat& B, GpuMat& C);
+
+/**
+ * @brief matmul_shared
+ * @param A
+ * @param B
+ * @param C - out C = A * B
+ */
+void matmul_shared(const GpuMat& A, const GpuMat& B, GpuMat& C);
+
 /**
  * @brief matmulT1
  * @param At - used as transposed matrix
@@ -127,6 +136,15 @@ void matmul(const GpuMat& A, const GpuMat& B, GpuMat& C);
  * @param C - out C = A' * B
  */
 void matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C);
+
+/**
+ * @brief matmulT1_shared
+ * @param At - used as transposed matrix
+ * @param B
+ * @param C - out C = A' * B
+ */
+void matmulT1_shared(const GpuMat& At, const GpuMat& B, GpuMat& C);
+
 /**
  * @brief matmulT2
  * @param A
@@ -134,6 +152,15 @@ void matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C);
  * @param C - out C = A * B'
  */
 void matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
+
+/**
+ * @brief matmulT2_shared
+ * @param A
+ * @param Bt - used as transposed matrix
+ * @param C - out C = A * B'
+ */
+void matmulT2_shared(const GpuMat& A, const GpuMat& Bt, GpuMat& C);
+
 /**
  * @brief mulval
  * @param A
@@ -232,6 +259,12 @@ void elemwiseSqr(const GpuMat& A, GpuMat& C);
  * @param C - out C[i] = val * sum(A[i, j]) (j = [1, cols])
  */
 void sumRows(const GpuMat& A, GpuMat& C, double val = 1.);
+/**
+ * @brief sumRows
+ * @param A
+ * @param C - out C[i] = val * sum(A[i, j]) (j = [1, cols])
+ */
+void sumRows_shared(const GpuMat& A, GpuMat& C, double val = 1.);
 /**
  * @brief transpose
  * @param A

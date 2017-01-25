@@ -676,6 +676,250 @@ __global__ void adamgrad(Mtx A, const Mtx mA, const Mtx vA, T alpha, T sb1, T sb
 	}
 }
 
+///*******************
+
+struct DMtx{
+	int stride;
+	u_char *data;
+};
+
+template< typename T >
+inline __device__ DMtx getSubMatrix(Mtx A, int row, int col)
+{
+	DMtx res;
+
+	T *d = (T*)A.data;
+	res.stride = A.cols;
+	res.data = (u_char*)&d[A.cols * BLOCKSIZE * row + col * BLOCKSIZE];
+	return res;
+}
+
+template< typename T >
+inline __device__ T getEl(DMtx A, int row, int col)
+{
+//	T *d = (T*)A.data;
+	return ((T*)A.data)[A.stride * row + col];
+}
+
+template< typename T >
+inline __device__ void setEl(DMtx A, int row, int col, T val)
+{
+//	T *d = (T*)A.data;
+	((T*)A.data)[A.stride * row + col] = val;
+}
+
+
+/**
+ * @brief matmul_shared
+ * @param A
+ * @param B
+ * @param C - out C = A * B
+ */
+template< class T >
+__global__ void matmul_shared(Mtx A, Mtx B, Mtx C)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	int _row = threadIdx.y;
+	int _col = threadIdx.x;
+
+	int blockRow = blockIdx.y;
+	int blockCol = blockIdx.x;
+
+	DMtx CSub = getSubMatrix<T>(C, blockRow, blockCol);
+
+	float sC = 0;
+
+	for(int m = 0; m < A.cols / BLOCKSIZE + 1; ++m){
+		DMtx ASub = getSubMatrix<T>(A, blockRow, m);
+		DMtx BSub = getSubMatrix<T>(B, m, blockCol);
+
+		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
+		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
+
+		if(row < A.rows && m * BLOCKSIZE + _col < A.cols)
+			As[_row][_col] = getEl<T>(ASub, _row, _col);
+//		else
+//			As[_row][_col] = 0;
+		if(m * BLOCKSIZE + _row < B.rows && col < B.cols)
+			Bs[_row][_col] = getEl<T>(BSub, _row, _col);
+//		else
+//			Bs[_row][_col] = 0;
+
+		__syncthreads();
+
+		for(int e = 0; e < BLOCKSIZE; ++e){
+			if(m * BLOCKSIZE + e < A.cols)
+				sC += As[_row][e] * Bs[e][_col];
+		}
+		__syncthreads();
+	}
+
+	if(row < C.rows && col < C.cols){
+		setEl<T>(CSub, _row, _col, sC);
+	}
+}
+
+/**
+ * @brief matmulT1_shared
+ * @param A
+ * @param B
+ * @param C - out C = A * B
+ */
+template< class T >
+__global__ void matmulT1_shared(Mtx At, Mtx B, Mtx C)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	int _row = threadIdx.y;
+	int _col = threadIdx.x;
+
+	int blockRow = blockIdx.y;
+	int blockCol = blockIdx.x;
+
+	DMtx CSub = getSubMatrix<T>(C, blockRow, blockCol);
+
+	float sC = 0;
+
+	for(int m = 0; m < At.rows / BLOCKSIZE + 1; ++m){
+		DMtx ASub = getSubMatrix<T>(At, m, blockRow);
+		DMtx BSub = getSubMatrix<T>(B, m, blockCol);
+
+		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
+		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
+
+		if(m * BLOCKSIZE + _row < At.rows && blockRow * BLOCKSIZE + _col < At.cols)
+			As[_row][_col] = getEl<T>(ASub, _row, _col);
+//		else
+//			As[_row][_col] = 0;
+		if(m * BLOCKSIZE + _row < B.rows && blockCol * BLOCKSIZE + _col < B.cols)
+			Bs[_row][_col] = getEl<T>(BSub, _row, _col);
+//		else
+//			Bs[_row][_col] = 0;
+
+		__syncthreads();
+
+		for(int e = 0; e < BLOCKSIZE; ++e){
+			if(m * BLOCKSIZE + e < At.rows)
+				sC += As[e][_row] * Bs[e][_col];
+		}
+		__syncthreads();
+	}
+
+	if(row < C.rows && col < C.cols){
+		setEl<T>(CSub, _row, _col, sC);
+	}
+}
+
+/**
+ * @brief matmulT2_shared
+ * @param A
+ * @param B
+ * @param C - out C = A * B
+ */
+template< class T >
+__global__ void matmulT2_shared(Mtx A, Mtx Bt, Mtx C)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	int _row = threadIdx.y;
+	int _col = threadIdx.x;
+
+	int blockRow = blockIdx.y;
+	int blockCol = blockIdx.x;
+
+	DMtx CSub = getSubMatrix<T>(C, blockRow, blockCol);
+
+	float sC = 0;
+
+	for(int m = 0; m < A.cols / BLOCKSIZE + 1; ++m){
+		DMtx ASub = getSubMatrix<T>(A, blockRow, m);
+		DMtx BSub = getSubMatrix<T>(Bt, blockCol, m);
+
+		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
+		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
+
+		if(row < A.rows && m * BLOCKSIZE + _col < A.cols)
+			As[_row][_col] = getEl<T>(ASub, _row, _col);
+//		else
+//			As[_row][_col] = 0;
+		if(blockCol * BLOCKSIZE + _row < Bt.rows && m * BLOCKSIZE + _col < Bt.cols)
+			Bs[_row][_col] = getEl<T>(BSub, _row, _col);
+//		else
+//			Bs[_row][_col] = 0;
+
+		__syncthreads();
+
+		for(int e = 0; e < BLOCKSIZE; ++e){
+			if(m * BLOCKSIZE + e < A.cols)
+				sC += As[_row][e] * Bs[_col][e];
+		}
+		__syncthreads();
+	}
+
+	if(row < C.rows && col < C.cols){
+		setEl<T>(CSub, _row, _col, sC);
+	}
+}
+
+/**
+ * @brief sum_rows_shared
+ * @param A
+ * @param C = exp(A)
+ * @param rows = sum(C)
+ */
+template< class T >
+__global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	int _row = threadIdx.y;
+	int _col = threadIdx.x;
+
+	int blockRow = blockIdx.y;
+	int blockCol = blockIdx.x;
+
+	DMtx CSub = getSubMatrix<T>(cols, blockRow, blockCol);
+
+	float sC = 0;
+
+	for(int m = 0; m < C.rows / BLOCKSIZE + 1; ++m){
+		DMtx ASub = getSubMatrix<T>(C, m, blockRow);
+//		DMtx BSub = getSubMatrix<T>(B, m, blockCol);
+
+		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
+		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
+
+		if(m * BLOCKSIZE + _row < C.rows && blockRow * BLOCKSIZE + _col < C.cols)
+			As[_row][_col] = getEl<T>(ASub, _row, _col);
+//		else
+//			As[_row][_col] = 0;
+
+		__syncthreads();
+
+		for(int e = 0; e < BLOCKSIZE; ++e){
+			if(m * BLOCKSIZE + e < C.rows)
+				sC += As[e][_row];
+		}
+		__syncthreads();
+	}
+
+//	if(row < C.rows && col < C.cols){
+//		for(int i = 0; i < B.rows; i++){
+//			sC += DA[row * A.cols + i] * DB[i * B.cols + col];
+//		}
+		//DC[row * B.cols + col] = sC;
+//		setEl<T>(CSub, _row, _col, sC);
+//	}
+	if(row < C.rows && col < C.cols){
+		setEl<T>(CSub, _col, _row, sC);
+	}
+}
+
 }
 
 //////// end namespace /////////////////
@@ -854,6 +1098,30 @@ void cuda_matmul(const GpuMat& A, const GpuMat& B, GpuMat& C)
 }
 
 /**
+ * @brief matmul_shared
+ * @param A
+ * @param B
+ * @param C - out C = A * B
+ */
+extern "C"
+void cuda_matmul_shared(const GpuMat& A, const GpuMat& B, GpuMat& C)
+{
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::matmul_shared<double> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::matmul_shared<float> <<<dimGrid, dimBlock>>>(A, B, C);
+		break;
+	}
+}
+
+/**
  * @brief matmulT1
  * @param At - used as transposed matrix
  * @param B
@@ -881,6 +1149,33 @@ void cuda_matmulT1(const GpuMat& At, const GpuMat& B, GpuMat& C)
 }
 
 /**
+ * @brief matmulT1_shared
+ * @param At - used as transposed matrix
+ * @param B
+ * @param C - out C = A' * B
+ */
+extern "C"
+void cuda_matmulT1_shared(const GpuMat& At, const GpuMat& B, GpuMat& C)
+{
+	//	int r = At.cols;
+	//	int c = B.cols;
+
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (At.type) {
+	case GPU_DOUBLE:
+		internal::matmulT1_shared<double> <<<dimGrid, dimBlock>>>(At, B, C);
+		break;
+	case GPU_FLOAT:
+		internal::matmulT1_shared<float> <<<dimGrid, dimBlock>>>(At, B, C);
+		break;
+	}
+}
+
+/**
  * @brief matmulT2
  * @param A
  * @param Bt - used as transposed matrix
@@ -900,6 +1195,30 @@ void cuda_matmulT2(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
 		break;
 	case GPU_FLOAT:
 		internal::matmulT2<float> <<<dimGrid, dimBlock>>>(A, Bt, C);
+		break;
+	}
+}
+
+/**
+ * @brief matmulT2_shared
+ * @param A
+ * @param Bt - used as transposed matrix
+ * @param C - out C = A * B'
+ */
+extern "C"
+void cuda_matmulT2_shared(const GpuMat& A, const GpuMat& Bt, GpuMat& C)
+{
+	int x1 = C.cols / BLOCKSIZE + 1;
+	int x2 = C.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+		internal::matmulT2_shared<double> <<<dimGrid, dimBlock>>>(A, Bt, C);
+		break;
+	case GPU_FLOAT:
+		internal::matmulT2_shared<float> <<<dimGrid, dimBlock>>>(A, Bt, C);
 		break;
 	}
 }
@@ -1300,6 +1619,27 @@ void cuda_sumrows(const GpuMat& A, GpuMat& sums, double val)
 }
 
 /**
+ * @brief cuda_sumrows_shared
+ * @param A
+ * @param C - out C[i] = sum(A[i, j])(j = [1..cols])
+ */
+extern "C"
+void cuda_sumrows_shared(const GpuMat& A, GpuMat& sums, double val)
+{
+	int x1 = A.rows / BLOCKSIZE + 1;
+//	int x2 = A.rows / BLOCKSIZE + 1;
+
+	switch (A.type) {
+	case GPU_DOUBLE:
+			internal::sum_rows_shared<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, BLOCKSIZE)>>>(A, sums, (double)val);
+		break;
+	case GPU_FLOAT:
+			internal::sum_rows_shared<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, BLOCKSIZE)>>>(A, sums, (float)val);
+		break;
+	}
+}
+
+/**
  * @brief cuda_reLu
  * @param A
  * @param C = reLu(A)
@@ -1362,41 +1702,24 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 	switch (A.type) {
 	case GPU_DOUBLE:
 		internal::_exp<double> <<<dimGrid, dimBlock>>>(A, C);
+		if(axis == 0){
+			internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+			internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
+		}else{
+			internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+			internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
+		}
 		break;
 	case GPU_FLOAT:
 		internal::_exp<float> <<<dimGrid, dimBlock>>>(A, C);
+		if(axis == 0){
+			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+			internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
+		}else{
+			internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+			internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
+		}
 		break;
-	}
-
-	switch (axis) {
-		case 0:
-			{
-				switch (A.type) {
-				case GPU_DOUBLE:
-						internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
-						internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				case GPU_FLOAT:
-						internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
-						internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				}
-			}
-			break;
-		case 1:
-			{
-				switch (A.type) {
-				case GPU_DOUBLE:
-						internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
-						internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				case GPU_FLOAT:
-						internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
-						internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
-					break;
-				}
-			}
-			break;
 	}
 }
 
