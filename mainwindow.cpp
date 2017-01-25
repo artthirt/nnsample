@@ -146,10 +146,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	std::vector<int> layers2;
 	layers2.push_back(400);
-	layers2.push_back(260);
-	layers2.push_back(140);
-	layers2.push_back(120);
-	layers2.push_back(110);
+	layers2.push_back(200);
+	layers2.push_back(100);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -200,7 +198,7 @@ void MainWindow::onTimeoutMnist()
 	if(ui->pb_pass->isChecked()){
 #ifdef _USE_GPU
 		if(m_use_gpu){
-			m_mnist_train.pass_batch_gpu(2000);
+			m_mnist_train.pass_batch_gpu(1200);
 		}else{
 			m_mnist_train.pass_batch(100);
 		}
@@ -219,7 +217,7 @@ void MainWindow::onTimeoutMnist()
 void MainWindow::onTimeoutPretrain()
 {
 	if(ui->pb_pretrain->isChecked()){
-		int batch = m_use_gpu? 2000 : 500;
+		int batch = m_use_gpu? 500 : 500;
 		double res = m_mnist_train.pass_batch_autoencoder(batch, m_use_gpu);
 		ui->lb_out->setText(QString("l2_norm = %1").arg(res));
 	}

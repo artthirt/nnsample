@@ -9,7 +9,7 @@ using namespace ct;
 mnist_train::mnist_train()
 {
 	m_mnist = 0;
-	m_lambda = 0.01f;
+	m_lambda = 0.00001f;
 	m_iteration = 0;
 	m_AdamOptimizer.setAlpha(0.01f);
 	m_AdamOptimizer.setBetha2(0.999f);
@@ -646,7 +646,7 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < D.size()){
-			dropout(m_W[i].rows, m_W[i].cols, 0.98f, D[i]);
+			dropout(m_W[i].rows, m_W[i].cols, 0.9f, D[i]);
 			Wi = elemwiseMult(m_W[i], D[i]);
 			z[i] = a[i] * Wi;
 		}else{
@@ -833,7 +833,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < m_dropout_count){
 			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.92f, d);
+			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.95f, d);
 			gpumat::convert_to_gpu(d, m_Dropout[i]);
 //			gpumat::transpose(m_Dropout[i], m_DropoutT[i]);
 			m_DropoutT[i] = m_Dropout[i];
@@ -894,6 +894,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		gpumat::matmulT1(g_a[i], g_d, g_dW[i]);
 		//matmulT1(a[i], d, dW[i]);
 		gpumat::mulval(g_dW[i], 1./m);
+		//gpumat::add(g_dW[i], m_gW[i], 1., m_lambda/m);
 		//dW[i] *= 1./m;
 		//gpumat::add(g_dW[i], m_gW[i], m_lambda/m, 1.);
 		//PRINT_GMAT10(g_dW[i]);
