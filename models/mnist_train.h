@@ -178,7 +178,7 @@ private:
 	std::vector< gpumat::GpuMat > g_sz, g_tmp;
 	std::vector< gpumat::GpuMat > m_gW;
 	std::vector< gpumat::GpuMat > m_Dropout;
-	std::vector< gpumat::GpuMat > m_DropoutT;
+//	std::vector< gpumat::GpuMat > m_DropoutT;
 	std::vector< gpumat::GpuMat > m_gb;
 	std::vector< gpumat::GpuMat > g_z, g_a;
 	std::vector< gpumat::GpuMat > g_dW, g_dB;
