@@ -97,6 +97,9 @@ bool AdamOptimizer::init(const std::vector<int> &layers, int samples, int type)
 	m_vW.resize(layers.size());
 	m_vb.resize(layers.size());
 
+	sW.resize(layers.size());
+	sB.resize(layers.size());
+
 	for(size_t i = 0; i < layers.size(); i++){
 		output = layers[i];
 
@@ -135,11 +138,11 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 		//m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
 		//m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
 
-		gpumat::elemwiseSqr(gradW[i], sW);
-		gpumat::elemwiseSqr(gradB[i], sB);
+		gpumat::elemwiseSqr(gradW[i], sW[i]);
+		gpumat::elemwiseSqr(gradB[i], sB[i]);
 
-		gpumat::add(m_vW[i], sW, m_betha2, (1. - m_betha2));
-		gpumat::add(m_vb[i], sB, m_betha2, (1. - m_betha2));
+		gpumat::add(m_vW[i], sW[i], m_betha2, (1. - m_betha2));
+		gpumat::add(m_vb[i], sB[i], m_betha2, (1. - m_betha2));
 		//m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
 		//m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
 

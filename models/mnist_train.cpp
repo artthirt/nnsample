@@ -601,6 +601,8 @@ void mnist_train::init_weights(int seed)
 	if(g_z.size() != m_layers.size()){
 		g_z.resize(m_layers.size());
 		g_a.resize(m_layers.size() + 1);
+		g_d.resize(m_layers.size() + 1);
+		g_sz.resize(m_layers.size());
 	}
 #endif
 }
@@ -871,7 +873,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 	float m = X.rows;
 
-	gpumat::sub(g_a.back(), y, g_d);
+	gpumat::sub(g_a.back(), y, g_d.back());
 	//Matf d = a.back() - y;
 
 	/// backward
@@ -881,17 +883,17 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //		sz = 1. - sz;
 //		Matf di, sz;
 		if(i > 0){
-			gpumat::deriv_reLu(g_a[i], g_sz);
+			gpumat::deriv_reLu(g_a[i], g_sz[i]);
 			//sz = derivRelu(a[i]);
 
 			//Matf di = d * m_W[i].t();
-			gpumat::matmulT2(g_d, m_gW[i], g_di);
+			gpumat::matmulT2(g_d[i + 1], m_gW[i], g_d[i]);
 			//matmulT2(d, m_W[i], di);
-			gpumat::elemwiseMult(g_di, g_sz, g_di);
+			gpumat::elemwiseMult(g_d[i], g_sz[i]);
 			//di = elemwiseMult(di, sz);
 		}
 		//dW[i] = a[i].t() * d;
-		gpumat::matmulT1(g_a[i], g_d, g_dW[i]);
+		gpumat::matmulT1(g_a[i], g_d[i + 1], g_dW[i]);
 		//matmulT1(a[i], d, dW[i]);
 		gpumat::mulval(g_dW[i], 1./m);
 		//gpumat::add(g_dW[i], m_gW[i], 1., m_lambda/m);
@@ -914,13 +916,15 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 //			dropout_transpose(dW[i], Dt1);
 //		}
 
-		gpumat::sumRows(g_d, g_dB[i], (1./m));
+		g_dB[i].swap_dims();
+
+		gpumat::sumRows(g_d[i + 1], g_dB[i], (1./m));
 
 		g_dB[i].swap_dims();
 		//dB[i] = (sumRows(d) * (1.f/m)).t();
 
-		if(i > 0)
-			g_d = g_di;
+//		if(i > 0)
+//			g_d = g_di;
 	}
 
 	m_gpu_adam.pass(g_dW, g_dB, m_gW, m_gb);

@@ -174,8 +174,8 @@ private:
 	gpumat::GpuMat m_gX;
 	gpumat::GpuMat m_gy;
 	gpumat::GpuMat partZ;
-	gpumat::GpuMat g_d;
-	gpumat::GpuMat g_di, g_sz, g_tmp;
+	std::vector< gpumat::GpuMat > g_d;
+	std::vector< gpumat::GpuMat > g_sz, g_tmp;
 	std::vector< gpumat::GpuMat > m_gW;
 	std::vector< gpumat::GpuMat > m_Dropout;
 	std::vector< gpumat::GpuMat > m_DropoutT;

@@ -68,7 +68,7 @@ private:
 	double m_betha2;
 	double m_alpha;
 
-	gpumat::GpuMat sB, sW;
+	std::vector< gpumat::GpuMat > sB, sW;
 
 	std::vector< gpumat::GpuMat > m_mW;
 	std::vector< gpumat::GpuMat > m_mb;

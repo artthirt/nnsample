@@ -246,6 +246,7 @@ public:
 		}
 		dW[0] += dW[1].t();
 		dW[1] = dW[0].t();
+		db[1] = Mat_<T>::zeros(db[1].size());
 
 		adam.pass(dW, db, W, b, 2);
 	}
