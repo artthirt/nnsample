@@ -1,13 +1,14 @@
-# nnsample
-for test backprop
-
-Also test model of NN for MNIST data
-Can used the realization on CPU or GPU
-
-for MNIST need dataset with MNIST data. Structure of directory:
-./executable file
-./data/
-  t10k-images.idx3-ubyte
-  t10k-labels.idx1-ubyte
-  train-images.idx3-ubyte
-  train-labels.idx1-ubyte
+# nnsample<br>
+for test backprop<br>
+<br>
+Also test model of NN for MNIST data<br>
+Can used the realization on CPU or GPU<br>
+<br>
+For MNIST need dataset with MNIST data. Structure of directory:<br>
+<i>./executable file<br>
+./data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;t10k-images.idx3-ubyte<br>
+&nbsp;&nbsp;&nbsp;&nbsp;t10k-labels.idx1-ubyte<br>
+&nbsp;&nbsp;&nbsp;&nbsp;train-images.idx3-ubyte<br>
+&nbsp;&nbsp;&nbsp;&nbsp;train-labels.idx1-ubyte<br>
+</i>
