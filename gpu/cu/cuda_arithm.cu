@@ -625,7 +625,7 @@ __global__ void div_col(Mtx C, Mtx cols)
 	T* dZ = (T*)cols.data;
 
 	if(row < C.rows && col < C.cols){
-		dC[row * C.cols + col] = dC[row * C.cols + col] / dZ[col];
+		dC[row * C.cols + col] = abs(dZ[col]) > 1e-12? dC[row * C.cols + col] / dZ[col] : 0;
 	}
 }
 
@@ -644,10 +644,7 @@ __global__ void div_row(Mtx C, Mtx rows)
 	T* dZ = (T*)rows.data;
 
 	if(row < C.rows && col < C.cols){
-		if(dZ[row] != 0)
-			dC[row * C.cols + col] = dC[row * C.cols + col] / dZ[row];
-		else
-			dC[row * C.cols + col] = 0;
+		dC[row * C.cols + col] = abs(dZ[row]) > 1e-12? dC[row * C.cols + col] / dZ[row] : 0;
 	}
 }
 
