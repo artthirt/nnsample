@@ -133,12 +133,12 @@ void GpuMat::resize(int rows, int cols, int type)
 {
 	int sz = rows * cols * SIZEOF_TYPE(type);
 
+	if(sz == size())
+		return;
+
 	this->rows = rows;
 	this->cols = cols;
 	this->type = type;
-
-	if(sz == size())
-		return;
 
 	release();
 
@@ -150,12 +150,12 @@ void GpuMat::resize(const GpuMat &mat)
 {
 	int sz = mat.size();
 
+	if(sz == size())
+		return;
+
 	this->rows = mat.rows;
 	this->cols = mat.cols;
 	this->type = mat.type;
-
-	if(sz == size())
-		return;
 
 	release();
 

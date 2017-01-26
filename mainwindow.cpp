@@ -199,7 +199,7 @@ void MainWindow::onTimeoutMnist()
 	if(ui->pb_pass->isChecked()){
 #ifdef _USE_GPU
 		if(m_use_gpu){
-			m_mnist_train.pass_batch_gpu(1500);
+			m_mnist_train.pass_batch_gpu(300);
 		}else{
 			m_mnist_train.pass_batch(100);
 		}
