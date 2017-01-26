@@ -563,6 +563,163 @@ __global__ void _exp(Mtx A, Mtx C)
 	}
 }
 
+
+/**
+ * @brief _exp
+ * @param A = exp(A)
+ */
+template< class T >
+__global__ void _exp(Mtx A)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = exp(dA[row * A.cols + col]);
+		dA[row * A.cols + col] = val;
+	}
+}
+
+/**
+ * @brief max_rows
+ * @param A
+ * @param Max = max(A[..., j]
+ */
+template< class T >
+__global__ void max_rows(Mtx A, Mtx Max)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dmax = (T*)Max.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = dA[0 * A.cols + col];
+		for(int i = 1; i < A.rows; i++){
+			val = max(val, dA[i * A.cols + col]);
+		}
+		dmax[col] = val;
+	}
+}
+
+/**
+ * @brief max_cols
+ * @param A
+ * @param Max = max(A[i, ...]
+ */
+template< class T >
+__global__ void max_cols(Mtx A, Mtx Max)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dmax = (T*)Max.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = dA[row * A.cols + 0];
+		for(int i = 1; i < A.cols; i++){
+			val = max(val, dA[row * A.cols + i]);
+		}
+		dmax[row] = val;
+	}
+}
+
+/**
+ * @brief exp_rows
+ * @param A
+ * @param Max
+ * @param C = exp(A[i, j] - Max[j])
+ */
+template< class T >
+__global__ void exp_rows(Mtx A, Mtx Max, Mtx C)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dmax = (T*)Max.data;
+	T* dC = (T*)C.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = dA[row * A.cols + col] - dmax[col];
+		val = exp(val);
+		dC[row * A.cols + col] = val;
+	}
+}
+
+/**
+ * @brief exp_cols
+ * @param A
+ * @param Max
+ * @param C = exp(A[i, j] - Max[i])
+ */
+template< class T >
+__global__ void exp_cols(Mtx A, Mtx Max, Mtx C)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dmax = (T*)Max.data;
+	T* dC = (T*)C.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = dA[row * A.cols + col] - dmax[row];
+		val = exp(val);
+		dC[row * A.cols + col] = val;
+	}
+
+}
+
+////
+
+/**
+ * @brief sub_ln_rows
+ * @param A = ln(A[i, j]) - ln(Max[j])
+ * @param Max
+ */
+template< class T >
+__global__ void sub_ln_rows(Mtx A, Mtx Max)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dmax = (T*)Max.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = log(dA[row * A.cols + col]) - log(dmax[col]);
+		dA[row * A.cols + col] = val;
+	}
+}
+
+/**
+ * @brief sub_ln_cols
+ * @param A = ln(A[i, j]) - ln(Max[i])
+ * @param Max
+ */
+template< class T >
+__global__ void sub_ln_cols(Mtx A, Mtx Max)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	T* dA = (T*)A.data;
+	T* dmax = (T*)Max.data;
+
+	if(row < A.rows && col < A.cols){
+		T val = log(dA[row * A.cols + col]) - log(dmax[row]);
+		dA[row * A.cols + col] = val;
+	}
+
+}
+
+////
+
 /**
  * @brief sum_col
  * @param A
@@ -892,7 +1049,6 @@ __global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
 //		DMtx BSub = getSubMatrix<T>(B, m, blockCol);
 
 		__shared__ T As[BLOCKSIZE][BLOCKSIZE];
-		__shared__ T Bs[BLOCKSIZE][BLOCKSIZE];
 
 		if(m * BLOCKSIZE + _row < C.rows && blockRow * BLOCKSIZE + _col < C.cols)
 			As[_row][_col] = getEl<T>(ASub, _row, _col);
@@ -1690,6 +1846,8 @@ void cuda_derivReLu(const GpuMat& A, GpuMat& C)
  * @param A
  * @param axis -> 0 - in row, 1 - in col
  * @param C = softmax(A)
+ * axis = 0: exp(x[i, j]) / S(exp(x[k, j]) = exp(  ln(exp(x[i, j] - max(x[..., j])) - ln(S(exp(x[k, j] - max(x[..., j]))))  )
+ * axis = 1: exp(x[i, j]) / S(exp(x[i, k]) = exp(  ln(exp(x[i, j] - max(x[i, ...])) - ln(S(exp(x[i, k] - max(x[i, ...]))))  )
  */
 extern "C"
 void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
@@ -1701,24 +1859,51 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ)
 
 	switch (A.type) {
 	case GPU_DOUBLE:
-		internal::_exp<double> <<<dimGrid, dimBlock>>>(A, C);
-		if(axis == 0){
-			internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
-			internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
-		}else{
-			internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
-			internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
-		}
+			if(axis == 0){
+				internal::max_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, partZ);
+				internal::exp_rows<double> <<<dimGrid, dimBlock>>>(A, partZ, C);
+				internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+				internal::sub_ln_rows<double> <<<dimGrid, dimBlock>>>(C, partZ);
+				internal::_exp<double> <<<dimGrid, dimBlock>>>(C);
+			}else{
+				internal::max_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, partZ);
+				internal::exp_cols<double> <<<dimGrid, dimBlock>>>(A, partZ, C);
+				internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+				internal::sub_ln_cols<double> <<<dimGrid, dimBlock>>>(C, partZ);
+				internal::_exp<double> <<<dimGrid, dimBlock>>>(C);
+			}
+
+//		internal::_exp<double> <<<dimGrid, dimBlock>>>(A, C);
+//		if(axis == 0){
+//			internal::sum_rows<double> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+//			internal::div_col<double> <<<dimGrid, dimBlock>>>(C, partZ);
+//		}else{
+//			internal::sum_cols<double> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+//			internal::div_row<double> <<<dimGrid, dimBlock>>>(C, partZ);
+//		}
 		break;
 	case GPU_FLOAT:
-		internal::_exp<float> <<<dimGrid, dimBlock>>>(A, C);
-		if(axis == 0){
-			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
-			internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
-		}else{
-			internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
-			internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
-		}
+			if(axis == 0){
+				internal::max_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(A, partZ);
+				internal::exp_rows<float> <<<dimGrid, dimBlock>>>(A, partZ, C);
+				internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+				internal::sub_ln_rows<float> <<<dimGrid, dimBlock>>>(C, partZ);
+				internal::_exp<float> <<<dimGrid, dimBlock>>>(C);
+			}else{
+				internal::max_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(A, partZ);
+				internal::exp_cols<float> <<<dimGrid, dimBlock>>>(A, partZ, C);
+				internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+				internal::sub_ln_cols<float> <<<dimGrid, dimBlock>>>(C, partZ);
+				internal::_exp<float> <<<dimGrid, dimBlock>>>(C);
+			}
+//		internal::_exp<float> <<<dimGrid, dimBlock>>>(A, C);
+//		if(axis == 0){
+//			internal::sum_rows<float> <<<dim3(x1, 1), dim3(BLOCKSIZE, 1)>>>(C, partZ);
+//			internal::div_col<float> <<<dimGrid, dimBlock>>>(C, partZ);
+//		}else{
+//			internal::sum_cols<float> <<<dim3(1, x2), dim3(1, BLOCKSIZE)>>>(C, partZ);
+//			internal::div_row<float> <<<dimGrid, dimBlock>>>(C, partZ);
+//		}
 		break;
 	}
 }
