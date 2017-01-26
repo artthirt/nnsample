@@ -832,7 +832,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		m_DropoutT.resize(m_dropout_count);
 	}
 
-	int max_layers = std::min((int)(m_layers.size() - 2), m_dropout_count);
+	int max_layers = m_dropout_count;//std::min((int)(m_layers.size() - 2), m_dropout_count);
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < max_layers){

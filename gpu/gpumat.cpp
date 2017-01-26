@@ -133,14 +133,14 @@ void GpuMat::resize(int rows, int cols, int type)
 {
 	int sz = rows * cols * SIZEOF_TYPE(type);
 
+	this->rows = rows;
+	this->cols = cols;
+	this->type = type;
+
 	if(sz == size())
 		return;
 
 	release();
-
-	this->rows = rows;
-	this->cols = cols;
-	this->type = type;
 
 	cudaError_t err = cudaMalloc(&data, size());
 	assert(err == cudaSuccess);
@@ -148,11 +148,16 @@ void GpuMat::resize(int rows, int cols, int type)
 
 void GpuMat::resize(const GpuMat &mat)
 {
-	release();
+	int sz = mat.size();
 
 	this->rows = mat.rows;
 	this->cols = mat.cols;
 	this->type = mat.type;
+
+	if(sz == size())
+		return;
+
+	release();
 
 	cudaError_t err = cudaMalloc(&data, size());
 	assert(err == cudaSuccess);
