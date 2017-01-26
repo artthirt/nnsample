@@ -157,9 +157,8 @@ void GpuMat::resize(const GpuMat &mat)
 {
 	if(mat.empty())
 		return;
-	int sz = rows * cols * SIZEOF_TYPE(type);
 
-	if(sz == mat.size()){
+	if(size() == mat.size()){
 		this->rows = mat.rows;
 		this->cols = mat.cols;
 		this->type = mat.type;
