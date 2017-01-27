@@ -4,10 +4,66 @@
 
 #include "shared_memory.h"
 #include "custom_types.h"
+#include "nn.h"
 
 typedef std::vector< unsigned char > vchar;
 
 #define CHECK_VALUE(val, str) if(!(val)) std::cout << str << std::endl
+
+#define CALC_MAT(_void_, result, caption, count){	\
+	double tcc = tick();							\
+	for(int i = 0; i < count; ++i){					\
+		_void_;										\
+	}												\
+	tcc = tick() - tcc;								\
+	tcc /= count;									\
+	std::string s = (std::string)result;			\
+	qDebug("%s time(ms): %f", caption, tcc);		\
+	qDebug("%s\n", s.c_str());						\
+}
+//	std::cout << caption << " time(ms): " << tcc;	\
+//	std::cout << endl << s.c_str();					\
+//	std::cout << endl;								\
+}
+
+#define PRINT_MAT(m, caption) {					\
+	std::string s = m;							\
+	qDebug("%s:\n%s\n", caption, s.c_str());	\
+}
+
+#ifdef _MSC_VER
+
+#include <Windows.h>
+
+LARGE_INTEGER freq_pc()
+{
+	static LARGE_INTEGER pc = {0};
+	if(pc.QuadPart)
+		return pc;
+	QueryPerformanceFrequency(&pc);
+	return pc;
+}
+
+double tick()
+{
+	LARGE_INTEGER pc, freq;
+	QueryPerformanceCounter(&pc);
+	freq = freq_pc();
+	double res = (double)pc.QuadPart / freq.QuadPart;
+	return res * 1e6;
+}
+
+#else
+
+double tick()
+{
+	struct timespec res;
+	clock_gettime(CLOCK_MONOTONIC, &res);
+	double dres = res.tv_nsec + res.tv_sec * 1e9;
+	return (double)dres / 1000.;
+}
+
+#endif
 
 void test_shared()
 {
@@ -107,6 +163,63 @@ void test_mat()
 	sm = ct::softmax(m1, 1);
 	s1 = sm;
 	qDebug("SOFTMAX:\n%s\n", s1.c_str());
+
+	float dW1[] = {0.1, 0.2, 0.8,
+				 0.4, 0.5, 0.9,
+				 0.6, 0.3, 0.7};
+	float dW2[] = {0.7, 0.5, 0.8,
+				 0.3, 0.4, 0.2,
+				 0.4, 0.8, 0.1};
+
+	int ww = 20, hh = 14;
+	ct::Matf im = ct::Matf::zeros(hh, ww), ims, W1(3, 3, dW1), W2(3, 3, dW2);
+
+	im.randn(0, 10);
+//	for(int i = 0; i < im.rows; ++i){
+//		for(int j = 0; j < im.cols; ++j){
+//			im.at(i, j) = i + j;
+//		}
+//	}
+	ims = ct::Matf(1, im.total(), im.ptr());
+
+	std::vector< ct::Matf > vW, vcn;
+	vW.push_back(W1);
+	vW.push_back(W2);
+
+	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
+	ct::Size sz;
+
+	CALC_MAT(sz = nn::conv2DW3x3(ims, ww, hh, 1, vW, vcn), im, "IMAGE", 10);
+
+//	PRINT_MAT(im, "IMAGE");
+
+	qDebug("CONV:\n");
+
+#define PRINT_IMAGE(mat, width, height)	{							\
+	float* dcn = mat.ptr();										\
+	for(int i = 0; i < height; ++i){								\
+		QString s;													\
+		for(int j = 0; j < width; ++j){							\
+			s += QString::number(dcn[i * width + j]) + "\t";		\
+		}															\
+		qDebug("%s", s.toStdString().c_str());						\
+	}																\
+	qDebug("");														\
+}
+
+	qDebug("LAYERS");
+	PRINT_IMAGE(vcn[0], sz.width, sz.height);
+	PRINT_IMAGE(vcn[1], sz.width, sz.height);
+
+	ct::Matf pool;
+	ct::Mati indexes;
+
+	nn::max_pool(vcn, pool, indexes);
+
+	qDebug("MAXPOOL");
+	PRINT_IMAGE(pool, sz.width, sz.height);
+
+	qDebug("END TEST");
 }
 
 int main(int argc, char *argv[])

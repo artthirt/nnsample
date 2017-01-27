@@ -1887,6 +1887,7 @@ bool operator==(const Mat_<T>& A, const Mat_<T>& B)
 
 //////////////////////////////////////////
 
+typedef Mat_<int> Mati;
 typedef Mat_<float> Matf;
 typedef Mat_<double> Matd;
 
