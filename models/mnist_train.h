@@ -168,6 +168,7 @@ private:
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 
 	void getX(ct::Matf& X, int batch);
+	void randX(ct::Matf& X);
 
 #ifdef _USE_GPU
 	int m_dropout_count;

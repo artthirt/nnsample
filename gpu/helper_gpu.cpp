@@ -215,7 +215,7 @@ void SimpleAutoencoder::pass(const GpuMat &X)
 //		PRINT_GMAT10(a[i]);
 //		PRINT_GMAT10(W[i]);
 //		PRINT_GMAT10(b[i]);
-		matmul(a[i], W[i], z[i]);
+		matmul_shared(a[i], W[i], z[i]);
 //		W[i].save("W.txt");
 //		a[i].save("a.txt");
 //		z[i].save("z.txt");
@@ -240,18 +240,18 @@ void SimpleAutoencoder::pass(const GpuMat &X)
 	for(int i = 1; i > -1; --i){
 		if(i > 0){
 			(*deriv)(a[i], sz);
-			matmulT2(d, W[i], di);
+			matmulT2_shared(d, W[i], di);
 //			PRINT_GMAT10(di);
 			elemwiseMult(di, sz);
 //			PRINT_GMAT10(di);
 		}
 //		a[i].save("ai.txt");
 //		d.save("d.txt");
-		matmulT1(a[i], d, dW[i]);
+		matmulT1_shared(a[i], d, dW[i]);
 		mulval(dW[i], 1./m);
 //		dW[i].save("dWi.txt");
 //		PRINT_GMAT10(d);
-		sumRows(d, db[i], 1./m);
+		sumRows_shared(d, db[i], 1./m);
 //		PRINT_GMAT10(db[i]);
 		db[i].swap_dims();
 		if(i > 0)

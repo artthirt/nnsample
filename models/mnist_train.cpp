@@ -530,6 +530,7 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 		if(use_gpu){
 #ifdef _USE_GPU
 			getX(X, batch);
+			randX(X);
 
 			gpumat::convert_to_gpu(X, gX);
 			g_a[0] = gX;
@@ -552,6 +553,7 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 #endif
 		}else{
 			getX(X, batch);
+			randX(X);
 			a = X;
 			for(int j = 0; j < i; j++){
 				z = a * m_W[j];
@@ -624,6 +626,27 @@ void mnist_train::getX(Matf &X, int batch)
 	}
 
 	X = m_X.getRows(indexes);
+}
+
+void mnist_train::randX(Matf &X)
+{
+#if 1
+	std::uniform_int_distribution<int> udtr(-3, 3);
+	std::uniform_real_distribution<float> uar(-3, 3);
+
+#pragma omp parallel for
+	for(int i = 0; i < X.rows; i++){
+		float *Xi = &X.at(i, 0);
+		int x = udtr(m_generator);
+		int y = udtr(m_generator);
+		float ang = uar(m_generator);
+		ang = angle2rad(ang);
+
+		rotate_mnist<float>(28, 28, ang, Xi);
+		translate<float>(x, y, 28, 28, Xi);
+	}
+#endif
+
 }
 
 void mnist_train::pass_batch(const Matf &X, const Matf &y)
@@ -718,7 +741,7 @@ Matf mnist_train::forward_gpu(const Matf &X)
 //	Matf D1, Dt1, D2, Dt2, D3, Dt3;
 
 	for(size_t i = 0; i < m_layers.size(); i++){
-		gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
+		gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
 		gpumat::biasPlus(g_z[i], m_gb[i]);
 		if(i < m_layers.size() - 1){
 			gpumat::reLu(g_z[i], g_a[i + 1]);
@@ -790,7 +813,7 @@ void mnist_train::pass_batch_gpu(int batch)
 
 #if 1
 	std::uniform_int_distribution<int> udtr(-3, 3);
-	std::uniform_real_distribution<float> uar(-5, 5);
+	std::uniform_real_distribution<float> uar(-3, 3);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
@@ -842,9 +865,9 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 			m_DropoutT[i] = m_Dropout[i];
 
 			gpumat::elemwiseMult(m_Dropout[i], m_gW[i]);
-			gpumat::matmul(g_a[i], m_Dropout[i], g_z[i]);
+			gpumat::matmul_shared(g_a[i], m_Dropout[i], g_z[i]);
 		}else{
-			gpumat::matmul(g_a[i], m_gW[i], g_z[i]);
+			gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
 		}
 		gpumat::biasPlus(g_z[i], m_gb[i]);
 		if(i < m_layers.size() - 1){
@@ -869,10 +892,10 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		if(i > 0){
 			gpumat::deriv_reLu(g_a[i], g_sz[i]);
 
-			gpumat::matmulT2(g_d[i], m_gW[i], g_d[i - 1]);
+			gpumat::matmulT2_shared(g_d[i], m_gW[i], g_d[i - 1]);
 			gpumat::elemwiseMult(g_d[i - 1], g_sz[i]);
 		}
-		gpumat::matmulT1(g_a[i], g_d[i], g_dW[i]);
+		gpumat::matmulT1_shared(g_a[i], g_d[i], g_dW[i]);
 		gpumat::mulval(g_dW[i], 1./m);
 
 		if(i < max_layers){
@@ -881,7 +904,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 		g_dB[i].swap_dims();
 
-		gpumat::sumRows(g_d[i], g_dB[i], (1./m));
+		gpumat::sumRows_shared(g_d[i], g_dB[i], (1./m));
 
 		g_dB[i].swap_dims();
 
