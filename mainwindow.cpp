@@ -122,20 +122,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_runmodel = new PassModel(&m_nn, 200);
 	QThreadPool::globalInstance()->start(m_runmodel);
 
-	double data[4 * 5] = {
-		0, 1, 2, 3, 4,
-		5, 6, 7, 8, 9,
-		10, 11, 12, 13, 14,
-		15, 16, 17, 18, 19
-	};
-	ct::Matd m1 = ct::Matd(4, 5, data);
-	ct::Matd m2 = m1.t();
-
-	std::string s1 = m1;
-	std::string s2 = m2;
-
-	qDebug("m1:\n%s\nm2:\n%s", s1.c_str(), s2.c_str());
-
 	ui->dsb_alpha->setValue(m_nn.alpha());
 
 	ui->widgetScene->add_graphic(pts, ct::Vec3d(0.7, 0, 0));
@@ -145,10 +131,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2;
-	layers2.push_back(500);
+	layers2.push_back(300);
 	layers2.push_back(300);
 	layers2.push_back(200);
-	layers2.push_back(100);
+	layers2.push_back(200);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);

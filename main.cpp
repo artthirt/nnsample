@@ -88,6 +88,25 @@ void test_mat()
 
 	matmulT2(A, Bt, C);
 	CHECK_VALUE(C == Ctest1, "matmulT2 wrong");
+
+	double data[4 * 5] = {
+		0, 1, 2, 3, 4,
+		5, 6, 7, 8, 9,
+		10, 11, 12, 13, 14,
+		15, 16, 17, 18, 19
+	};
+	ct::Matd m1 = ct::Matd(4, 5, data);
+	ct::Matd m2 = m1.t();
+
+	std::string s1 = m1;
+	std::string s2 = m2;
+
+	qDebug("m1:\n%s\nm2:\n%s", s1.c_str(), s2.c_str());
+
+	ct::Matd sm;
+	sm = ct::softmax(m1, 1);
+	s1 = sm;
+	qDebug("SOFTMAX:\n%s\n", s1.c_str());
 }
 
 int main(int argc, char *argv[])
