@@ -292,7 +292,7 @@ void matmul_conv(const T* dA, int x, int y, int xres, int yres, int width, int w
 			for(int k = 0; k < W.cols; ++k){
 				sC += dA[(y + i) * width + (x + j)] * dW[j * W.cols + k];
 			}
-			qDebug("r=%d c=%d", yres + i, xres + j);
+//			qDebug("r=%d c=%d", yres + i, xres + j);
 			dRes[(yres + i) * width_res + (xres + j)] = sC;
 		}
 	}
