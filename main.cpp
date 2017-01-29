@@ -192,7 +192,7 @@ void test_mat()
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
 	ct::Size sz;
 
-	CALC_MAT(sz = nn::conv2DW3x3(ims, ww, hh, 2, vW, vcn, nn::linear_func<float>), im, "IMAGE", 10);
+	CALC_MAT(sz = nn::conv2D(ims, ww, hh, 2, vW, vcn, nn::linear_func<float>), im, "IMAGE", 10);
 
 //	PRINT_MAT(im, "IMAGE");
 

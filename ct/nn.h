@@ -437,7 +437,7 @@ inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
 }
 
 /**
- * @brief conv2DW3x3
+ * @brief conv2D
  * @param images	mattrix of images in rows
  * @param width		width image
  * @param height	height image
@@ -448,11 +448,11 @@ inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
  * @return
  */
 template< typename T, typename Func >
-ct::Size conv2DW3x3(const ct::Mat_<T>& images, int width, int height, int stride,
+ct::Size conv2D(const ct::Mat_<T>& images, int width, int height, int stride,
 					const std::vector< ct::Mat_<T> >& W, std::vector< ct::Mat_<T> >&Res, Func func)
 {
-	if(images.empty() || W.empty() || W[0].rows != 3 || W[0].cols != 3 || width < 3 || height < 3){
-		std::cout << "conv2DW3x3 wrong parameters\n";
+	if(images.empty() || W.empty()){
+		std::cout << "conv2D wrong parameters\n";
 		return ct::Size(0, 0);
 	}
 
@@ -542,7 +542,7 @@ bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat
 }
 
 /**
- * @brief deriv_conv2DW3x3
+ * @brief deriv_conv2D
  * derivative of convolution
  * @param A0		current layer
  * @param gradA1	gradient from next layer
@@ -555,13 +555,13 @@ bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat
  * @return
  */
 template< typename T >
-ct::Size deriv_conv2DW3x3(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct::Mat_<int>& indexes,
+ct::Size deriv_conv2D(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct::Mat_<int>& indexes,
 						  int width, int height, int stride,
 						  const std::vector< ct::Mat_<T> >& W,
 						  std::vector< ct::Mat_<T> >&gradW)
 {
-	if(A0.empty() || gradA1.empty() || W.empty() || W[0].rows != 3 || W[0].cols != 3 || width < 3 || height < 3){
-		std::cout << "deriv_conv2DW3x3 wrong parameters\n";
+	if(A0.empty() || gradA1.empty()){
+		std::cout << "deriv_conv2D wrong parameters\n";
 		return ct::Size(0, 0);
 	}
 
