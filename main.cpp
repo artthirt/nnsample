@@ -164,22 +164,25 @@ void test_mat()
 	s1 = sm;
 	qDebug("SOFTMAX:\n%s\n", s1.c_str());
 
-	float dW1[] = {0.1, 0.2, 0.8,
-				 0.4, 0.5, 0.9,
-				 0.6, 0.3, 0.7};
-	float dW2[] = {0.7, 0.5, 0.8,
-				 0.3, 0.4, 0.2,
-				 0.4, 0.8, 0.1};
+	float dW1[] = {1, 1, 1,
+				 1, 1, 1,
+				 1, 1, 1};
+	float dW2[] = {2, 2, 2,
+				 2, 2, 2,
+				 2, 2, 2};
 
-	int ww = 20, hh = 14;
+	int ww = 20, hh = 16;
 	ct::Matf im = ct::Matf::zeros(hh, ww), ims, W1(3, 3, dW1), W2(3, 3, dW2);
 
+#if 0
 	im.randn(0, 10);
-//	for(int i = 0; i < im.rows; ++i){
-//		for(int j = 0; j < im.cols; ++j){
-//			im.at(i, j) = i + j;
-//		}
-//	}
+#else
+	for(int i = 0; i < im.rows; ++i){
+		for(int j = 0; j < im.cols; ++j){
+			im.at(i, j) = i + j;
+		}
+	}
+#endif
 	ims = ct::Matf(1, im.total(), im.ptr());
 
 	std::vector< ct::Matf > vW, vcn;
@@ -189,7 +192,7 @@ void test_mat()
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
 	ct::Size sz;
 
-	CALC_MAT(sz = nn::conv2DW3x3(ims, ww, hh, 1, vW, vcn), im, "IMAGE", 10);
+	CALC_MAT(sz = nn::conv2DW3x3(ims, ww, hh, 2, vW, vcn, nn::linear_func<float>), im, "IMAGE", 10);
 
 //	PRINT_MAT(im, "IMAGE");
 

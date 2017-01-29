@@ -278,10 +278,17 @@ public:
 private:
 };
 
+template<typename T>
+inline T linear_func(T val)
+{
+	return val;
+}
+
 namespace internal{
 
 template< typename T >
-void matmul_conv(const T* dA, int x, int y, int xres, int yres, int width, int width_res, int row, const ct::Mat_<T> & W, ct::Mat_<T> &Res)
+void matmul_conv(const T* dA, int x, int y, int xres, int yres, int width,
+				 int width_res, int row, const ct::Mat_<T> & W, ct::Mat_<T> &Res)
 {
 	T *dW = &(*W.val)[0];
 	T *dRes = &(*Res.val)[0] + row * Res.cols;
@@ -311,21 +318,27 @@ void matmul_conv(const T* dA, int x, int y, int xres, int yres, int width, int w
  * @param W
  * @param Res
  */
-template< typename T >
-inline void conv(const T* dA, int x, int y, int xres, int yres, int width, int width_res, int row, const ct::Mat_<T> & W, ct::Mat_<T> &Res)
+template< typename T, typename Func >
+inline void conv(const T* dA, int x, int y, int xres, int yres,
+				 int width, int height, int width_res, int row,
+				 const ct::Mat_<T> & W, T* &dRes,
+				 Func func)
 {
 	T *dW = &(*W.val)[0];
-	T *dRes = &(*Res.val)[0] + row * Res.cols;
+//	T *dRes = &(*Res.val)[0] + row * Res.cols;
 
 	T sC = 0;
 	for(int i = 0; i < W.rows; ++i){
-		for(int j = 0; j < W.cols; ++j){
-			sC += dA[(y + i) * width + (x + j)] * dW[i * W.cols + j];
-//			qDebug("a: r=%d c=%d", y + i, x + j);
+		if(y + i < height){
+			for(int j = 0; j < W.cols; ++j){
+				if(x + j < width)
+					sC += dA[(y + i) * width + (x + j)] * dW[i * W.cols + j];
+	//			qDebug("a: r=%d c=%d", y + i, x + j);
+			}
 		}
 	}
 //	qDebug("r: r=%d c=%d", yres, xres);
-	dRes[(yres) * width_res + (xres)] = sC;
+	dRes[(yres) * width_res + (xres)] = func(sC);
 }
 
 /**
@@ -338,18 +351,88 @@ inline void conv(const T* dA, int x, int y, int xres, int yres, int width, int w
  * @param row
  * @param W
  * @param Res
- */template< typename T >
-inline void conv2D(const T* dA, int width, int width_res, int height_res, int stride, int row, const ct::Mat_<T> & W, ct::Mat_<T> &Res)
+ * @param func - nonlinear operation
+ */
+template< typename T, typename Func >
+inline void conv2D(const T* dA, int width, int height,
+				   int width_res, int height_res, int stride, int row,
+				   const ct::Mat_<T> & W, T *dRes,
+				   Func func)
 {
 //	int y = 0;
 //#pragma omp parallel for
 	for(int yr = 0, y = 0; yr < height_res; ++yr, y += stride){
 //		y = yr * stride;
 		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
-			conv<T>(dA, x, y, xr, yr, width, width_res, row, W, Res);
+			conv<T>(dA, x, y, xr, yr, width, height, width_res, row, W, dRes, func);
 		}
 	}
 }
+
+///**********
+
+/**
+ * @brief deriv_conv
+ * @param dA
+ * @param dgA1
+ * @param gradA1
+ * @param x
+ * @param y
+ * @param xres
+ * @param yres
+ * @param width
+ * @param height
+ * @param width_res
+ * @param gradW
+ */
+template< typename T>
+inline void deriv_conv(const T* dA, const T *dgA1, const ct::Mat_<T> gradA1, int x, int y, int xres, int yres,
+				 int width, int height, int width_res, ct::Mat_<T> &gradW)
+{
+	T *dgW = &(*gradW.val)[0];
+
+	T sC = dgA1[(yres) * width_res + (xres)];
+	for(int i = 0; i < W.rows; ++i){
+		if(y + i < height){
+			for(int j = 0; j < W.cols; ++j){
+				if(x + j < width){
+					dgW[i * W.cols + j] += dA[(y + i) * width + (x + j)] * sC;
+				}
+	//			qDebug("a: r=%d c=%d", y + i, x + j);
+			}
+		}
+	}
+}
+
+/**
+ * @brief deriv_conv2D
+ * @param dA			reference to data of one image
+ * @param dgA1			gradient of next layer
+ * @param dId			indicies of using weight matrix
+ * @param width			width image
+ * @param height		height image
+ * @param width_res		width of next layer
+ * @param height_res	height of next layer
+ * @param stride		stride
+ * @param gradW			result: vector or gradient of weight matricies
+ */
+template< typename T>
+inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
+					int width, int height,
+					int width_res, int height_res, int stride,
+					std::vector< ct::Mat_<T> > &gradW)
+{
+//	int y = 0;
+//#pragma omp parallel for
+	for(int yr = 0, y = 0; yr < height_res; ++yr, y += stride){
+//		y = yr * stride;
+		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
+			int j = dId[yr * width_res + xr];
+			deriv_conv<T>(dA, dgA1, x, y, xr, yr, width, height, width_res, W[j], gradW[j]);
+		}
+	}
+}
+
 
 }
 
@@ -361,10 +444,12 @@ inline void conv2D(const T* dA, int width, int width_res, int height_res, int st
  * @param stride	stride
  * @param W			weight matrix 3x3
  * @param Res		result of convolution
+ * @param func		nonlinear operation
  * @return
  */
-template< typename T >
-ct::Size conv2DW3x3(const ct::Mat_<T>& images, int width, int height, int stride, const std::vector< ct::Mat_<T> >& W, std::vector< ct::Mat_<T> >&Res)
+template< typename T, typename Func >
+ct::Size conv2DW3x3(const ct::Mat_<T>& images, int width, int height, int stride,
+					const std::vector< ct::Mat_<T> >& W, std::vector< ct::Mat_<T> >&Res, Func func)
 {
 	if(images.empty() || W.empty() || W[0].rows != 3 || W[0].cols != 3 || width < 3 || height < 3){
 		std::cout << "conv2DW3x3 wrong parameters\n";
@@ -376,10 +461,10 @@ ct::Size conv2DW3x3(const ct::Mat_<T>& images, int width, int height, int stride
 
 	int m = images.rows;
 
-	int width_res = (width - 2) / stride;
-	int height_res = (height - 2) / stride;
-	width_res = width_res * stride + w_cols > width? width_res : width_res + 1;
-	height_res = height_res * stride + w_rows > height? height_res : height_res + 1;
+	int width_res = (width - w_cols + 1) / stride;
+	int height_res = (height - w_rows + 1) / stride;
+	width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
+	height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
 
 	int sz = width_res * height_res;
 
@@ -396,7 +481,10 @@ ct::Size conv2DW3x3(const ct::Mat_<T>& images, int width, int height, int stride
 
 #pragma omp parallel for
 		for(int j = 0; j < W.size(); ++j){
-			internal::conv2D(dIi, width, width_res, height_res, stride, i, W[j], Res[j]);
+			T *dRes = Res[j].ptr();
+			T *dResi = &dRes[i * Res[j].cols];
+
+			internal::conv2D(dIi, width, height, width_res, height_res, stride, i, W[j], dResi, func);
 		}
 	}
 	return ct::Size(width_res, height_res);
@@ -451,6 +539,69 @@ bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat
 	}
 
 	return true;
+}
+
+/**
+ * @brief deriv_conv2DW3x3
+ * derivative of convolution
+ * @param A0		current layer
+ * @param gradA1	gradient from next layer
+ * @param indexes	indexes of using weight matrix
+ * @param width		width of images
+ * @param height	height of images
+ * @param stride	stride
+ * @param W			vector of weight matricies
+ * @param gradW		result vector of gradient of weight matricies
+ * @return
+ */
+template< typename T >
+ct::Size deriv_conv2DW3x3(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct::Mat_<int>& indexes,
+						  int width, int height, int stride,
+						  const std::vector< ct::Mat_<T> >& W,
+						  std::vector< ct::Mat_<T> >&gradW)
+{
+	if(A0.empty() || gradA1.empty() || W.empty() || W[0].rows != 3 || W[0].cols != 3 || width < 3 || height < 3){
+		std::cout << "deriv_conv2DW3x3 wrong parameters\n";
+		return ct::Size(0, 0);
+	}
+
+	int w_rows = W[0].rows;
+	int w_cols = W[0].cols;
+
+	gradW.resize(W.size());
+	for(int i = 0; i < gradW.size(); ++i){
+		gradW[i] = ct::Mat_<T>::zeros(w_rows, w_cols);
+	}
+
+	int m = images.rows;
+
+	int width_res = (width - w_cols + 1) / stride;
+	int height_res = (height - w_rows + 1) / stride;
+	width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
+	height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
+
+	int sz = width_res * height_res;
+
+	Res.resize(W.size());
+	for(size_t i = 0; i < Res.size(); i++){
+		Res[i].setSize(images.rows, sz);
+	}
+
+	T *dA = &(*A0.val)[0];
+	T *dgA1 = &(*gradA1.val)[0];
+	int* dId = &(*indexes.val)[0];
+
+//#pragma omp parallel for
+	for(int i = 0; i < m; ++i){
+		T *dAi = &dA[i * A0.cols];
+		T *dgA1i = &dgA1[i * gradA1.cols];
+		int *dIi = &dId[i * gradA1.cols];
+
+//#pragma omp parallel for
+		internal::deriv_conv2D(dAi, dgA1i, dIi, indexes, width, height,
+							   width_res, height_res, stride, gradW);
+	}
+	return ct::Size(width_res, height_res);
 }
 
 }
