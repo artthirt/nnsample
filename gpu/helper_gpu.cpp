@@ -304,4 +304,17 @@ double SimpleAutoencoder::l2(const GpuMat &X)
 	return res;
 }
 
+/////////////////////////////
+
+void save_gmat10(const GpuMat &mat, const std::string &fn)
+{
+	std::string s = mat.print(10);			\
+	std::fstream fs;
+	fs.open(fn.c_str(), std::ios_base::out);
+
+	fs << s;
+
+	fs.close();
+}
+
 }

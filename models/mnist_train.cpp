@@ -34,15 +34,26 @@ Matf mnist_train::forward(const ct::Matf &X) const
 		return Matf(0, 0);
 	Matf x = X, z, a;
 
+//	qDebug("---CPU---");
 	for(size_t i = 0; i < m_layers.size(); i++){
 		z = x * m_W[i];
+
+//		save_mat10(z, QString("z%1").arg(i).toStdString());
+
 		z.biasPlus(m_b[i]);
+
+//		save_mat10(m_b[i], QString("b%1").arg(i).toStdString());
+//		save_mat10(z, QString("z%1_b").arg(i).toStdString());
+
 		if(i < m_layers.size() - 1){
 			a = relu(z);
 			x = a;
 		}else
 			a = softmax(z, 1);
+
+//		save_mat10(a, QString("a%1").arg(i).toStdString());
 	}
+//	qDebug("---END CPU---");
 	return a;
 }
 
@@ -731,7 +742,7 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 
 Matf mnist_train::forward_gpu(const Matf &X)
 {
-	if(m_layers.empty())
+	if(m_layers.empty() || X.empty())
 		return Matf(0, 0);
 
 	Matf a;
@@ -740,15 +751,28 @@ Matf mnist_train::forward_gpu(const Matf &X)
 
 //	Matf D1, Dt1, D2, Dt2, D3, Dt3;
 
+//	qDebug("---GPU---");
+
 	for(size_t i = 0; i < m_layers.size(); i++){
 		gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
+
+//		gpumat::save_gmat10(g_z[i], QString("gz%1").arg(i).toStdString());
+
 		gpumat::biasPlus(g_z[i], m_gb[i]);
+
+//		gpumat::save_gmat10(m_gb[i], QString("gb%1").arg(i).toStdString());
+//		gpumat::save_gmat10(g_z[i], QString("gz%1_b").arg(i).toStdString());
+
 		if(i < m_layers.size() - 1){
 			gpumat::reLu(g_z[i], g_a[i + 1]);
 		}else{
 			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
 		}
+
+//		gpumat::save_gmat10(g_a[i + 1], QString("ga%1").arg(i).toStdString());
 	}
+
+//	qDebug("---END GPU---");
 
 	gpumat::convert_to_mat(g_a.back(), a);
 

@@ -784,7 +784,7 @@ void subval(double value, GpuMat &A)
 
 void biasPlus(GpuMat &A, const GpuMat &bias)
 {
-	if(A.cols != bias.cols || A.cols != bias.rows)
+	if((A.cols != bias.cols || bias.rows != 1) && (A.cols != bias.rows || bias.cols != 1))
 		return;
 
 	cuda_biasPlus(A, bias);

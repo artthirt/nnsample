@@ -8,6 +8,7 @@
 #include <sstream>
 #include <random>
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 
 #include "shared_memory.h"
@@ -933,7 +934,7 @@ public:
 		res << "[";
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				res << std::setprecision(4) << val[i * cols + j] << "\t";
+				res/* << std::setprecision(4)*/ << val[i * cols + j] << "\t";
 			}
 			res << ";\n";
 		}
@@ -954,7 +955,7 @@ public:
 		res << "[";
 		for(int i = 0; i < _rows; i++){
 			for(int j = 0; j < cols; j++){
-				res << std::setprecision(4) << val[i * cols + j] << "\t";
+				res/* << std::setprecision(4)*/ << val[i * cols + j] << "\t";
 			}
 			res << ";\n";
 		}
@@ -2022,6 +2023,20 @@ template< typename T >
 inline T rad2angle(T val)
 {
 	return static_cast< T > (val * 180. / M_PI);
+}
+
+////////////////////////////
+
+template< typename T >
+void save_mat10(const Mat_<T>& mat, const std::string& fn)
+{
+	std::string s = mat.print(10);			\
+	std::fstream fs;
+	fs.open(fn.c_str(), std::ios_base::out);
+
+	fs << s;
+
+	fs.close();
 }
 
 }

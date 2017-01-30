@@ -105,6 +105,13 @@ private:
 	GpuMat z[2], d, di, sz;
 };
 
+/**
+ * @brief save_gmat10
+ * @param mat
+ * @param fn
+ */
+void save_gmat10(const GpuMat& mat, const std::string& fn);
+
 }
 
 #endif // HELPER_GPU_H
