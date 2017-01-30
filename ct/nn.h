@@ -386,17 +386,18 @@ inline void conv2D(const T* dA, int width, int height,
  * @param gradW
  */
 template< typename T>
-inline void deriv_conv(const T* dA, const T *dgA1, const ct::Mat_<T> gradA1, int x, int y, int xres, int yres,
+inline void deriv_conv(const T* dA, const T *dgA1, int x, int y, int xres, int yres,
 				 int width, int height, int width_res, ct::Mat_<T> &gradW)
 {
 	T *dgW = &(*gradW.val)[0];
 
 	T sC = dgA1[(yres) * width_res + (xres)];
-	for(int i = 0; i < W.rows; ++i){
+	for(int i = 0; i < gradW.rows; ++i){
 		if(y + i < height){
-			for(int j = 0; j < W.cols; ++j){
+			for(int j = 0; j < gradW.cols; ++j){
 				if(x + j < width){
-					dgW[i * W.cols + j] += dA[(y + i) * width + (x + j)] * sC;
+//					qDebug("[%d, %d] = %f", y + i, x + j, dA[(y + i) * width + (x + j)]);
+					dgW[i * gradW.cols + j] += dA[(y + i) * width + (x + j)] * sC;
 				}
 	//			qDebug("a: r=%d c=%d", y + i, x + j);
 			}
@@ -428,7 +429,7 @@ inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
 //		y = yr * stride;
 		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
 			int j = dId[yr * width_res + xr];
-			deriv_conv<T>(dA, dgA1, x, y, xr, yr, width, height, width_res, W[j], gradW[j]);
+			deriv_conv<T>(dA, dgA1, x, y, xr, yr, width, height, width_res, gradW[j]);
 		}
 	}
 }
@@ -573,7 +574,7 @@ ct::Size deriv_conv2D(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct
 		gradW[i] = ct::Mat_<T>::zeros(w_rows, w_cols);
 	}
 
-	int m = images.rows;
+	int m = A0.rows;
 
 	int width_res = (width - w_cols + 1) / stride;
 	int height_res = (height - w_rows + 1) / stride;
@@ -581,11 +582,6 @@ ct::Size deriv_conv2D(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct
 	height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
 
 	int sz = width_res * height_res;
-
-	Res.resize(W.size());
-	for(size_t i = 0; i < Res.size(); i++){
-		Res[i].setSize(images.rows, sz);
-	}
 
 	T *dA = &(*A0.val)[0];
 	T *dgA1 = &(*gradA1.val)[0];
@@ -598,7 +594,7 @@ ct::Size deriv_conv2D(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct
 		int *dIi = &dId[i * gradA1.cols];
 
 //#pragma omp parallel for
-		internal::deriv_conv2D(dAi, dgA1i, dIi, indexes, width, height,
+		internal::deriv_conv2D(dAi, dgA1i, dIi, width, height,
 							   width_res, height_res, stride, gradW);
 	}
 	return ct::Size(width_res, height_res);

@@ -185,7 +185,7 @@ void test_mat()
 #endif
 	ims = ct::Matf(1, im.total(), im.ptr());
 
-	std::vector< ct::Matf > vW, vcn;
+	std::vector< ct::Matf > vW, vcn, gradW;
 	vW.push_back(W1);
 	vW.push_back(W2);
 
@@ -221,6 +221,12 @@ void test_mat()
 
 	qDebug("MAXPOOL");
 	PRINT_IMAGE(pool, sz.width, sz.height);
+
+	nn::deriv_conv2D(ims, pool, indexes, ww, hh, 1, vW, gradW);
+
+	for(int i = 0; i < gradW.size(); ++i){
+		PRINT_MAT(gradW[i], QString("gW[%1]").arg(i).toStdString().c_str());
+	}
 
 	qDebug("END TEST");
 }
