@@ -5,6 +5,7 @@
 
 #include <cuda_runtime.h>
 #include <assert.h>
+#include <exception>
 
 using namespace gpumat;
 
@@ -69,7 +70,7 @@ GpuMat::~GpuMat()
 
 GpuMat &GpuMat::operator =(const GpuMat &mat)
 {
-	if(!mat.data)
+	if(mat.empty())
 		return *this;
 
 	cudaError_t err = cudaSuccess;
@@ -605,16 +606,18 @@ namespace gpumat {
  */
 void memset(GpuMat& A, double val)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("memset");
+	}
 
 	cuda_memset(A, val);
 }
 
 void add(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("add");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -625,8 +628,9 @@ void add(const GpuMat &A, const GpuMat &B, GpuMat &C)
 
 void add(const GpuMat &A, const GpuMat &B, GpuMat &C, double valA, double valB)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("add");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -636,16 +640,18 @@ void add(const GpuMat &A, const GpuMat &B, GpuMat &C, double valA, double valB)
 
 void add(GpuMat &A, const GpuMat &B, double valA, double valB)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("add");
+	}
 
 	cuda_add_paramsA(A, B, valA, valB);
 }
 
 void sub(const GpuMat &A, const GpuMat &B, GpuMat &C, double valA, double valB)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("sub");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -656,16 +662,18 @@ void sub(const GpuMat &A, const GpuMat &B, GpuMat &C, double valA, double valB)
 
 void sub(GpuMat &A, const GpuMat &B, double valA, double valB)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("sub");
+	}
 
 	cuda_subA(A, B, valA, valB);
 }
 
 void matmul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
-	if(A.cols != B.rows || A.type != B.type)
-		return;
+	if(A.cols != B.rows || A.type != B.type){
+		throw new std::invalid_argument("matmul");
+	}
 
 	if(C.rows != A.rows || C.cols != B.cols || C.type != A.type)
 		C.resize(A.rows, B.cols, A.type);
@@ -675,8 +683,9 @@ void matmul(const GpuMat &A, const GpuMat &B, GpuMat &C)
 
 void matmul_shared(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
-	if(A.cols != B.rows || A.type != B.type)
-		return;
+	if(A.cols != B.rows || A.type != B.type){
+		throw new std::invalid_argument("matmul_shared");
+	}
 
 	if(C.rows != A.rows || C.cols != B.cols || C.type != A.type)
 		C.resize(A.rows, B.cols, A.type);
@@ -686,8 +695,9 @@ void matmul_shared(const GpuMat &A, const GpuMat &B, GpuMat &C)
 
 void matmulT1(const GpuMat &At, const GpuMat &B, GpuMat &C)
 {
-	if(At.rows != B.rows || At.type != B.type)
-		return;
+	if(At.rows != B.rows || At.type != B.type){
+		throw new std::invalid_argument("matmulT1");
+	}
 
 	if(C.rows != At.cols || C.cols != B.cols || C.type != At.type)
 		C.resize(At.cols, B.cols, At.type);
@@ -697,8 +707,9 @@ void matmulT1(const GpuMat &At, const GpuMat &B, GpuMat &C)
 
 void matmulT1_shared(const GpuMat &At, const GpuMat &B, GpuMat &C)
 {
-	if(At.rows != B.rows || At.type != B.type)
-		return;
+	if(At.rows != B.rows || At.type != B.type){
+		throw new std::invalid_argument("matmulT1_shared");
+	}
 
 	if(C.rows != At.cols || C.cols != B.cols || C.type != At.type)
 		C.resize(At.cols, B.cols, At.type);
@@ -709,8 +720,9 @@ void matmulT1_shared(const GpuMat &At, const GpuMat &B, GpuMat &C)
 
 void matmulT2(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
 {
-	if(A.cols != Bt.cols || A.type != Bt.type)
-		return;
+	if(A.cols != Bt.cols || A.type != Bt.type){
+		throw new std::invalid_argument("matmulT2");
+	}
 
 	if(C.rows != A.rows || C.cols != Bt.rows || C.type != A.type)
 		C.resize(A.rows, Bt.rows, A.type);
@@ -720,8 +732,9 @@ void matmulT2(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
 
 void matmulT2_shared(const GpuMat &A, const GpuMat &Bt, GpuMat &C)
 {
-	if(A.cols != Bt.cols || A.type != Bt.type)
-		return;
+	if(A.cols != Bt.cols || A.type != Bt.type){
+		throw new std::invalid_argument("matmulT2_shared");
+	}
 
 	if(C.rows != A.rows || C.cols != Bt.rows || C.type != A.type)
 		C.resize(A.rows, Bt.rows, A.type);
@@ -784,16 +797,18 @@ void subval(double value, GpuMat &A)
 
 void biasPlus(GpuMat &A, const GpuMat &bias)
 {
-	if((A.cols != bias.cols || bias.rows != 1) && (A.cols != bias.rows || bias.cols != 1))
-		return;
+	if((A.cols != bias.cols || bias.rows != 1) && (A.cols != bias.rows || bias.cols != 1)){
+		throw new std::invalid_argument("biasPlus");
+	}
 
 	cuda_biasPlus(A, bias);
 }
 
 void elemwiseMult(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("elemwiseMult");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -804,16 +819,18 @@ void elemwiseMult(const GpuMat &A, const GpuMat &B, GpuMat &C)
 
 void elemwiseMult(GpuMat &A, const GpuMat &B)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("elemwiseMuls");
+	}
 
 	cuda_elemwiseMulA(A, B);
 }
 
 void elemwiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 {
-	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type)
-		return;
+	if(A.rows != B.rows || A.cols != B.cols || A.type != B.type){
+		throw new std::invalid_argument("elemwiseDiv");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -824,8 +841,9 @@ void elemwiseDiv(const GpuMat &A, const GpuMat &B, GpuMat &C)
 
 void transpose(const GpuMat &A, GpuMat &C)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("transpose");
+	}
 
 	if(C.rows != A.cols || C.cols != A.rows || C.type != A.type)
 		C.resize(A.cols, A.rows, A.type);
@@ -836,8 +854,9 @@ void transpose(const GpuMat &A, GpuMat &C)
 
 void elemwiseSqrt(const GpuMat &A, GpuMat &C)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("elemwiseSqrt");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -847,8 +866,9 @@ void elemwiseSqrt(const GpuMat &A, GpuMat &C)
 
 void elemwiseSqr(const GpuMat &A, GpuMat &C)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("elemwiseSqr");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -858,8 +878,9 @@ void elemwiseSqr(const GpuMat &A, GpuMat &C)
 
 void reLu(const GpuMat &A, GpuMat &C)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("reLu");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -869,8 +890,9 @@ void reLu(const GpuMat &A, GpuMat &C)
 
 void deriv_reLu(const GpuMat &A, GpuMat &C)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("deriv_reLu");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -880,8 +902,9 @@ void deriv_reLu(const GpuMat &A, GpuMat &C)
 
 void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("softmax");
+	}
 
 	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
 		C.resize(A);
@@ -901,8 +924,9 @@ void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)
 
 void sumRows(const GpuMat &A, GpuMat &C, double val)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("sumRows");
+	}
 
 	if(C.rows != 1 || C.cols != A.cols || A.type != C.type){
 		C.resize(1, A.cols, A.type);
@@ -913,8 +937,9 @@ void sumRows(const GpuMat &A, GpuMat &C, double val)
 
 void sumRows_shared(const GpuMat &A, GpuMat &C, double val)
 {
-	if(A.empty())
-		return;
+	if(A.empty()){
+		throw new std::invalid_argument("sumRows_shared");
+	}
 
 	if(C.rows != 1 || C.cols != A.cols || A.type != C.type){
 		C.resize(1, A.cols, A.type);
@@ -928,8 +953,9 @@ void sub_adamGrad(GpuMat &A, const GpuMat &mA, const GpuMat &vA, double alpha, d
 	if(A.empty() || mA.empty() || vA.empty() ||
 			A.type != mA.type || A.type != vA.type ||
 			A.rows != mA.rows || A.cols != mA.cols ||
-			A.rows != vA.rows || A.cols != vA.cols)
-		return;
+			A.rows != vA.rows || A.cols != vA.cols){
+		throw new std::invalid_argument("sub_adamGrad");
+	}
 
 	cuda_adamgrad(A, mA, vA, alpha, sb1, sb2);
 }

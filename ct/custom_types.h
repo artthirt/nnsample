@@ -784,6 +784,26 @@ public:
 		}
 		return res;
 	}
+	T max() const{
+		T res(0);
+		T* val = &(*this->val)[0];
+//#pragma omp parallel for shared(res)
+		res = val[0];
+		for(int i = 1; i < total(); i++){
+			res = std::max(res, val[i]);
+		}
+		return res;
+	}
+	T min() const{
+		T res(0);
+		T* val = &(*this->val)[0];
+//#pragma omp parallel for shared(res)
+		res = val[0];
+		for(int i = 1; i < total(); i++){
+			res = std::min(res, val[i]);
+		}
+		return res;
+	}
 	bool empty() const{
 		return val.empty();
 	}

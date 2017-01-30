@@ -85,6 +85,8 @@ private slots:
 
 	void on_pb_copy_mats_2_clicked();
 
+	void on_pb_save_gpu_clicked();
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;

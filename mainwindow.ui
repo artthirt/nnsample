@@ -225,6 +225,13 @@
            </spacer>
           </item>
           <item>
+           <widget class="QPushButton" name="pb_save_gpu">
+            <property name="text">
+             <string>Save GPU matricies</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pb_next">
             <property name="text">
              <string>Next</string>

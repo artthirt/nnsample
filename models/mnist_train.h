@@ -146,6 +146,12 @@ public:
 	 * @param y
 	 */
 	void pass_batch_gpu(const gpumat::GpuMat& X, const gpumat::GpuMat& y);
+	/**
+	 * @brief save_gpu_matricies
+	 */
+	void save_gpu_matricies();
+#else
+	void save_gpu_matricies(){}
 #endif
 
 private:

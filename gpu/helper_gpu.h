@@ -106,6 +106,12 @@ private:
 };
 
 /**
+ * @brief save_gmat
+ * @param mat
+ * @param fn
+ */
+void save_gmat(const GpuMat &mat, const std::string &fn);
+/**
  * @brief save_gmat10
  * @param mat
  * @param fn

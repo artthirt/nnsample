@@ -458,6 +458,10 @@ void mnist_train::load(const QString &fn)
 		else
 			m_W[i] = mat2;
 
+//		float w1 = m_W[i].max(), w2 = m_W[i].min();
+//		float b1 = m_b[i].max(), b2 = m_b[i].min();
+//		qDebug("max(w)=%f, max(b)=%f, min(w)=%f, min(b)=%f", w1, b1, w2, b2);
+
 		m_layers[i] = m_W[i].cols;
 	}
 	f.close();
@@ -940,6 +944,14 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 	m_iteration = m_gpu_adam.iteration();
 
+}
+
+void mnist_train::save_gpu_matricies()
+{
+	for(int i = 0; i < m_gW.size(); ++i){
+		gpumat::save_gmat(m_gW[i], QString("./weigths/g_W%1.txt").arg(i).toStdString());
+		gpumat::save_gmat(m_gb[i], QString("./weigths/g_b%1.txt").arg(i).toStdString());
+	}
 }
 
 #endif

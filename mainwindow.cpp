@@ -186,7 +186,7 @@ void MainWindow::onTimeoutMnist()
 	if(ui->pb_pass->isChecked()){
 #ifdef _USE_GPU
 		if(m_use_gpu){
-			m_mnist_train.pass_batch_gpu(1500);
+			m_mnist_train.pass_batch_gpu(300);
 		}else{
 			m_mnist_train.pass_batch(100);
 		}
@@ -205,7 +205,7 @@ void MainWindow::onTimeoutMnist()
 void MainWindow::onTimeoutPretrain()
 {
 	if(ui->pb_pretrain->isChecked()){
-		int batch = m_use_gpu? 1500 : 500;
+		int batch = m_use_gpu? 500 : 500;
 		double res = m_mnist_train.pass_batch_autoencoder(batch, m_use_gpu);
 		ui->lb_out->setText(QString("l2_norm = %1").arg(res));
 	}
@@ -384,4 +384,9 @@ void MainWindow::on_pb_init_weights_clicked()
 void MainWindow::on_pb_copy_mats_2_clicked()
 {
 	m_mnist_train.copyWbGpuMat2Mat();
+}
+
+void MainWindow::on_pb_save_gpu_clicked()
+{
+	m_mnist_train.save_gpu_matricies();
 }
