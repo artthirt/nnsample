@@ -813,7 +813,7 @@ void mnist_train::pass_batch_gpu(int batch)
 
 #if 1
 	std::uniform_int_distribution<int> udtr(-5, 5);
-	std::uniform_real_distribution<float> uar(-3, 3);
+	std::uniform_real_distribution<float> uar(-9, 9);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
@@ -860,7 +860,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < max_layers){
 			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.95f, d);
+			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.92f, d);
 			gpumat::convert_to_gpu(d, m_Dropout[i]);
 			m_DropoutT[i] = m_Dropout[i];
 

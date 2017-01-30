@@ -1842,11 +1842,11 @@ void dropout(int rows, int cols, T p, Mat_<T>& D, int seed = 0)
 	T* val1 = &(*D.val)[0];
 
 #pragma omp parallel for
-	for(int i = 0; i < rows; i++){
+	for(int j = 0; j < cols; j++){
 		int pi = bi(generator);
 		if(!pi){
 #pragma omp parallel for
-			for(int j = 0; j < cols; j++){
+			for(int i = 0; i < rows; i++){
 				val1[i * D.cols + j] = 0;
 			}
 		}
