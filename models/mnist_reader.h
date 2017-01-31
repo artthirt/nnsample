@@ -5,6 +5,8 @@
 #include <QVector>
 #include <QByteArray>
 
+#include "custom_types.h"
+
 class mnist_reader
 {
 public:
@@ -21,6 +23,11 @@ public:
 	QVector<uchar> &lb_train();
 	QVector<uchar> &lb_test();
 
+	void init_train();
+
+	ct::Matf& X();
+	ct::Matf& y();
+
 	void load();
 
 private:
@@ -32,6 +39,9 @@ private:
 
 	uint m_count_train_images;
 	uint m_count_test_images;
+
+	ct::Matf m_X;
+	ct::Matf m_y;
 
 	uint readMnist(const QString &fn, QVector< QByteArray >& mnist);
 	uint readMnist(QFile &file, QVector< QByteArray >& mnist);

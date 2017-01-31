@@ -359,10 +359,10 @@ inline void conv2D(const T* dA, int width, int height,
 				   const ct::Mat_<T> & W, T *dRes,
 				   Func func)
 {
-//	int y = 0;
-//#pragma omp parallel for
-	for(int yr = 0, y = 0; yr < height_res; ++yr, y += stride){
-//		y = yr * stride;
+	int y = 0;
+#pragma omp parallel for
+	for(int yr = 0; yr < height_res; ++yr){
+		y = yr * stride;
 		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
 			conv<T>(dA, x, y, xr, yr, width, height, width_res, row, W, dRes, func);
 		}

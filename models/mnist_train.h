@@ -162,9 +162,6 @@ private:
 	float m_lambda;
 	uint m_iteration;
 
-	ct::Matf m_X;
-	ct::Matf m_y;
-
 	nn::AdamOptimizer<float> m_AdamOptimizer;
 
 	std::vector< nn::SimpleAutoencoder<float> > enc;

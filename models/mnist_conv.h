@@ -92,9 +92,6 @@ private:
 	uint m_iteration;
 	int m_conv_length;
 
-	ct::Matf m_X;
-	ct::Matf m_y;
-
 	ct::Size m_cnv_out_size;
 
 	nn::AdamOptimizer<float> m_AdamOptimizer;

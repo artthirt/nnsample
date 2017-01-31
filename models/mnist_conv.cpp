@@ -69,7 +69,7 @@ Matf mnist_conv::forward(int index, int count)
 	if(m_W.empty() || m_b.empty() || m_layers.empty())
 		return Matf(0, 0);
 
-	Matf X = m_X.getRows(index, count);
+	Matf X = m_mnist->X().getRows(index, count);
 
 	return forward(X);
 }
@@ -79,7 +79,7 @@ Matf mnist_conv::forward_test(int index, int count)
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return Matf(0, 0);
 
-	Matf X = Matf::zeros(count, m_X.cols);
+	Matf X = Matf::zeros(count, m_mnist->X().cols);
 
 	count = std::min(count, m_mnist->test().size() - index);
 
@@ -113,7 +113,7 @@ uint mnist_conv::iteration() const
 
 void mnist_conv::getEstimate(int batch, double &l2, double &accuracy)
 {
-	if(m_X.empty() || m_y.empty())
+	if(m_mnist->X().empty() || m_mnist->y().empty())
 		return;
 
 	Matf X;
@@ -153,8 +153,8 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 
 	getBatchIds(indexes);
 
-	Matf X = Matf::zeros(batch, m_X.cols);
-	Matf yp = Matf::zeros(batch, m_y.cols);
+	Matf X = Matf::zeros(batch, m_mnist->X().cols);
+	Matf yp = Matf::zeros(batch, m_mnist->y().cols);
 
 	for(int i = 0; i < batch; i++){
 		int id = indexes[i];
@@ -196,21 +196,6 @@ void mnist_conv::init(int seed)
 	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size() || m_cnvW.empty())
 		return;
 
-	const int out_cols = 10;
-
-	m_X = Matf::zeros(m_mnist->train().size(), m_mnist->train()[0].size());
-	m_y = Matf::zeros(m_mnist->lb_train().size(), out_cols);
-
-	for(int i = 0; i < m_mnist->train().size(); i++){
-		int yi = m_mnist->lb_train()[i];
-		m_y.at(i, yi) = 1.;
-
-		QByteArray &data = m_mnist->train()[i];
-		for(int j = 0; j < data.size(); j++){
-			m_X.at(i, j) = ((uint)data[j] > 0)? 1. : 0.;
-		}
-	}
-
 	m_cnv_out_size = ct::Size(28 - 2 * m_conv_length, 28 - 2 * m_conv_length);
 
 	int input = m_cnv_out_size.area();
@@ -232,7 +217,7 @@ void mnist_conv::init(int seed)
 		input = output;
 	}
 
-	if(!m_AdamOptimizer.init(m_layers, m_X.cols)){
+	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_size.area())){
 		std::cout << "optimizer not init\n";
 	}
 }
@@ -281,7 +266,7 @@ void mnist_conv::getX(Matf &X, int batch)
 		indexes[i] = v;
 	}
 
-	X = m_X.getRows(indexes);
+	X = m_mnist->X().getRows(indexes);
 }
 
 void mnist_conv::getXy(Matf &X, Matf &y, int batch)
@@ -300,8 +285,8 @@ void mnist_conv::getXy(Matf &X, Matf &y, int batch)
 		indexes[i] = v;
 	}
 
-	X = m_X.getRows(indexes);
-	y = m_y.getRows(indexes);
+	X = m_mnist->X().getRows(indexes);
+	y = m_mnist->y().getRows(indexes);
 }
 
 void mnist_conv::randX(Matf &X)
@@ -396,7 +381,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 	std::vector< std::vector< ct::Matf > > Res;
 	std::vector< ct::Size > szs;
 
-	cnv_a.resize(m_conv_length);
+	cnv_a.resize(m_conv_length + 1);
 	Res.resize(m_conv_length);
 	indexes.resize(m_conv_length);
 	szs.resize(m_conv_length);
@@ -450,7 +435,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 //		Matf sz = elemwiseMult(a[i], a[i]);
 //		sz = 1. - sz;
 		Matf di, sz;
-		/*if(i > 0)*/{
+		if(i > 0){
 			sz = derivRelu(a[i]);
 
 			//Matf di = d * m_W[i].t();
@@ -469,11 +454,19 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 		dB[i] = (sumRows(d) * (1.f/m)).t();
 
-//		if(i > 0)
-		d = di;
+		if(i > 0)
+			d = di;
 	}
 
 	//// deriv conv
-
+	{
+		for(int i = m_cnvW.size();i > -1; --i){
+			Matf di, sz;
+			if(i > 0){
+				sz = derivRelu(cnv_a[i]);
+				di = elemwiseMult(di, sz);
+			}
+		}
+	}
 
 }

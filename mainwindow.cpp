@@ -127,6 +127,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetScene->add_graphic(pts, ct::Vec3d(0.7, 0, 0));
 
 	m_mnist.load();
+	m_mnist.init_train();
 	ui->widgetMNIST->setMnist(&m_mnist);
 	ui->widgetMNIST->update();
 

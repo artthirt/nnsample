@@ -56,6 +56,40 @@ QVector<uchar> &mnist_reader::lb_test()
 	return m_mnist_labels_test;
 }
 
+void mnist_reader::init_train()
+{
+	if(!m_mnist_train.size())
+		return;
+
+	using namespace ct;
+
+	const int out_cols = 10;
+
+	m_X = Matf::zeros(m_mnist_train.size(), m_mnist_train[0].size());
+	m_y = Matf::zeros(lb_train().size(), out_cols);
+
+	for(int i = 0; i < m_mnist_train.size(); i++){
+		int yi = m_mnist_labels_train[i];
+		m_y.at(i, yi) = 1.;
+
+		QByteArray &data = m_mnist_train[i];
+		for(int j = 0; j < data.size(); j++){
+			m_X.at(i, j) = ((uint)data[j] > 0)? 1. : 0.;
+		}
+	}
+
+}
+
+ct::Matf &mnist_reader::X()
+{
+	return m_X;
+}
+
+ct::Matf &mnist_reader::y()
+{
+	return m_y;
+}
+
 void mnist_reader::load()
 {
 	if(QFile::exists(train_images_file)){
