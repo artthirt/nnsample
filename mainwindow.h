@@ -8,6 +8,7 @@
 #include "nnmodel.h"
 #include "mnist_reader.h"
 #include "mnist_train.h"
+#include "mnist_conv.h"
 
 #include <QMutex>
 #include <QRunnable>
@@ -87,6 +88,10 @@ private slots:
 
 	void on_pb_save_gpu_clicked();
 
+	void on_pb_pass_cnv_clicked();
+
+	void on_pb_test_cnv_clicked();
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
@@ -106,6 +111,8 @@ private:
 
 	nnmodel m_nn;
 	mnist_train m_mnist_train;
+
+	mnist_conv m_mnist_cnv;
 
 	mnist_reader m_mnist;
 

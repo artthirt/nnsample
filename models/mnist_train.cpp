@@ -4,6 +4,8 @@
 #include "helper_gpu.h"
 #endif
 
+#include "mnist_utils.h"
+
 using namespace ct;
 
 mnist_train::mnist_train()
@@ -294,58 +296,6 @@ void mnist_train::init(int seed)
 
 	if(!m_AdamOptimizer.init(m_layers, m_X.cols)){
 		std::cout << "optimizer not init\n";
-	}
-}
-
-template< typename T >
-void translate(int x, int y, int w, int h, T *X)
-{
-	std::vector<T>d;
-	d.resize(w * h);
-
-#pragma omp parallel for
-	for(int i = 0; i < h; i++){
-		int newi = i + x;
-		if(newi >= 0 && newi < h){
-			for(int j = 0; j < w; j++){
-				int newj = j + y;
-				if(newj >= 0 && newj < w){
-					d[newi * w + newj] = X[i * w + j];
-				}
-			}
-		}
-	}
-	for(size_t i = 0; i < d.size(); i++){
-		X[i] = d[i];
-	}
-}
-
-template< typename T >
-void rotate_mnist(int w, int h, T angle, T *X)
-{
-	T cw = w / 2;
-	T ch = h / 2;
-
-	std::vector<T> d;
-	d.resize(w * h);
-
-	for(int y = 0; y < h; y++){
-		for(int x = 0; x < w; x++){
-			T x1 = x - cw;
-			T y1 = y - ch;
-
-			T nx = x1 * cos(angle) + y1 * sin(angle);
-			T ny = -x1 * sin(angle) + y1 * cos(angle);
-			nx += cw; ny += ch;
-			int ix = nx, iy = ny;
-			if(ix >= 0 && ix < w && iy >= 0 && iy < h){
-				T c = X[y * w + x];
-				d[iy * w + ix] = c;
-			}
-		}
-	}
-	for(size_t i = 0; i < d.size(); i++){
-		X[i] = d[i];
 	}
 }
 
@@ -888,7 +838,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < max_layers){
 			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.95f, d);
+			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.9f, d);
 			gpumat::convert_to_gpu(d, m_Dropout[i]);
 			m_DropoutT[i] = m_Dropout[i];
 

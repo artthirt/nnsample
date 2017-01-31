@@ -501,6 +501,9 @@ struct Size{
 		width = w;
 		height = h;
 	}
+	int area() const{
+		return width * height;
+	}
 
 	int width;
 	int height;
@@ -1863,10 +1866,10 @@ void dropout(int rows, int cols, T p, Mat_<T>& D, int seed = 0)
 	T* val1 = &(*D.val)[0];
 
 #pragma omp parallel for
-	for(int j = 0; j < cols; j++){
+	for(int i = 0; i < rows; i++){
 		int pi = bi(generator);
 #pragma omp parallel for
-		for(int i = 0; i < rows; i++){
+		for(int j = 0; j < cols; j++){
 			val1[i * D.cols + j] = pi;
 		}
 	}
