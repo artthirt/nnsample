@@ -338,9 +338,9 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, int w, int h)const
 
 	std::vector< ct::Matf > Res;
 
-	ct::Size sz;
+	ct::Size sz(w, h);
 	for(int i = 0; i < m_conv_length; ++i){
-		sz = nn::conv2D(a, w, h, 1, m_cnvW[i], Res, reLu);
+		sz = nn::conv2D(a, sz.width, sz.height, 1, m_cnvW[i], Res, reLu);
 		nn::max_pool(Res, a, indexes);
 	}
 	X_out = a;

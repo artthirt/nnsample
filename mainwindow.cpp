@@ -143,8 +143,14 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.init_weights();
 
 	layers3.push_back(20);
+	layers3.push_back(20);
+	layers3.push_back(10);
+
+	ui->widgetMNISTCnv->setMnist(&m_mnist);
+	ui->widgetMNISTCnv->update();
 
 	m_mnist_cnv.setLayers(layers3);
+	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);
 }
 
@@ -406,4 +412,41 @@ void MainWindow::on_pb_test_cnv_clicked()
 	double l2, accuracy;
 	m_mnist_cnv.getEstimateTest(-1, l2, accuracy);
 	ui->lb_out_cnv->setText("L2(test)=" + QString::number(l2) + "; Acc(test)=" + QString::number(accuracy));
+}
+
+void MainWindow::on_pb_update_cnv_clicked()
+{
+	double l2, accuracy;
+	m_mnist_cnv.getEstimate(2000, l2, accuracy);
+	ui->lb_l2cnv->setText(QString("L2=%1; Acc=%2;\tIteration=%3").arg(l2, 0, 'f', 9).arg(accuracy, 0, 'f', 5).arg(m_mnist_cnv.iteration()));
+
+	uint index = ui->widgetMNISTCnv->index();
+
+	if(ui->widgetMNISTCnv->mode() == WidgetMNIST::TRAIN){
+
+		int count = std::min((uint)2000, m_mnist.count_train_images() - index);
+
+		ct::Matf y = m_mnist_cnv.forward(index, count);
+
+		QVector< uchar > data;
+
+		data.resize(count);
+
+		for(int i = 0; i < count; i++){
+			data[i] = y.argmax(i, 1);
+		}
+		ui->widgetMNISTCnv->updatePredictfromIndex(index, data);
+	}else{
+		uint count = std::min((uint)2000, m_mnist.count_test_images() - index);
+		ct::Matf y = m_mnist_cnv.forward_test(index, count);
+
+		QVector< uchar > data;
+
+		data.resize(count);
+
+		for(uint i = 0; i < count; i++){
+			data[i] = y.argmax(i, 1);
+		}
+		ui->widgetMNISTCnv->updatePredictfromIndex(index, data);
+	}
 }

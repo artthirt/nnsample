@@ -322,6 +322,13 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
+           <widget class="QLabel" name="lb_l2cnv">
+            <property name="text">
+             <string>L2</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_4">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -338,6 +345,13 @@
            <widget class="QLabel" name="lb_out_cnv">
             <property name="text">
              <string>L2</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_update_cnv">
+            <property name="text">
+             <string>Update</string>
             </property>
            </widget>
           </item>
@@ -369,7 +383,7 @@
      <x>0</x>
      <y>0</y>
      <width>1104</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

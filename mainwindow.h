@@ -92,6 +92,8 @@ private slots:
 
 	void on_pb_test_cnv_clicked();
 
+	void on_pb_update_cnv_clicked();
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;

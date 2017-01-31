@@ -423,10 +423,10 @@ inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
 					int width_res, int height_res, int stride,
 					std::vector< ct::Mat_<T> > &gradW)
 {
-//	int y = 0;
-//#pragma omp parallel for
-	for(int yr = 0, y = 0; yr < height_res; ++yr, y += stride){
-//		y = yr * stride;
+	int y = 0;
+#pragma omp parallel for
+	for(int yr = 0; yr < height_res; ++yr){
+		y = yr * stride;
 		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
 			int j = dId[yr * width_res + xr];
 			deriv_conv<T>(dA, dgA1, x, y, xr, yr, width, height, width_res, gradW[j]);
@@ -464,8 +464,10 @@ ct::Size conv2D(const ct::Mat_<T>& images, int width, int height, int stride,
 
 	int width_res = (width - w_cols + 1) / stride;
 	int height_res = (height - w_rows + 1) / stride;
-	width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
-	height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
+	if(stride > 1){
+		width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
+		height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
+	}
 
 	int sz = width_res * height_res;
 
@@ -526,15 +528,15 @@ bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat
 #pragma omp parallel for
 		for(int j = 0; j < cols; ++j){
 			int kI = 0;
-			T maxV = Layers[0].ptr()[i * rows + j];
+			T maxV = Layers[0].ptr()[i * cols + j];
 			for(int k = 1; k < Layers.size(); ++k){
 				T* dL = Layers[k].ptr();
-				if(dL[i * rows + j] > maxV){
-					maxV = dL[i * rows + j];
+				if(dL[i * cols + j] > maxV){
+					maxV = dL[i * cols + j];
 					kI = k;
 				}
-				dRes[i * rows + j] = maxV;
-				dI[i * rows + j] = kI;
+				dRes[i * cols + j] = maxV;
+				dI[i * cols + j] = kI;
 			}
 		}
 	}
@@ -578,10 +580,10 @@ ct::Size deriv_conv2D(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct
 
 	int width_res = (width - w_cols + 1) / stride;
 	int height_res = (height - w_rows + 1) / stride;
-	width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
-	height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
-
-	int sz = width_res * height_res;
+	if(stride > 1){
+		width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
+		height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
+	}
 
 	T *dA = &(*A0.val)[0];
 	T *dgA1 = &(*gradA1.val)[0];
