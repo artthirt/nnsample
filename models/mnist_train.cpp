@@ -888,7 +888,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < max_layers){
 			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.92f, d);
+			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.95f, d);
 			gpumat::convert_to_gpu(d, m_Dropout[i]);
 			m_DropoutT[i] = m_Dropout[i];
 

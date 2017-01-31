@@ -1838,11 +1838,11 @@ void dropout(Mat_<T>& mat, T p, Mat_<T>& D, Mat_<T>& Dt, int seed = 0)
 	T* val2 = &(*Dt.val)[0];
 
 #pragma omp parallel for
-	for(int i = 0; i < mat.rows; i++){
+	for(int j = 0; j < mat.cols; j++){
 		int pi = bi(generator);
 		if(!pi){
 #pragma omp parallel for
-			for(int j = 0; j < mat.cols; j++){
+			for(int i = 0; i < mat.rows; i++){
 				val1[i * D.cols + j] = 0;
 				val2[j * D.rows + i] = 0;
 			}
@@ -1858,18 +1858,16 @@ void dropout(int rows, int cols, T p, Mat_<T>& D, int seed = 0)
 	//std::normal_distribution< double > nrm(0, 1);
 	generator.seed(seed);
 
-	D = Mat_<T>::ones(rows, cols);
+	D.setSize(rows, cols);// = Mat_<T>::ones(rows, cols);
 
 	T* val1 = &(*D.val)[0];
 
 #pragma omp parallel for
-	for(int i = 0; i < rows; i++){
+	for(int j = 0; j < cols; j++){
 		int pi = bi(generator);
-		if(!pi){
 #pragma omp parallel for
-			for(int j = 0; j < cols; j++){
-				val1[i * D.cols + j] = 0;
-			}
+		for(int i = 0; i < rows; i++){
+			val1[i * D.cols + j] = pi;
 		}
 	}
 }
