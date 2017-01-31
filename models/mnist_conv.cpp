@@ -237,6 +237,34 @@ void mnist_conv::init(int seed)
 	}
 }
 
+void mnist_conv::pass_batch(int batch)
+{
+	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
+		return;
+
+	Matf X, y;
+
+	getXy(X, y, batch);
+
+	std::uniform_int_distribution<int> udtr(-3, 3);
+	std::uniform_real_distribution<float> uar(-5, 5);
+
+#pragma omp parallel for
+	for(int i = 0; i < X.rows; i++){
+		float *Xi = &X.at(i, 0);
+		int x = udtr(m_generator);
+		int y = udtr(m_generator);
+		float ang = uar(m_generator);
+		ang = angle2rad(ang);
+
+		rotate_mnist<float>(28, 28, ang, Xi);
+		translate<float>(x, y, 28, 28, Xi);
+	}
+
+	pass_batch(X, y);
+
+}
+
 void mnist_conv::getX(Matf &X, int batch)
 {
 	std::vector<int> indexes;
@@ -344,4 +372,108 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, int w, int h)const
 		nn::max_pool(Res, a, indexes);
 	}
 	X_out = a;
+}
+
+void mnist_conv::pass_batch(const Matf &X, const Matf &y)
+{
+	if(m_W.empty() || m_b.empty() || m_layers.empty() ||
+			m_layers.back() != y.cols){
+		std::cout << "wrong parameters of model\n";
+		return;
+	}
+
+	std::vector< Matf > z, a;
+
+	/// forward
+
+	////CONV
+	int w = 28;
+	int h = 28;
+
+	std::vector< Matf > cnv_a;
+	std::vector< Mati > indexes;
+
+	std::vector< std::vector< ct::Matf > > Res;
+	std::vector< ct::Size > szs;
+
+	cnv_a.resize(m_conv_length);
+	Res.resize(m_conv_length);
+	indexes.resize(m_conv_length);
+	szs.resize(m_conv_length);
+
+	cnv_a[0] = X;
+
+	ct::Size sz(w, h);
+	for(int i = 0; i < m_conv_length; ++i){
+		sz = nn::conv2D(cnv_a[i], sz.width, sz.height, 1, m_cnvW[i], Res[i], reLu);
+		szs[i] = sz;
+		nn::max_pool(Res[i], cnv_a[i + 1], indexes[i]);
+	}
+
+	////
+
+	z.resize(m_layers.size());
+	a.resize(m_layers.size() + 1);
+
+	a[0] = cnv_a.back();
+
+	std::vector< Matf > D;
+	Matf Wi;
+	D.resize(3);
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		if(i < D.size()){
+			dropout(m_W[i].rows, m_W[i].cols, 0.9f, D[i]);
+			Wi = elemwiseMult(m_W[i], D[i]);
+			z[i] = a[i] * Wi;
+		}else{
+			z[i] = a[i] * m_W[i];
+		}
+		z[i].biasPlus(m_b[i]);
+
+		if(i < m_layers.size() - 1){
+			a[i + 1] = relu(z[i]);
+		}else
+			a[i + 1] = softmax(z[i], 1);
+	}
+
+	std::vector< Matf > dW, dB;
+	dW.resize(m_layers.size());
+	dB.resize(m_layers.size());
+
+	float m = X.rows;
+	Matf d = a.back() - y;
+
+	//// Backward
+
+	for(int i = (int)m_layers.size() - 1; i > -1; --i){
+//		Matf sz = elemwiseMult(a[i], a[i]);
+//		sz = 1. - sz;
+		Matf di, sz;
+		/*if(i > 0)*/{
+			sz = derivRelu(a[i]);
+
+			//Matf di = d * m_W[i].t();
+			matmulT2(d, m_W[i], di);
+			di = elemwiseMult(di, sz);
+		}
+		//dW[i] = a[i].t() * d;
+		matmulT1(a[i], d, dW[i]);
+
+		dW[i] *= 1./m;
+		//dW[i] += (m_lambda/m * m_W[i]);
+
+		if(i < D.size()){
+			dW[i] = elemwiseMult(dW[i], D[i]);
+		}
+
+		dB[i] = (sumRows(d) * (1.f/m)).t();
+
+//		if(i > 0)
+		d = di;
+	}
+
+	//// deriv conv
+
+
 }
