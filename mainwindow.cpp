@@ -134,9 +134,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	std::vector<int> layers2, layers3;
 	layers2.push_back(600);
 	layers2.push_back(500);
-	layers2.push_back(400);
-	layers2.push_back(300);
-	layers2.push_back(200);
+//	layers2.push_back(400);
+	layers2.push_back(100);
+	layers2.push_back(100);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -198,7 +198,7 @@ void MainWindow::onTimeoutMnist()
 	if(ui->pb_pass->isChecked()){
 #ifdef _USE_GPU
 		if(m_use_gpu){
-			m_mnist_train.pass_batch_gpu(400);
+			m_mnist_train.pass_batch_gpu(2000);
 		}else{
 			m_mnist_train.pass_batch(100);
 		}
