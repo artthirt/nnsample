@@ -13,6 +13,8 @@
 #include <QMutex>
 #include <QRunnable>
 
+#include "drawcnvweight.h"
+
 namespace Ui {
 class MainWindow;
 }
@@ -94,6 +96,8 @@ private slots:
 
 	void on_pb_update_cnv_clicked();
 
+	void on_pb_show_weights_clicked();
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
@@ -118,8 +122,14 @@ private:
 
 	mnist_reader m_mnist;
 
+	DrawCnvWeight m_drawCnvWeights;
+
 	void update_scene();
 	void update_mnist();
+
+	// QWidget interface
+protected:
+	virtual void closeEvent(QCloseEvent *event);
 };
 
 #endif // MAINWINDOW_H

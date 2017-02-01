@@ -68,6 +68,7 @@ void WidgetMNIST::updatePredictfromIndex(uint index, const QVector<uchar> &predi
 	if(!prediction.size()){
 		prediction.resize(m_mode == TRAIN? m_mnist->count_train_images() : m_mnist->count_test_images());
 	}
+#pragma omp parallel for
 	for(int i = 0; i < predict.size(); i++){
 		prediction[index + i] = predict[i];
 	}
@@ -137,7 +138,10 @@ void WidgetMNIST::paintEvent(QPaintEvent *event)
 	gen.seed(time(0));
 
 	int x = 0, y = 0;
-	for(int i = m_index; i < data.size() && y * him + him < height(); i++){
+
+	for(int i = m_index; i < data.size(); i++){
+		if(y * him + him >= height())
+			continue;
 
 		QByteArray _out;
 #if 0

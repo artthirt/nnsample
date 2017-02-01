@@ -11,10 +11,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = nnsample
 TEMPLATE = app
 
-FORMS    += mainwindow.ui \
-    glview.ui \
-    widgetmnist.ui
-
 win32-msvc*{
     QMAKE_CXXFLAGS += /openmp
 }else{

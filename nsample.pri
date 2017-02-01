@@ -19,3 +19,14 @@ HEADERS  += $$PWD/mainwindow.h \
     $$PWD/models/mnist_train.h \
     $$PWD/models/mnist_conv.h \
     $$PWD/models/mnist_utils.h
+
+HEADERS += \
+    $$PWD/drawcnvweight.h
+
+SOURCES += \
+    $$PWD/drawcnvweight.cpp
+
+FORMS    += $$PWD/mainwindow.ui \
+    $$PWD/glview.ui \
+    $$PWD/widgetmnist.ui \
+    $$PWD/drawcnvweight.ui

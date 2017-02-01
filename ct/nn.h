@@ -3,6 +3,7 @@
 
 #include <custom_types.h>
 #include <vector>
+#include <exception>
 
 #ifndef __GNUC__
 typedef unsigned int uint;
@@ -162,6 +163,57 @@ private:
 	std::vector< ct::Mat_<T> > m_mb;
 	std::vector< ct::Mat_<T> > m_vW;
 	std::vector< ct::Mat_<T> > m_vb;
+};
+
+template< typename T >
+class MomentOptimizer{
+public:
+	MomentOptimizer(){
+		m_alpha = 0.01;
+		m_betha = 0.9;
+	}
+
+	void setAlpha(T val){
+		m_alpha = val;
+	}
+	void setBetha(T val){
+		m_betha = val;
+	}
+
+	void pass(const std::vector< ct::Mat_<T> > &gradW, const std::vector< T > &gradB,
+			  std::vector< ct::Mat_<T> > &W, std::vector< T > &B)
+	{
+		if(W.empty() || gradW.size() != W.size() || gradB.empty() || gradB.size() != gradW.size())
+			throw new std::invalid_argument("MomentOptimizer: wrong parameters");
+		if(m_mW.empty()){
+			m_mW.resize(W.size());
+			m_mb.resize(W.size());
+			for(int i = 0; i < m_mW.size(); ++i){
+				m_mW[i] = ct::Mat_<T>::zeros(W[i].rows, W[i].cols);
+				m_mb[i] = 0;
+			}
+		}
+
+		for(int i = 0; i < m_mW.size(); ++i){
+			Mat_<T> tmp = m_mW[i];
+			tmp *= m_betha;
+			tmp += (1.f - m_betha) * gradW[i];
+			m_mW[i] = tmp;
+
+			m_mb[i] = m_betha * m_mb[i] + (1.f - m_betha) * gradB[i];
+		}
+		for(int i = 0; i < m_mW.size(); ++i){
+			W[i] += ((-m_alpha) * m_mW[i]);
+			B[i] += ((-m_alpha) * m_mb[i]);
+		}
+	}
+
+private:
+	std::vector< ct::Mat_<T> > m_mW;
+	std::vector< T > m_mb;
+
+	T m_alpha;
+	T m_betha;
 };
 
 template<class T>
@@ -449,10 +501,15 @@ inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
  * @return
  */
 template< typename T, typename Func >
-ct::Size conv2D(const ct::Mat_<T>& images, int width, int height, int stride,
-					const std::vector< ct::Mat_<T> >& W, std::vector< ct::Mat_<T> >&Res, Func func)
+ct::Size conv2D(const ct::Mat_<T>& images,
+				const ct::Size& szI,
+				int stride,
+				const std::vector< ct::Mat_<T> >& W,
+				const std::vector< T >& B,
+				std::vector< ct::Mat_<T> >&Res,
+				Func func)
 {
-	if(images.empty() || W.empty()){
+	if(images.empty() || W.empty() || B.empty() || W.size() != B.size()){
 		std::cout << "conv2D wrong parameters\n";
 		return ct::Size(0, 0);
 	}
@@ -462,35 +519,56 @@ ct::Size conv2D(const ct::Mat_<T>& images, int width, int height, int stride,
 
 	int m = images.rows;
 
-	int width_res = (width - w_cols + 1) / stride;
-	int height_res = (height - w_rows + 1) / stride;
-	if(stride > 1){
-		width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
-		height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
-	}
+	ct::Size szO;
+	szO.width	= (szI.width - w_cols + 1) / stride;
+	szO.height	= (szI.height - w_rows + 1) / stride;
 
-	int sz = width_res * height_res;
+	int sz = szO.area();
 
 	Res.resize(W.size());
 	for(size_t i = 0; i < Res.size(); i++){
 		Res[i].setSize(images.rows, sz);
 	}
 
-	T *dI = &(*images.val)[0];
+	T *dI = images.ptr();
 
 #pragma omp parallel for
 	for(int i = 0; i < m; ++i){
 		T *dIi = &dI[i * images.cols];
 
 #pragma omp parallel for
-		for(int j = 0; j < W.size(); ++j){
+		for(int j = 0; j < Res.size(); ++j){
 			T *dRes = Res[j].ptr();
 			T *dResi = &dRes[i * Res[j].cols];
 
-			internal::conv2D(dIi, width, height, width_res, height_res, stride, i, W[j], dResi, func);
+#pragma omp parallel for
+			for(int y_res = 0; y_res < szO.height; y_res++){
+				int y = y_res * stride;
+				for(int x_res = 0; x_res < szO.width; x_res++){
+					int x = x_res * stride;
+					T *dW = W[j].ptr();
+
+					T sum = 0;
+					for(int a = 0; a < w_rows; ++a){
+						if(y + a < szI.height){
+							for(int b = 0; b < w_cols; ++b){
+								if(x + b < szI.width){
+									T w = dW[a * w_cols + b];
+									T g = dIi[(y + a) * szI.width + x + b];
+									sum += w * g;
+								}
+							}
+						}
+					}
+					sum += B[j];
+					dResi[y_res * szO.width + x_res] = func(sum);
+				}
+			}
+
+//			internal::conv2D(dIi, width, height, width_res, height_res, stride, i, W[j], dResi, func);
 		}
 	}
-	return ct::Size(width_res, height_res);
+	return szO;
 }
 
 /**
@@ -550,56 +628,145 @@ bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat
  * @param A0		current layer
  * @param gradA1	gradient from next layer
  * @param indexes	indexes of using weight matrix
- * @param width		width of images
- * @param height	height of images
- * @param stride	stride
- * @param W			vector of weight matricies
+
  * @param gradW		result vector of gradient of weight matricies
  * @return
  */
 template< typename T >
-ct::Size deriv_conv2D(const ct::Mat_<T>& A0, const ct::Mat_<T>& gradA1, const ct::Mat_<int>& indexes,
-						  int width, int height, int stride,
-						  const std::vector< ct::Mat_<T> >& W,
-						  std::vector< ct::Mat_<T> >&gradW)
+void deriv_conv2D(const ct::Mat_<T>& A0,
+					  const ct::Mat_<T>& gradA1,
+					  const ct::Mat_<int>& indexes,
+					  const ct::Size& szA0,
+					  const ct::Size& szA1,
+					  const ct::Size &szW,
+					  uint countW,
+					  int stride,
+					  std::vector< ct::Mat_<T> >&gradW,
+					  std::vector< T >&gradB)
 {
-	if(A0.empty() || gradA1.empty()){
+	if(A0.empty() || gradA1.empty() || !countW || !stride){
 		std::cout << "deriv_conv2D wrong parameters\n";
-		return ct::Size(0, 0);
 	}
 
-	int w_rows = W[0].rows;
-	int w_cols = W[0].cols;
-
-	gradW.resize(W.size());
+	gradW.resize(countW);
+	gradB.resize(countW);
 	for(int i = 0; i < gradW.size(); ++i){
-		gradW[i] = ct::Mat_<T>::zeros(w_rows, w_cols);
+		gradW[i] = ct::Mat_<T>::zeros(szW.height, szW.width);
+		gradB[i] = 0;
 	}
 
 	int m = A0.rows;
-
-	int width_res = (width - w_cols + 1) / stride;
-	int height_res = (height - w_rows + 1) / stride;
-	if(stride > 1){
-		width_res = width_res * stride + w_cols < width? width_res : width_res + 1;
-		height_res = height_res * stride + w_rows < height? height_res : height_res + 1;
-	}
 
 	T *dA = &(*A0.val)[0];
 	T *dgA1 = &(*gradA1.val)[0];
 	int* dId = &(*indexes.val)[0];
 
 //#pragma omp parallel for
-	for(int i = 0; i < m; ++i){
-		T *dAi = &dA[i * A0.cols];
-		T *dgA1i = &dgA1[i * gradA1.cols];
-		int *dIi = &dId[i * gradA1.cols];
+//	for(int i = 0; i < m; ++i){
+//		T *dAi = &dA[i * A0.cols];
+//		T *dgA1i = &dgA1[i * gradA1.cols];
+//		int *dIi = &dId[i * gradA1.cols];
 
-//#pragma omp parallel for
-		internal::deriv_conv2D(dAi, dgA1i, dIi, width, height,
-							   width_res, height_res, stride, gradW);
+////#pragma omp parallel for
+//		internal::deriv_conv2D(dAi, dgA1i, dIi, width, height,
+//							   width_res, height_res, stride, gradW);
+//	}
+
+	for(int i = 0; i < m; ++i){
+		T *dAi		= &dA[A0.cols * i];
+		T *dgA1i	= &dgA1[gradA1.cols * i];
+		int *dIi	= &dId[indexes.cols * i];
+
+#pragma omp parallel for
+		for(int y = 0; y < szA1.height; ++y){
+			for(int x = 0; x < szA1.width; ++x){
+				int id = dIi[szA1.width * y + x];
+				T *dgW = gradW[id].ptr();
+
+#pragma omp parallel for
+				for(int a = 0; a < szW.height; ++a){
+					if(y + a < szA0.height){
+						for(int b = 0; b < szW.width; ++b){
+							if(x + b < szA0.width){
+								dgW[a * szW.width + b] += dAi[szA0.width * (y + a) + x + b] * dgA1i[szA1.width * y + x];
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-	return ct::Size(width_res, height_res);
+
+	for(int i = 0; i < gradW.size(); ++i){
+		gradW[i] *= (T)(1./m);
+	}
+
+	for(int i = 0; i < m; ++i){
+		T *dgA1i	= &dgA1[gradA1.cols * i];
+		int *dIi	= &dId[indexes.cols * i];
+		for(int y = 0; y < szA1.height; ++y){
+			for(int x = 0; x < szA1.width; ++x){
+				int id = dIi[szA1.width * y + x];
+
+				gradB[id] += dgA1i[szA1.width * y + x];
+			}
+		}
+	}
+	for(int i = 0; i < gradB.size(); ++i){
+		gradB[i] /= (T)m;
+	}
+}
+
+template< typename T >
+void deriv_prev_cnv(const ct::Mat_<T>& deriv,
+					const std::vector< ct::Mat_<T> >& W,
+					const ct::Mati& indexes,
+					const ct::Size& sL, const ct::Size& sLsub1,
+					ct::Mat_<T>& D)
+{
+	if(deriv.empty() || W.empty() || indexes.empty())
+		return;
+
+	int m = deriv.rows;
+	int w_rows = W[0].rows;
+	int w_cols = W[0].cols;
+
+	D.setSize(deriv.rows, sLsub1.area());
+	D.fill(0);
+
+	T *dA = deriv.ptr();
+	T *dD = D.ptr();
+	int* dI = indexes.ptr();
+
+#pragma omp parallel for
+	for(int i = 0; i < m; ++i){
+		T *dAi = &dA[i * deriv.cols];
+		T *dDi = &dD[i * D.cols];
+		int *dIi = &dI[i * indexes.cols];
+
+#pragma omp parallel for
+		for(int y = 0; y < sL.height; ++y){
+			for(int x = 0; x < sL.width; ++x){
+				int id = dIi[y * sL.width + x];
+
+				T *dW = W[id].ptr();
+//				if(id != 0)
+//					qDebug("id=%d", id);
+
+				for(int wy = 0; wy < w_rows; ++wy){
+					if(y + wy < sL.height && y + wy < sLsub1.height){
+						for(int wx = 0; wx < w_cols; ++wx){
+							if(x + wx < sL.width && x + wx < sLsub1.width){
+								T d = dAi[(y + wy) * sL.width + (x + wx)];
+								T w = dW[(w_rows - wy - 1) * w_cols + (w_cols - wx - 1)];
+								dDi[(y + wy) * sLsub1.width + (x + wx)] = d * w;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 }

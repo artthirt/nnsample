@@ -143,8 +143,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights();
 
-	layers3.push_back(20);
-	layers3.push_back(20);
+	layers3.push_back(100);
+	layers3.push_back(100);
 	layers3.push_back(10);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
@@ -210,6 +210,21 @@ void MainWindow::onTimeoutMnist()
 
 		if((m_mnist_train.iteration() % 100) == 0){
 			update_mnist();
+		}
+	}
+
+	if(ui->pb_pass_cnv->isChecked()){
+		m_drawCnvWeights.set_prev_weight(m_mnist_cnv.cnvW());
+
+		m_mnist_cnv.pass_batch(300);
+	//	on_pb_update_cnv_clicked();
+
+		m_drawCnvWeights.set_weight(m_mnist_cnv.cnvW());
+
+		ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
+
+		if((m_mnist_cnv.iteration() && m_mnist_cnv.iteration() % 100) == 0){
+			on_pb_update_cnv_clicked();
 		}
 	}
 }
@@ -405,7 +420,6 @@ void MainWindow::on_pb_save_gpu_clicked()
 
 void MainWindow::on_pb_pass_cnv_clicked()
 {
-
 }
 
 void MainWindow::on_pb_test_cnv_clicked()
@@ -433,21 +447,35 @@ void MainWindow::on_pb_update_cnv_clicked()
 
 		data.resize(count);
 
+#pragma omp parallel for
 		for(int i = 0; i < count; i++){
 			data[i] = y.argmax(i, 1);
 		}
 		ui->widgetMNISTCnv->updatePredictfromIndex(index, data);
 	}else{
-		uint count = std::min((uint)2000, m_mnist.count_test_images() - index);
+		int count = std::min((uint)2000, m_mnist.count_test_images() - index);
 		ct::Matf y = m_mnist_cnv.forward_test(index, count);
 
 		QVector< uchar > data;
 
 		data.resize(count);
 
-		for(uint i = 0; i < count; i++){
+#pragma omp parallel for
+		for(int i = 0; i < count; i++){
 			data[i] = y.argmax(i, 1);
 		}
 		ui->widgetMNISTCnv->updatePredictfromIndex(index, data);
 	}
+}
+
+void MainWindow::on_pb_show_weights_clicked()
+{
+	m_drawCnvWeights.show();
+}
+
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+	m_drawCnvWeights.close();
+	QMainWindow::closeEvent(event);
 }

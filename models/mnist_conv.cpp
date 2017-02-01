@@ -8,13 +8,12 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_conv_length = 4;
-	m_count_cnvW.push_back(9);
-	m_count_cnvW.push_back(9);
-	m_count_cnvW.push_back(9);
-	m_count_cnvW.push_back(9);
+	m_count_cnvW.push_back(10);
+	m_count_cnvW.push_back(10);
+	m_count_cnvW.push_back(10);
+	m_conv_length = m_count_cnvW.size();
 
-	setConvLength(m_conv_length, m_count_cnvW);
+	setConvLength(m_count_cnvW);
 }
 
 void mnist_conv::setMnist(mnist_reader *mnist)
@@ -22,23 +21,42 @@ void mnist_conv::setMnist(mnist_reader *mnist)
 	m_mnist = mnist;
 }
 
-void mnist_conv::setConvLength(int len, const std::vector<int> &count_cnvW)
+void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 {
-	if(len != count_cnvW.size())
+	if(!count_cnvW.size())
 		return;
-	m_conv_length = len;
+	m_conv_length = count_cnvW.size();
 	m_cnvW.resize(m_conv_length);
+	m_cnvB.resize(m_conv_length);
 	m_count_cnvW = count_cnvW;
+
+	time_t tm;
+	time(&tm);
+	ct::generator.seed(tm);
+
+	std::normal_distribution<float> nrm(0, 0.01);
 
 	for(int i = 0; i < m_conv_length; ++i){
 		m_cnvW[i].resize(m_count_cnvW[i]);
+		m_cnvB[i].resize(m_count_cnvW[i]);
 
 		for(int j = 0; j < m_cnvW[i].size(); ++j){
 			Matf &W = m_cnvW[i][j];
 			W = Matf::zeros(3, 3);
 			W.randn(0, 0.1);
+
+			m_cnvB[i][j] = nrm(ct::generator);
 		}
 	}
+	m_MomentOptimizer.resize(m_conv_length);
+//	for(int i = 0; i < m_MomentOptimizer.size(); ++i){
+//		m_MomentOptimizer[i].setAlpha(0.1);
+//	}
+}
+
+std::vector<std::vector<Matf> > &mnist_conv::cnvW()
+{
+	return m_cnvW;
 }
 
 Matf mnist_conv::forward(const ct::Matf &X) const
@@ -336,7 +354,7 @@ void mnist_conv::getBatchIds(std::vector<int> &indexes, int batch)
 	}
 }
 
-float reLu(float v)
+inline float reLu(float v)
 {
 	return std::max(v, 0.f);
 }
@@ -353,7 +371,7 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, int w, int h)const
 
 	ct::Size sz(w, h);
 	for(int i = 0; i < m_conv_length; ++i){
-		sz = nn::conv2D(a, sz.width, sz.height, 1, m_cnvW[i], Res, reLu);
+		sz = nn::conv2D(a, sz, 1, m_cnvW[i], m_cnvB[i], Res, reLu);
 		nn::max_pool(Res, a, indexes);
 	}
 	X_out = a;
@@ -384,14 +402,16 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 	cnv_a.resize(m_conv_length + 1);
 	Res.resize(m_conv_length);
 	indexes.resize(m_conv_length);
-	szs.resize(m_conv_length);
-
-	cnv_a[0] = X;
+	szs.resize(m_conv_length + 1);
 
 	ct::Size sz(w, h);
+
+	cnv_a[0] = X;
+	szs[0] = sz;
+
 	for(int i = 0; i < m_conv_length; ++i){
-		sz = nn::conv2D(cnv_a[i], sz.width, sz.height, 1, m_cnvW[i], Res[i], reLu);
-		szs[i] = sz;
+		sz = nn::conv2D(cnv_a[i], sz, 1, m_cnvW[i], m_cnvB[i], Res[i], reLu);
+		szs[i + 1] = sz;
 		nn::max_pool(Res[i], cnv_a[i + 1], indexes[i]);
 	}
 
@@ -435,7 +455,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 //		Matf sz = elemwiseMult(a[i], a[i]);
 //		sz = 1. - sz;
 		Matf di, sz;
-		if(i > 0){
+		/*if(i > 0)*/{
 			sz = derivRelu(a[i]);
 
 			//Matf di = d * m_W[i].t();
@@ -454,19 +474,51 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 		dB[i] = (sumRows(d) * (1.f/m)).t();
 
-		if(i > 0)
-			d = di;
+//		if(i > 0)
+		d = di;
 	}
 
 	//// deriv conv
 	{
-		for(int i = m_cnvW.size();i > -1; --i){
-			Matf di, sz;
+		std::vector< std::vector<Matf> > gradW;
+		std::vector< std::vector<float> > gradB;
+		gradW.resize(m_cnvW.size());
+		gradB.resize(m_cnvW.size());
+
+		for(int i = m_cnvW.size() - 1;i > -1; --i){
+			Matf di, sz, di2;
 			if(i > 0){
-				sz = derivRelu(cnv_a[i]);
-				di = elemwiseMult(di, sz);
+//				if(i != m_cnvW.size() - 1){
+					sz = derivRelu(cnv_a[i + 1]);
+					di = elemwiseMult(d, sz);
+//				}else{
+//					di = d;
+//				}
+				nn::deriv_prev_cnv(di, m_cnvW[i], indexes[i], szs[i + 1], szs[i], di2);
+				di = di2;
+			}
+
+			ct::Size szW(m_cnvW[i][0].cols, m_cnvW[i][0].rows);
+
+			nn::deriv_conv2D(cnv_a[i], d, indexes[i], szs[i], szs[i + 1], szW, m_cnvW[i].size(), 1, gradW[i], gradB[i]);
+
+			if(i > 0)
+				d = di;
+		}
+
+		for(int i = 0; i < gradW.size(); ++i){
+			qDebug("-----L[%d]----\n", i);
+			m_MomentOptimizer[i].pass(gradW[i], gradB[i], m_cnvW[i], m_cnvB[i]);
+			for(int j = 0; j < gradW[i].size(); ++j){
+				std::string str = m_cnvW[i][j];
+				//qDebug("cnvW[%d]\n%s", j, str.c_str());
+				qDebug("cnvB[%d] = %f", j, m_cnvB[i][j]);
 			}
 		}
+		qDebug("---------");
+
 	}
 
+	m_AdamOptimizer.pass(dW, dB, m_W, m_b);
+	m_iteration = m_AdamOptimizer.iteration();
 }

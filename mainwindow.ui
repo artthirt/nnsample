@@ -349,6 +349,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pb_show_weights">
+            <property name="text">
+             <string>Show Weights</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pb_update_cnv">
             <property name="text">
              <string>Update</string>
@@ -359,6 +366,9 @@
            <widget class="QPushButton" name="pb_pass_cnv">
             <property name="text">
              <string>Pass</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
            </widget>
           </item>

@@ -571,6 +571,12 @@ public:
 		return *this;
 	}
 	///***********************
+	void copyTo(Mat_<T>& mat) const {
+		if(empty())
+			return;
+		mat = Mat_<T>(rows, cols, ptr());
+	}
+	///***********************
 	inline int total() const{
 		return rows * cols;
 	}
@@ -586,6 +592,14 @@ public:
 			this->cols = cols;
 			val = sm::make_shared<vtype>();
 			val().resize(rows * cols);
+		}
+	}
+	void fill(T val){
+		if(empty())
+			return;
+		T* d = ptr();
+		for(int i = 0; i < total(); ++i){
+			d[i] = val;
 		}
 	}
 
@@ -709,7 +723,8 @@ public:
 	///**************************
 	void randn(double _mean = 0., double _std = 1., int seed = 0){
 		std::normal_distribution< T > nrm(_mean, _std);
-		generator.seed(seed);
+		if(seed != 0)
+			generator.seed(seed);
 		T* val = &(*this->val)[0];
 		for(int i = 0; i < total(); i++){
 			val[i] = nrm(generator);

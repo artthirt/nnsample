@@ -186,13 +186,18 @@ void test_mat()
 	ims = ct::Matf(1, im.total(), im.ptr());
 
 	std::vector< ct::Matf > vW, vcn, gradW;
+	std::vector< float > gradB;
 	vW.push_back(W1);
 	vW.push_back(W2);
+
+	std::vector<float> b;
+	b.push_back(0);
+	b.push_back(0);
 
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
 	ct::Size sz;
 
-	CALC_MAT(sz = nn::conv2D(ims, ww, hh, 1, vW, vcn, nn::linear_func<float>), im, "IMAGE", 10);
+	CALC_MAT(sz = nn::conv2D(ims, ct::Size(ww, hh), 1, vW, b, vcn, nn::linear_func<float>), im, "IMAGE", 10);
 
 //	PRINT_MAT(im, "IMAGE");
 
@@ -222,7 +227,7 @@ void test_mat()
 	qDebug("MAXPOOL");
 	PRINT_IMAGE(pool, sz.width, sz.height);
 
-	nn::deriv_conv2D(ims, pool, indexes, ww, hh, 1, vW, gradW);
+	nn::deriv_conv2D(ims, pool, indexes, ct::Size(ww, hh), sz, vW[0].size(), vW.size(), 1, gradW, gradB);
 
 	for(int i = 0; i < gradW.size(); ++i){
 		PRINT_MAT(gradW[i], QString("gW[%1]").arg(i).toStdString().c_str());

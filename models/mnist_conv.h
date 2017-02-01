@@ -79,11 +79,14 @@ public:
 	 * @param mnist
 	 */
 	void setMnist(mnist_reader* mnist);
-	void setConvLength(int len, const std::vector< int > &count_cnvW);
+	void setConvLength(const std::vector< int > &count_cnvW);
+
+	std::vector<std::vector<ct::Matf> > &cnvW();
 
 private:
 	std::vector< int > m_layers;
 	std::vector< std::vector< ct::Matf > > m_cnvW;
+	std::vector< std::vector< float > > m_cnvB;
 	std::vector< int > m_count_cnvW;
 	std::vector< ct::Matf > m_W;
 	std::vector< ct::Matf > m_b;
@@ -95,6 +98,7 @@ private:
 	ct::Size m_cnv_out_size;
 
 	nn::AdamOptimizer<float> m_AdamOptimizer;
+	std::vector< nn::MomentOptimizer<float> > m_MomentOptimizer;
 
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 

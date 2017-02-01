@@ -52,6 +52,18 @@ public:
 			(*m_ref)++;
 		return *this;
 	}
+	void release(){
+		if(m_val && m_ref){
+			--(*m_ref);
+			if(*m_ref <= 0){
+				delete m_val;
+				delete m_ref;
+
+			}
+			m_val = 0;
+			m_ref = 0;
+		}
+	}
 
 	bool empty() const{
 		return m_val == 0;
