@@ -722,7 +722,7 @@ public:
 	}
 	///**************************
 	void randn(double _mean = 0., double _std = 1., int seed = 0){
-		std::normal_distribution< T > nrm(_mean, _std);
+		std::normal_distribution< T > nrm((T)_mean, (T)_std);
 		if(seed != 0)
 			generator.seed(seed);
 		T* val = &(*this->val)[0];
@@ -1885,7 +1885,7 @@ void dropout(int rows, int cols, T p, Mat_<T>& D, int seed = 0)
 		int pi = bi(generator);
 #pragma omp parallel for
 		for(int j = 0; j < cols; j++){
-			val1[i * D.cols + j] = pi;
+			val1[i * D.cols + j] = T(pi);
 		}
 	}
 }

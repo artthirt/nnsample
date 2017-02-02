@@ -11,7 +11,7 @@ mnist_conv::mnist_conv()
 	m_count_cnvW.push_back(8);
 //	m_count_cnvW.push_back(4);
 //	m_count_cnvW.push_back(4);
-	m_conv_length = m_count_cnvW.size();
+	m_conv_length = (int)m_count_cnvW.size();
 
 	setConvLength(m_count_cnvW);
 }
@@ -25,7 +25,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 {
 	if(!count_cnvW.size())
 		return;
-	m_conv_length = count_cnvW.size();
+	m_conv_length = (int)count_cnvW.size();
 	m_cnvW.resize(m_conv_length);
 	m_cnvB.resize(m_conv_length);
 	m_count_cnvW = count_cnvW;
@@ -34,7 +34,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	time(&tm);
 	ct::generator.seed(tm);
 
-	std::normal_distribution<float> nrm(0, 0.01);
+//	std::normal_distribution<float> nrm(0.f, 0.01f);
 
 	for(int i = 0; i < m_conv_length; ++i){
 		m_cnvW[i].resize(m_count_cnvW[i]);
@@ -50,7 +50,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	}
 	m_MomentOptimizer.resize(m_conv_length);
 	for(int i = 0; i < m_MomentOptimizer.size(); ++i){
-		m_MomentOptimizer[i].setAlpha(0.1);
+		m_MomentOptimizer[i].setAlpha(0.1f);
 	}
 }
 

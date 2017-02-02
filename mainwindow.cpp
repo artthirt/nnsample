@@ -365,10 +365,6 @@ void MainWindow::on_pb_changemodeMnist_clicked(bool checked)
 	}
 }
 
-void MainWindow::on_pb_pretrain_clicked(bool checked)
-{
-}
-
 void MainWindow::on_pb_save_clicked()
 {
 	m_mnist_train.save("model.txt");

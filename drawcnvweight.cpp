@@ -87,6 +87,8 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 
 void DrawCnvWeight::paintEvent(QPaintEvent *event)
 {
+	Q_UNUSED(event);
+
 	QPainter painter(this);
 
 	painter.fillRect(rect(), Qt::black);
@@ -108,7 +110,7 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 		const std::vector< ct::Matf > &Ws = Weights[i];
 		x = 0;
 
-		float _max = -99999999, _min = 999999999;
+		float _max = -99999999.f, _min = 999999999.f;
 
 		for(int j = 0; j < Ws.size(); ++j){
 			float m1 = Ws[j].max();

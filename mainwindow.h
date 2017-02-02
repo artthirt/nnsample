@@ -74,8 +74,6 @@ private slots:
 
 	void on_pb_changemodeMnist_clicked(bool checked);
 
-	void on_pb_pretrain_clicked(bool checked);
-
 	void on_pb_save_clicked();
 
 	void on_pb_passGPU_clicked();

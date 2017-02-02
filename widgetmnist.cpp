@@ -120,6 +120,8 @@ void rotate_mnist(const QByteArray& in, QByteArray& out, int w, int h, float ang
 
 void WidgetMNIST::paintEvent(QPaintEvent *event)
 {
+	Q_UNUSED(event);
+
 	QPainter painter(this);
 
 	if(!m_mnist)
@@ -133,7 +135,7 @@ void WidgetMNIST::paintEvent(QPaintEvent *event)
 
 #define PI	3.1415926535897932384626433832795
 
-	std::uniform_real_distribution<float> ur(-PI / 10.f, PI / 10.f);
+	std::uniform_real_distribution<float> ur((float)-PI / 10.f, (float)PI / 10.f);
 	std::mt19937 gen;
 	gen.seed(time(0));
 

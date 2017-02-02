@@ -169,8 +169,8 @@ template< typename T >
 class MomentOptimizer{
 public:
 	MomentOptimizer(){
-		m_alpha = 0.01;
-		m_betha = 0.9;
+		m_alpha = T(0.01);
+		m_betha = T(0.9);
 	}
 
 	void setAlpha(T val){
@@ -430,21 +430,19 @@ bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct:
 	A1.setSize(rows, szA1.area());
 //	indexes.setSize(rows, cols);
 
-	T* dA0 = A0.ptr();
-	T* dA1 = A1.ptr();
-
 	int kLen = 2;
 
 //#pragma omp parallel for
 	for(int i = 0; i < rows; ++i){
 		const T* dA0i = &A0.at(i);
+		T* dA1i = &A1.at(i);
 //#pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * kLen;
 			for(int x = 0; x < szA1.width; ++x){
 				int x0 = x * kLen;
 
-				T maxV = -99999999;
+				T maxV = T(-99999999);
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
 						if(y0 + a < szA0.height && x0 + b < szA0.width){
@@ -455,7 +453,7 @@ bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct:
 						}
 					}
 				}
-				dA1[y * szA1.width + x];
+				dA1i[y * szA1.width + x] = maxV;
 			}
 		}
 	}
@@ -527,7 +525,7 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 		return;
 	int rows		= list[0].rows;
 	int loc_cols	= list[0].cols;
-	int cols		= loc_cols * list.size();
+	int cols		= loc_cols * (int)list.size();
 
 	res.setSize(rows, cols);
 

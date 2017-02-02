@@ -102,7 +102,7 @@ void test_shared()
 		t = u;
 		t = u;
 		u = t;
-		(*t)[11] = e + 1;
+		(*t)[11] = (uint8_t)e + 1;
 		CHECK_VALUE(u.ref() == 2, "u ref need 2");
 	}
 
@@ -195,7 +195,7 @@ void test_mat()
 	b.push_back(0);
 
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
-	ct::Size sz;
+	ct::Size sz, sz1;
 
 	CALC_MAT(sz = nn::conv2D(ims, ct::Size(ww, hh), 1, vW, b, vcn, nn::linear_func<float>), im, "IMAGE", 10);
 
@@ -223,10 +223,10 @@ void test_mat()
 	ct::Matf D;
 	ct::Mati indexes;
 
-	nn::subsample(vcn, ct::Size(ww, hh), pool, sz);
+	nn::subsample(vcn, sz, pool, sz1);
 
 	qDebug("MAXPOOL");
-	PRINT_IMAGE(pool[0], sz.width, sz.height);
+	PRINT_IMAGE(pool[0], sz1.width, sz1.height);
 
 	auto gradRelu = [](float v){return v > 0? 1 : 0;};
 
