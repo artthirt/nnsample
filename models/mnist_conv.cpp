@@ -399,9 +399,9 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, int w, int h)const
 
 		std::vector< Matf > vatt;
 		for(int x = 0; x < va.size(); ++x){
-			std::vector< Matf > An, An1;
+			std::vector< Matf > An, An1, Masks;
 			szn = nn::conv2D(va[x], sz, 1, m_cnvW[i], m_cnvB[i], An, reLu);
-			nn::subsample(An, szn, An1, szAn);
+			nn::subsample(An, szn, An1, Masks, szAn);
 			nn::attach_vector(vatt, An1);
 			sz = szAn;
 		}
@@ -426,13 +426,14 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 	int w = 28;
 	int h = 28;
 
-	std::vector< std::vector< Matf > > va, vc;
+	std::vector< std::vector< Matf > > va, vc, vm;
 	std::vector< ct::Size > szA;
 	std::vector< ct::Size > szS;
 	Matf cnv_a;
 
 	va.resize(m_cnvW.size() + 1);
 	vc.resize(m_cnvW.size());
+	vm.resize(m_cnvW.size());
 	szA.resize(m_cnvW.size() + 1);
 	szS.resize(m_cnvW.size());
 
@@ -443,16 +444,17 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 	for(int i = 0; i < m_cnvW.size(); ++i){
 
 		for(int x = 0; x < va[i].size(); ++x){
-			std::vector< Matf > An, An1;
+			std::vector< Matf > An, An1, Mn;
 
 			szn = nn::conv2D(va[i][x], sz, 1, m_cnvW[i], m_cnvB[i], An, reLu);
 			nn::attach_vector(vc[i], An);
 
 			szA[i + 1] = szn;
-			nn::subsample(An, szn, An1, szAn);
+			nn::subsample(An, szn, An1, Mn, szAn);
 			szS[i] = szAn;
 
 			nn::attach_vector(va[i + 1], An1);
+			nn::attach_vector(vm[i], Mn);
 
 			sz = szAn;
 		}

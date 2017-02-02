@@ -219,11 +219,11 @@ void test_mat()
 	PRINT_IMAGE(vcn[0], sz.width, sz.height);
 	PRINT_IMAGE(vcn[1], sz.width, sz.height);
 
-	std::vector< ct::Matf > pool;
+	std::vector< ct::Matf > pool, masks;
 	ct::Matf D;
 	ct::Mati indexes;
 
-	nn::subsample(vcn, sz, pool, sz1);
+	nn::subsample(vcn, sz, pool, masks, sz1);
 
 	qDebug("MAXPOOL");
 	PRINT_IMAGE(pool[0], sz1.width, sz1.height);

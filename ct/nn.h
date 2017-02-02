@@ -414,7 +414,11 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
  * @return
  */
 template< typename T >
-bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct::Size& szA1)
+bool subsample(const ct::Mat_<T> &A0,
+			   const ct::Size& szA0,
+			   ct::Mat_<T>& A1,
+			   ct::Mat_<T>& Mask,
+			   ct::Size& szA1)
 {
 	if(A0.empty())
 		return false;
@@ -428,6 +432,8 @@ bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct:
 	szA1 = ct::Size(szA0.width/2, szA0.height/2);
 
 	A1.setSize(rows, szA1.area());
+	Mask.setSize(rows, szA0.area());
+	Mask.fill(0);
 //	indexes.setSize(rows, cols);
 
 	int kLen = 2;
@@ -436,12 +442,14 @@ bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct:
 	for(int i = 0; i < rows; ++i){
 		const T* dA0i = &A0.at(i);
 		T* dA1i = &A1.at(i);
+		T* dMi = &Mask.at(i);
 //#pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * kLen;
 			for(int x = 0; x < szA1.width; ++x){
 				int x0 = x * kLen;
 
+				int xm = x0, ym = y0;
 				T maxV = T(-99999999);
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
@@ -449,11 +457,13 @@ bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct:
 							T v = dA0i[(y0 + a) * szA0.width + (x0 + b)];
 							if(v > maxV){
 								maxV = v;
+								xm = x0 + b, y0 = y0 + a;
 							}
 						}
 					}
 				}
 				dA1i[y * szA1.width + x] = maxV;
+				dMi[ym * szA0.width + xm] = T(1);
 			}
 		}
 	}
@@ -462,14 +472,17 @@ bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct:
 }
 
 template< typename T >
-bool subsample(const std::vector< ct::Mat_<T> > &A0, const ct::Size& szA0, std::vector< ct::Mat_<T> > &A1, ct::Size& szA1)
+bool subsample(const std::vector< ct::Mat_<T> > &A0,
+			   const ct::Size& szA0, std::vector< ct::Mat_<T> > &A1,
+			   std::vector< ct::Mat_<T> > &Masks,
+			   ct::Size& szA1)
 {
-	if(A0.empty())
+	if(A0.empty() || Masks.empty())
 		return false;
 	A1.resize(A0.size());
 
 	for(int i = 0; i < A0.size(); i++){
-		if(!subsample(A0[i], szA0, A1[i], szA1))
+		if(!subsample(A0[i], szA0, A1[i], Masks[i], szA1))
 			return false;
 	}
 	return true;
@@ -483,9 +496,13 @@ void attach_vector(std::vector< T >& attached, const std::vector< T >& slice)
 }
 
 template< typename T >
-bool upsample(const ct::Mat_<T> &A1, const ct::Size& szA1, const ct::Size& szA0, ct::Mat_<T>& A0)
+bool upsample(const ct::Mat_<T> &A1,
+			  const ct::Size& szA1,
+			  const ct::Size& szA0,
+			  const ct::Mat_<T> &Mask,
+			  ct::Mat_<T>& A0)
 {
-	if(A0.empty())
+	if(A0.empty() || Mask.empty())
 		return false;
 
 	int m = A1.rows;
@@ -514,9 +531,29 @@ bool upsample(const ct::Mat_<T> &A1, const ct::Size& szA1, const ct::Size& szA0,
 			}
 		}
 	}
+	A0 = ct::elemwiseMult(A0, Mask);
 
 	return true;
 }
+
+template< typename T >
+bool upsample(const std::vector< ct::Mat_<T> > &A1,
+			  ct::Size& szA1,
+			  const ct::Size& szA0,
+			  const std::vector< ct::Mat_<T> > &Masks,
+			  std::vector< ct::Mat_<T> >& A0)
+{
+	if(A1.empty() || Masks.empty())
+		return false;
+	A1.resize(A0.size());
+
+	for(int i = 0; i < A1.size(); i++){
+		if(!upsample(A1[i], szA1, szA0, Masks[i], A0[i]))
+			return false;
+	}
+	return true;
+}
+
 
 template< typename T >
 void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
@@ -542,6 +579,32 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 		}
 	}
 }
+
+template< typename T >
+void hsplit(const ct::Mat_<T>& res, int cols, std::vector< ct::Mat_<T> >& list)
+{
+	if(res.empty() || (res.cols % cols) != 0)
+		throw new std::invalid_argument("hsplit: wrong parameters");
+
+	int len = res.cols / cols;
+
+	list.resize(cols);
+
+	for(int i = 0; i < cols; ++i){
+		list[i].setSize(res.rows, len);
+	}
+
+	T *dR = res.ptr();
+	for(int i = 0; i < cols; ++i){
+		T *dLi = list[i].ptr();
+		for(int j = 0; j < res.rows; ++j){
+			for(int k = 0; k < len; ++k){
+				dLi[j * len + k] = dR[j * res.cols + i * len + k];
+			}
+		}
+	}
+}
+
 
 }
 
