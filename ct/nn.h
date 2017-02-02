@@ -336,159 +336,6 @@ inline T linear_func(T val)
 	return val;
 }
 
-namespace internal{
-
-template< typename T >
-void matmul_conv(const T* dA, int x, int y, int xres, int yres, int width,
-				 int width_res, int row, const ct::Mat_<T> & W, ct::Mat_<T> &Res)
-{
-	T *dW = &(*W.val)[0];
-	T *dRes = &(*Res.val)[0] + row * Res.cols;
-
-	for(int i = 0; i < W.rows; ++i){
-		for(int j = 0; j < W.cols; ++j){
-			T sC = 0;
-			for(int k = 0; k < W.cols; ++k){
-				sC += dA[(y + i) * width + (x + j)] * dW[j * W.cols + k];
-			}
-//			qDebug("r=%d c=%d", yres + i, xres + j);
-			dRes[(yres + i) * width_res + (xres + j)] = sC;
-		}
-	}
-}
-
-/**
- * @brief conv
- * @param dA
- * @param x
- * @param y
- * @param xres
- * @param yres
- * @param width
- * @param width_res
- * @param row
- * @param W
- * @param Res
- */
-template< typename T, typename Func >
-inline void conv(const T* dA, int x, int y, int xres, int yres,
-				 int width, int height, int width_res, int row,
-				 const ct::Mat_<T> & W, T* &dRes,
-				 Func func)
-{
-	T *dW = &(*W.val)[0];
-//	T *dRes = &(*Res.val)[0] + row * Res.cols;
-
-	T sC = 0;
-	for(int i = 0; i < W.rows; ++i){
-		if(y + i < height){
-			for(int j = 0; j < W.cols; ++j){
-				if(x + j < width)
-					sC += dA[(y + i) * width + (x + j)] * dW[i * W.cols + j];
-	//			qDebug("a: r=%d c=%d", y + i, x + j);
-			}
-		}
-	}
-//	qDebug("r: r=%d c=%d", yres, xres);
-	dRes[(yres) * width_res + (xres)] = func(sC);
-}
-
-/**
- * @brief conv2D
- * @param dA
- * @param width
- * @param width_res
- * @param height_res
- * @param stride
- * @param row
- * @param W
- * @param Res
- * @param func - nonlinear operation
- */
-template< typename T, typename Func >
-inline void conv2D(const T* dA, int width, int height,
-				   int width_res, int height_res, int stride, int row,
-				   const ct::Mat_<T> & W, T *dRes,
-				   Func func)
-{
-	int y = 0;
-#pragma omp parallel for
-	for(int yr = 0; yr < height_res; ++yr){
-		y = yr * stride;
-		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
-			conv<T>(dA, x, y, xr, yr, width, height, width_res, row, W, dRes, func);
-		}
-	}
-}
-
-///**********
-
-/**
- * @brief deriv_conv
- * @param dA
- * @param dgA1
- * @param gradA1
- * @param x
- * @param y
- * @param xres
- * @param yres
- * @param width
- * @param height
- * @param width_res
- * @param gradW
- */
-template< typename T>
-inline void deriv_conv(const T* dA, const T *dgA1, int x, int y, int xres, int yres,
-				 int width, int height, int width_res, ct::Mat_<T> &gradW)
-{
-	T *dgW = &(*gradW.val)[0];
-
-	T sC = dgA1[(yres) * width_res + (xres)];
-	for(int i = 0; i < gradW.rows; ++i){
-		if(y + i < height){
-			for(int j = 0; j < gradW.cols; ++j){
-				if(x + j < width){
-//					qDebug("[%d, %d] = %f", y + i, x + j, dA[(y + i) * width + (x + j)]);
-					dgW[i * gradW.cols + j] += dA[(y + i) * width + (x + j)] * sC;
-				}
-	//			qDebug("a: r=%d c=%d", y + i, x + j);
-			}
-		}
-	}
-}
-
-/**
- * @brief deriv_conv2D
- * @param dA			reference to data of one image
- * @param dgA1			gradient of next layer
- * @param dId			indicies of using weight matrix
- * @param width			width image
- * @param height		height image
- * @param width_res		width of next layer
- * @param height_res	height of next layer
- * @param stride		stride
- * @param gradW			result: vector or gradient of weight matricies
- */
-template< typename T>
-inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
-					int width, int height,
-					int width_res, int height_res, int stride,
-					std::vector< ct::Mat_<T> > &gradW)
-{
-	int y = 0;
-#pragma omp parallel for
-	for(int yr = 0; yr < height_res; ++yr){
-		y = yr * stride;
-		for(int x = 0, xr = 0; xr < width_res; x += stride, ++xr){
-			int j = dId[yr * width_res + xr];
-			deriv_conv<T>(dA, dgA1, x, y, xr, yr, width, height, width_res, gradW[j]);
-		}
-	}
-}
-
-
-}
-
 /**
  * @brief conv2D
  * @param images	mattrix of images in rows
@@ -501,15 +348,15 @@ inline void deriv_conv2D(const T* dA, const T *dgA1, const int *dId,
  * @return
  */
 template< typename T, typename Func >
-ct::Size conv2D(const ct::Mat_<T>& images,
+ct::Size conv2D(const ct::Mat_<T>& A0,
 				const ct::Size& szI,
 				int stride,
 				const std::vector< ct::Mat_<T> >& W,
-				const std::vector< T >& B,
-				std::vector< ct::Mat_<T> >&A,
+				const std::vector< T > B,
+				std::vector< ct::Mat_<T> > &A1,
 				Func func)
 {
-	if(images.empty() || W.empty() || B.empty() || W.size() != B.size()){
+	if(A0.empty() || W.empty()){
 		std::cout << "conv2D wrong parameters\n";
 		return ct::Size(0, 0);
 	}
@@ -517,7 +364,7 @@ ct::Size conv2D(const ct::Mat_<T>& images,
 	int w_rows = W[0].rows;
 	int w_cols = W[0].cols;
 
-	int m = images.rows;
+	int m = A0.rows;
 
 	ct::Size szO;
 	szO.width	= (szI.width - w_cols + 1) / stride;
@@ -525,264 +372,174 @@ ct::Size conv2D(const ct::Mat_<T>& images,
 
 	int sz = szO.area();
 
-	A.resize(W.size());
-	for(size_t i = 0; i < A.size(); i++){
-		A[i].setSize(images.rows, sz);
-	}
+	A1.resize(W.size());
+	for(int i = 0; i < A1.size(); ++i)
+		A1[i].setSize(A0.rows, sz);
 
-	T *dI = images.ptr();
-
-#pragma omp parallel for
 	for(int i = 0; i < m; ++i){
-		T *dIi = &dI[i * images.cols];
+		const T *dA0i = &A0.at(i);
 
-#pragma omp parallel for
-		for(int j = 0; j < A.size(); ++j){
-			T *dRes = A[j].ptr();
-			T *dResi = &dRes[i * A[j].cols];
+		for(int y_res = 0; y_res < szO.height; y_res++){
+			int y = y_res * stride;
+			for(int x_res = 0; x_res < szO.width; x_res++){
+				int x = x_res * stride;
 
-#pragma omp parallel for
-			for(int y_res = 0; y_res < szO.height; y_res++){
-				int y = y_res * stride;
-				for(int x_res = 0; x_res < szO.width; x_res++){
-					int x = x_res * stride;
-					T *dW = W[j].ptr();
-
+				for(int w = 0; w < W.size(); ++w){
+					T *dA1i = &(A1[w].at(i));
+					T *dW = W[w].ptr();
 					T sum = 0;
-#pragma omp simd
+
 					for(int a = 0; a < w_rows; ++a){
 						if(y + a < szI.height){
 							for(int b = 0; b < w_cols; ++b){
 								if(x + b < szI.width){
 									T w = dW[a * w_cols + b];
-									T g = dIi[(y + a) * szI.width + x + b];
+									T g = dA0i[(y + a) * szI.width + x + b];
 									sum += w * g;
 								}
 							}
 						}
 					}
-					sum += B[j];
-					dResi[y_res * szO.width + x_res] = func(sum);
+					sum += B[w];
+					dA1i[y_res * szO.width + x_res] = func(sum);
 				}
 			}
-
-//			internal::conv2D(dIi, width, height, width_res, height_res, stride, i, W[j], dResi, func);
 		}
 	}
 	return szO;
 }
 
 /**
- * @brief max_pool
- * @param Layers
- * @param Res
- * @param indexes
+ * @brief subsample
  * @return
  */
 template< typename T >
-bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat_<int>& indexes)
+bool subsample(const ct::Mat_<T> &A0, const ct::Size& szA0, ct::Mat_<T>& A1, ct::Size& szA1)
 {
-	if(Layers.empty())
+	if(A0.empty())
 		return false;
 
-	int rows = Layers[0].rows;
-	int cols = Layers[0].cols;
+	int rows = A0.rows;
+	int cols = A0.cols;
 
 	if(!rows || !cols)
 		return false;
 
-	for(int i = 1; i < Layers.size(); ++i){
-		if(Layers[i].rows != rows || Layers[i].cols != cols)
-			return false;
-	}
+	szA1 = ct::Size(szA0.width/2, szA0.height/2);
 
-	Res.setSize(rows, cols);
-	indexes.setSize(rows, cols);
+	A1.setSize(rows, szA1.area());
+//	indexes.setSize(rows, cols);
 
-	T* dRes = Res.ptr();
-	int* dI = indexes.ptr();
+	T* dA0 = A0.ptr();
+	T* dA1 = A1.ptr();
 
-#pragma omp parallel for
+	int kLen = 2;
+
+//#pragma omp parallel for
 	for(int i = 0; i < rows; ++i){
-#pragma omp parallel for
-		for(int j = 0; j < cols; ++j){
-			int kI = 0;
-			T maxV = Layers[0].ptr()[i * cols + j];
-			for(int k = 1; k < Layers.size(); ++k){
-				T* dL = Layers[k].ptr();
-				if(dL[i * cols + j] > maxV){
-					maxV = dL[i * cols + j];
-					kI = k;
+		const T* dA0i = &A0.at(i);
+//#pragma omp parallel for
+		for(int y = 0; y < szA1.height; ++y){
+			int y0 = y * kLen;
+			for(int x = 0; x < szA1.width; ++x){
+				int x0 = x * kLen;
+
+				T maxV = -99999999;
+				for(int a = 0; a < kLen; ++a){
+					for(int b = 0; b < kLen; ++b){
+						if(y0 + a < szA0.height && x0 + b < szA0.width){
+							T v = dA0i[(y0 + a) * szA0.width + (x0 + b)];
+							if(v > maxV){
+								maxV = v;
+							}
+						}
+					}
 				}
+				dA1[y * szA1.width + x];
 			}
-			dRes[i * cols + j] = maxV;
-			dI[i * cols + j] = kI;
 		}
 	}
 
 	return true;
 }
 
-/**
- * @brief deriv_conv2D
- * derivative of convolution
- * @param A0		current layer
- * @param gradA1	gradient from next layer
- * @param indexes	indexes of using weight matrix
-
- * @param gradW		result vector of gradient of weight matricies
- * @return
- */
 template< typename T >
-void deriv_conv2D(const ct::Mat_<T>& A0,
-					  const ct::Mat_<T>& gradA1,
-					  const ct::Mat_<int>& indexes,
-					  const ct::Size& szA0,
-					  const ct::Size& szA1,
-					  const ct::Size &szW,
-					  uint countW,
-					  int stride,
-					  std::vector< ct::Mat_<T> >&gradW,
-					  std::vector< T >&gradB)
+bool subsample(const std::vector< ct::Mat_<T> > &A0, const ct::Size& szA0, std::vector< ct::Mat_<T> > &A1, ct::Size& szA1)
 {
-	if(A0.empty() || gradA1.empty() || !countW || !stride){
-		std::cout << "deriv_conv2D wrong parameters\n";
+	if(A0.empty())
+		return false;
+	A1.resize(A0.size());
+
+	for(int i = 0; i < A0.size(); i++){
+		if(!subsample(A0[i], szA0, A1[i], szA1))
+			return false;
 	}
-
-	gradW.resize(countW);
-	gradB.resize(countW);
-	for(int i = 0; i < gradW.size(); ++i){
-		gradW[i] = ct::Mat_<T>::zeros(szW.height, szW.width);
-		gradB[i] = 0;
-	}
-
-	int m = A0.rows;
-
-	T *dA = &(*A0.val)[0];
-	T *dgA1 = &(*gradA1.val)[0];
-	int* dId = &(*indexes.val)[0];
-
-//#pragma omp parallel for
-//	for(int i = 0; i < m; ++i){
-//		T *dAi = &dA[i * A0.cols];
-//		T *dgA1i = &dgA1[i * gradA1.cols];
-//		int *dIi = &dId[i * gradA1.cols];
-
-////#pragma omp parallel for
-//		internal::deriv_conv2D(dAi, dgA1i, dIi, width, height,
-//							   width_res, height_res, stride, gradW);
-//	}
-
-	for(int i = 0; i < m; ++i){
-		T *dAi		= &dA[A0.cols * i];
-		T *dgA1i	= &dgA1[gradA1.cols * i];
-		int *dIi	= &dId[indexes.cols * i];
-
-#pragma omp parallel for
-		for(int y = 0; y < szA1.height; ++y){
-			int y0 = y * stride;
-#pragma omp parallel for
-			for(int x = 0; x < szA1.width; ++x){
-				int x0 = x * stride;
-				int id = dIi[szA1.width * y + x];
-				T *dgW = gradW[id].ptr();
-				T d = dgA1i[szA1.width * y + x];
-
-#pragma omp simd
-				for(int a = 0; a < szW.height; ++a){
-					if(y0 + a < szA0.height){
-						for(int b = 0; b < szW.width; ++b){
-							if(x0 + b < szA0.width){
-								T a0 = dAi[szA0.width * (y0 + a) + x0 + b];
-								dgW[a * szW.width + b] += a0 * d;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	for(int i = 0; i < gradW.size(); ++i){
-		gradW[i] *= (T)(1./m);
-	}
-
-	for(int i = 0; i < m; ++i){
-		T *dgA1i	= &dgA1[gradA1.cols * i];
-		int *dIi	= &dId[indexes.cols * i];
-		for(int y = 0; y < szA1.height; ++y){
-			for(int x = 0; x < szA1.width; ++x){
-				int id = dIi[szA1.width * y + x];
-
-				gradB[id] += dgA1i[szA1.width * y + x];
-			}
-		}
-	}
-	for(int i = 0; i < gradB.size(); ++i){
-		gradB[i] /= (T)m;
-	}
+	return true;
 }
 
 template< typename T >
-void deriv_prev_cnv(const ct::Mat_<T>& deriv,
-					const std::vector< ct::Mat_<T> >& W,
-					const ct::Mati& indexes,
-					const ct::Size& sL, const ct::Size& sLsub1,
-					ct::Mat_<T>& D)
+void attach_vector(std::vector< T >& attached, const std::vector< T >& slice)
 {
-	if(deriv.empty() || W.empty() || indexes.empty())
-		return;
+	for(int i = 0; i < slice.size(); i++)
+		attached.push_back(slice[i]);
+}
 
-	int m = deriv.rows;
-	int w_rows = W[0].rows;
-	int w_cols = W[0].cols;
+template< typename T >
+bool upsample(const ct::Mat_<T> &A1, const ct::Size& szA1, const ct::Size& szA0, ct::Mat_<T>& A0)
+{
+	if(A0.empty())
+		return false;
 
-	D.setSize(deriv.rows, sLsub1.area());
-	D.fill(0);
+	int m = A1.rows;
 
-	T *dA = deriv.ptr();
-	T *dD = D.ptr();
-	int* dI = indexes.ptr();
+	A0.setSize(m, szA0.area());
 
-	float sz = w_rows * w_cols;
+	int kLen = 2;
 
-#pragma omp parallel for
 	for(int i = 0; i < m; ++i){
-		T *dAi = &dA[i * deriv.cols];
-		T *dDi = &dD[i * D.cols];
-		int *dIi = &dI[i * indexes.cols];
+		T *dA1i = &A1.at(i);
+		T *dA0i = &A0.at(i);
 
-#pragma omp parallel for
-		for(int y = 0; y < sLsub1.height; ++y){
-			for(int x = 0; x < sLsub1.width; ++x){
+		for(int y = 0; y < szA1.height; ++y){
+			int y0 = y * kLen;
+			for(int x = 0; x < szA1.width; ++x){
+				int x0 = x * kLen;
 
-//				int xi = std::max(0, std::min(x, sL.width - 1));
-//				int yi = std::max(0, std::min(y, sL.height - 1));
-//				int id = dIi[yi * sL.width + xi];
-
-//				T *dW = W[id].ptr();
-//				if(id != 0)
-//					qDebug("id=%d", id);
-
-				T sum = 0;
-#pragma omp simd
-				for(int a = 0; a < w_rows; ++a){
-					if(y - a >= 0 && y - a < sL.height){
-						for(int b = 0; b < w_cols; ++b){
-							if(x - b >=0 && x - b < sL.width){
-								int idx = (y - a) * sL.width + (x - b);
-								int id = dIi[idx];
-
-								T *dW = W[id].ptr();
-
-								T d = dAi[idx];
-								T w = dW[(a) * w_cols + (b)];
-								sum += d * w;
-							}
+				T v = dA1i[y * szA1.width + x];
+				for(int a = 0; a < kLen; ++a){
+					for(int b = 0; b < kLen; ++b){
+						if(y0 + a < szA0.height && x0 + b < szA0.width){
+							dA0i[(y0 + a) * szA0.width + (x0 + b)] = v;
 						}
 					}
 				}
-				dDi[y * sLsub1.width + x] += sum;// / (sz);
+			}
+		}
+	}
+
+	return true;
+}
+
+template< typename T >
+void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
+{
+	if(list.empty())
+		return;
+	int rows		= list[0].rows;
+	int loc_cols	= list[0].cols;
+	int cols		= loc_cols * list.size();
+
+	res.setSize(rows, cols);
+
+	T *dR = res.ptr();
+
+#pragma omp parallel for
+	for(int i = 0; i < rows; ++i){
+#pragma omp parallel for
+		for(int j = 0; j < list.size(); ++j){
+			T* dL = list[j].ptr();
+			for(int k = 0; k < loc_cols; ++k){
+				dR[i * cols + j * loc_cols + k] = dL[i * loc_cols + k];
 			}
 		}
 	}

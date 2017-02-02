@@ -8,9 +8,9 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(4);
-	m_count_cnvW.push_back(4);
-	m_count_cnvW.push_back(4);
+	m_count_cnvW.push_back(8);
+//	m_count_cnvW.push_back(4);
+//	m_count_cnvW.push_back(4);
 	m_conv_length = m_count_cnvW.size();
 
 	setConvLength(m_count_cnvW);
@@ -50,36 +50,13 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	}
 	m_MomentOptimizer.resize(m_conv_length);
 	for(int i = 0; i < m_MomentOptimizer.size(); ++i){
-		m_MomentOptimizer[i].setAlpha(0.01);
+		m_MomentOptimizer[i].setAlpha(0.1);
 	}
 }
 
 std::vector<std::vector<Matf> > &mnist_conv::cnvW()
 {
 	return m_cnvW;
-}
-
-Matf mnist_conv::forward(const ct::Matf &X) const
-{
-	if(m_W.empty() || m_b.empty() || m_layers.empty())
-		return Matf(0, 0);
-
-	Matf X_out;
-
-	conv(X, X_out, 28, 28);
-
-	Matf x = X_out, z, a;
-
-	for(size_t i = 0; i < m_layers.size(); i++){
-		z = x * m_W[i];
-		z.biasPlus(m_b[i]);
-		if(i < m_layers.size() - 1){
-			a = relu(z);
-			x = a;
-		}else
-			a = softmax(z, 1);
-	}
-	return a;
 }
 
 Matf mnist_conv::forward(int index, int count)
@@ -209,37 +186,6 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 	accuracy = (double)right / m;
 }
 
-void mnist_conv::init(int seed)
-{
-	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size() || m_cnvW.empty())
-		return;
-
-	m_cnv_out_size = ct::Size(28 - 2 * m_conv_length, 28 - 2 * m_conv_length);
-
-	int input = m_cnv_out_size.area();
-	int output = m_layers[0];
-
-	m_W.resize(m_layers.size());
-	m_b.resize(m_layers.size());
-
-	for(size_t i = 0; i < m_layers.size(); i++){
-		output = m_layers[i];
-
-		double n = 1./sqrt(input);
-
-		m_W[i] = Matf(input, output);
-		m_W[i].randn(0., n, seed);
-		m_b[i] = Matf::ones(output, 1);
-		m_b[i].randn(0, n, seed);
-
-		input = output;
-	}
-
-	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_size.area())){
-		std::cout << "optimizer not init\n";
-	}
-}
-
 void mnist_conv::pass_batch(int batch)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
@@ -354,9 +300,21 @@ void mnist_conv::getBatchIds(std::vector<int> &indexes, int batch)
 	}
 }
 
+///*************
+
 inline float reLu(float v)
 {
 	return std::max(v, 0.f);
+}
+
+inline float sigmoid(float v)
+{
+	return 1.f/std::exp(-v);
+}
+
+inline float deriv_sigm(float sigm)
+{
+	return sigm * (1 - sigm);
 }
 
 inline float grad_reLu(float v)
@@ -364,22 +322,89 @@ inline float grad_reLu(float v)
 	return v > 0? 1 : 0;
 }
 
+template< typename T >
+inline ct::Mat_<T>derivSigmoid(const ct::Mat_<T>& sigm)
+{
+	return sigm * (1.f - sigm);
+}
+
+///*************
+
+void mnist_conv::init(int seed)
+{
+	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size() || m_cnvW.empty())
+		return;
+
+	m_cnv_out_size = ct::Size(28 - 2 * m_conv_length, 28 - 2 * m_conv_length);
+
+	int input = m_cnv_out_size.area();
+	int output = m_layers[0];
+
+	m_W.resize(m_layers.size());
+	m_b.resize(m_layers.size());
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		output = m_layers[i];
+
+		double n = 1./sqrt(input);
+
+		m_W[i] = Matf(input, output);
+		m_W[i].randn(0., n, seed);
+		m_b[i] = Matf::ones(output, 1);
+		m_b[i].randn(0, n, seed);
+
+		input = output;
+	}
+
+	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_size.area())){
+		std::cout << "optimizer not init\n";
+	}
+}
+
+Matf mnist_conv::forward(const ct::Matf &X) const
+{
+	if(m_W.empty() || m_b.empty() || m_layers.empty())
+		return Matf(0, 0);
+
+	Matf X_out;
+
+	conv(X, X_out, 28, 28);
+
+	Matf x = X_out, z, a;
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		z = x * m_W[i];
+		z.biasPlus(m_b[i]);
+		if(i < m_layers.size() - 1){
+			a = relu(z);
+			x = a;
+		}else
+			a = softmax(z, 1);
+	}
+	return a;
+}
+
 void mnist_conv::conv(const Matf &X, Matf &X_out, int w, int h)const
 {
 	if(X.empty())
 		return;
 
-	Matf a = X;
-	Mati indexes;
+	std::vector< Matf > va;
+	va.push_back(X);
+	ct::Size sz(w, h), szn, szAn;
+	for(int i = 0; i < m_cnvW.size(); ++i){
 
-	std::vector< ct::Matf > Res;
-
-	ct::Size sz(w, h);
-	for(int i = 0; i < m_conv_length; ++i){
-		sz = nn::conv2D(a, sz, 1, m_cnvW[i], m_cnvB[i], Res, reLu);
-		nn::max_pool(Res, a, indexes);
+		std::vector< Matf > vatt;
+		for(int x = 0; x < va.size(); ++x){
+			std::vector< Matf > An, An1;
+			szn = nn::conv2D(va[x], sz, 1, m_cnvW[i], m_cnvB[i], An, reLu);
+			nn::subsample(An, szn, An1, szAn);
+			nn::attach_vector(vatt, An1);
+			sz = szAn;
+		}
+		va = vatt;
 	}
-	X_out = a;
+	nn::hconcat(va, X_out);
 }
 
 void mnist_conv::pass_batch(const Matf &X, const Matf &y)
@@ -398,34 +423,45 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 	int w = 28;
 	int h = 28;
 
-	std::vector< Matf > cnv_a;
-	std::vector< Mati > indexes;
+	std::vector< std::vector< Matf > > va, vc;
+	std::vector< ct::Size > szA;
+	std::vector< ct::Size > szS;
+	Matf cnv_a;
 
-	std::vector< std::vector< ct::Matf > > Res;
-	std::vector< ct::Size > szs;
+	va.resize(m_cnvW.size() + 1);
+	vc.resize(m_cnvW.size());
+	szA.resize(m_cnvW.size() + 1);
+	szS.resize(m_cnvW.size());
 
-	cnv_a.resize(m_conv_length + 1);
-	Res.resize(m_conv_length);
-	indexes.resize(m_conv_length);
-	szs.resize(m_conv_length + 1);
+	va[0].push_back(X);
+	ct::Size sz(w, h), szn, szAn;
 
-	ct::Size sz(w, h);
+	szA[0] = sz;
+	for(int i = 0; i < m_cnvW.size(); ++i){
 
-	cnv_a[0] = X;
-	szs[0] = sz;
+		for(int x = 0; x < va[i].size(); ++x){
+			std::vector< Matf > An, An1;
 
-	for(int i = 0; i < m_conv_length; ++i){
-		sz = nn::conv2D(cnv_a[i], sz, 1, m_cnvW[i], m_cnvB[i], Res[i], reLu);
-		szs[i + 1] = sz;
-		nn::max_pool(Res[i], cnv_a[i + 1], indexes[i]);
+			szn = nn::conv2D(va[i][x], sz, 1, m_cnvW[i], m_cnvB[i], An, reLu);
+			nn::attach_vector(vc[i], An);
+
+			szA[i + 1] = szn;
+			nn::subsample(An, szn, An1, szAn);
+			szS[i] = szAn;
+
+			nn::attach_vector(va[i + 1], An1);
+
+			sz = szAn;
+		}
 	}
+	nn::hconcat(va.back(), cnv_a);
 
 	////
 
 	z.resize(m_layers.size());
 	a.resize(m_layers.size() + 1);
 
-	a[0] = cnv_a.back();
+	a[0] = cnv_a;
 
 	std::vector< Matf > D;
 	Matf Wi;
@@ -460,7 +496,8 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 //		Matf sz = elemwiseMult(a[i], a[i]);
 //		sz = 1. - sz;
 		Matf di, sz;
-		/*if(i > 0)*/{
+
+		{
 			sz = derivRelu(a[i]);
 
 			//Matf di = d * m_W[i].t();
@@ -479,51 +516,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 		dB[i] = (sumRows(d) * (1.f/m)).t();
 
-//		if(i > 0)
 		d = di;
-	}
-
-	//// deriv conv
-	{
-		Matf sz = derivRelu(cnv_a.back());
-		d = elemwiseMult(d, sz);
-
-		std::vector< std::vector<Matf> > gradW;
-		std::vector< std::vector<float> > gradB;
-		gradW.resize(m_cnvW.size());
-		gradB.resize(m_cnvW.size());
-
-		for(int i = m_cnvW.size() - 1;i > -1; --i){
-			Matf di, sz/*, di2*/;
-			if(i > 0){
-//				di = d;
-				nn::deriv_prev_cnv(d, m_cnvW[i], indexes[i], szs[i + 1], szs[i], di);
-//				di = di2;
-				if(i != m_cnvW.size() - 1){
-					sz = derivRelu(cnv_a[i]);
-					di = elemwiseMult(di, sz);
-				}
-			}
-
-			ct::Size szW(m_cnvW[i][0].cols, m_cnvW[i][0].rows);
-
-			nn::deriv_conv2D(cnv_a[i], d, indexes[i], szs[i], szs[i + 1], szW, m_cnvW[i].size(), 1, gradW[i], gradB[i]);
-
-			if(i > 0)
-				d = di;
-		}
-
-		for(int i = 0; i < gradW.size(); ++i){
-			qDebug("-----L[%d]----\n", i);
-			m_MomentOptimizer[i].pass(gradW[i], gradB[i], m_cnvW[i], m_cnvB[i]);
-			for(int j = 0; j < gradW[i].size(); ++j){
-				std::string str = m_cnvW[i][j];
-				qDebug("cnvW[%d]\n%s", j, str.c_str());
-				qDebug("cnvB[%d] = %f", j, m_cnvB[i][j]);
-			}
-		}
-		qDebug("---------");
-
 	}
 
 	m_AdamOptimizer.pass(dW, dB, m_W, m_b);

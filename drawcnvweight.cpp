@@ -124,10 +124,11 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 			w = wd_blk * W.cols;
 			h = wd_blk * W.rows;
 
-			painter.setPen(Qt::blue);
-			painter.drawRect(QRect(QPoint(x, y), QSize(w, h)));
 			painter.setPen(Qt::NoPen);
 			draw_W(painter, W, m_prevW[i][j], x, y, wd_blk, _max, _min, is_prev);
+			painter.setPen(Qt::blue);
+			painter.setBrush(Qt::NoBrush);
+			painter.drawRect(QRect(QPoint(x, y), QSize(w, h)));
 
 			x += w + 2;
 		}

@@ -132,8 +132,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->update();
 
 	std::vector<int> layers2, layers3;
-	layers2.push_back(600);
-	layers2.push_back(500);
+//	layers2.push_back(600);
+//	layers2.push_back(500);
 //	layers2.push_back(400);
 	layers2.push_back(100);
 	layers2.push_back(100);
@@ -223,7 +223,7 @@ void MainWindow::onTimeoutMnist()
 
 		ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
 
-		if((m_mnist_cnv.iteration() && m_mnist_cnv.iteration() % 100) == 0){
+		if((m_mnist_cnv.iteration() && m_mnist_cnv.iteration() % 40) == 0){
 			on_pb_update_cnv_clicked();
 		}
 	}

@@ -219,24 +219,16 @@ void test_mat()
 	PRINT_IMAGE(vcn[0], sz.width, sz.height);
 	PRINT_IMAGE(vcn[1], sz.width, sz.height);
 
-	ct::Matf pool, D;
+	std::vector< ct::Matf > pool;
+	ct::Matf D;
 	ct::Mati indexes;
 
-	nn::max_pool(vcn, pool, indexes);
+	nn::subsample(vcn, ct::Size(ww, hh), pool, sz);
 
 	qDebug("MAXPOOL");
-	PRINT_IMAGE(pool, sz.width, sz.height);
+	PRINT_IMAGE(pool[0], sz.width, sz.height);
 
-	nn::deriv_conv2D(ims, pool, indexes, ct::Size(ww, hh), sz, vW[0].size(), vW.size(), 1, gradW, gradB);
-
-	nn::deriv_prev_cnv(pool, vW, indexes, sz, ct::Size(ww, hh), D);
-
-	qDebug("DERIV");
-	PRINT_IMAGE(D, ww, hh);
-
-	for(int i = 0; i < gradW.size(); ++i){
-		PRINT_MAT(gradW[i], QString("gW[%1]").arg(i).toStdString().c_str());
-	}
+	auto gradRelu = [](float v){return v > 0? 1 : 0;};
 
 	qDebug("END TEST");
 }
