@@ -195,7 +195,7 @@ public:
 		}
 
 		for(int i = 0; i < m_mW.size(); ++i){
-			Mat_<T> tmp = m_mW[i];
+			ct::Mat_<T> tmp = m_mW[i];
 			tmp *= m_betha;
 			tmp += (1.f - m_betha) * gradW[i];
 			m_mW[i] = tmp;
@@ -506,7 +506,7 @@ ct::Size conv2D(const ct::Mat_<T>& images,
 				int stride,
 				const std::vector< ct::Mat_<T> >& W,
 				const std::vector< T >& B,
-				std::vector< ct::Mat_<T> >&Res,
+				std::vector< ct::Mat_<T> >&A,
 				Func func)
 {
 	if(images.empty() || W.empty() || B.empty() || W.size() != B.size()){
@@ -525,9 +525,9 @@ ct::Size conv2D(const ct::Mat_<T>& images,
 
 	int sz = szO.area();
 
-	Res.resize(W.size());
-	for(size_t i = 0; i < Res.size(); i++){
-		Res[i].setSize(images.rows, sz);
+	A.resize(W.size());
+	for(size_t i = 0; i < A.size(); i++){
+		A[i].setSize(images.rows, sz);
 	}
 
 	T *dI = images.ptr();
@@ -537,9 +537,9 @@ ct::Size conv2D(const ct::Mat_<T>& images,
 		T *dIi = &dI[i * images.cols];
 
 #pragma omp parallel for
-		for(int j = 0; j < Res.size(); ++j){
-			T *dRes = Res[j].ptr();
-			T *dResi = &dRes[i * Res[j].cols];
+		for(int j = 0; j < A.size(); ++j){
+			T *dRes = A[j].ptr();
+			T *dResi = &dRes[i * A[j].cols];
 
 #pragma omp parallel for
 			for(int y_res = 0; y_res < szO.height; y_res++){
@@ -549,6 +549,7 @@ ct::Size conv2D(const ct::Mat_<T>& images,
 					T *dW = W[j].ptr();
 
 					T sum = 0;
+#pragma omp simd
 					for(int a = 0; a < w_rows; ++a){
 						if(y + a < szI.height){
 							for(int b = 0; b < w_cols; ++b){
@@ -613,9 +614,9 @@ bool max_pool(const std::vector< ct::Mat_<T> >&Layers, ct::Mat_<T>& Res, ct::Mat
 					maxV = dL[i * cols + j];
 					kI = k;
 				}
-				dRes[i * cols + j] = maxV;
-				dI[i * cols + j] = kI;
 			}
+			dRes[i * cols + j] = maxV;
+			dI[i * cols + j] = kI;
 		}
 	}
 
@@ -679,16 +680,21 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
 
 #pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
+			int y0 = y * stride;
+#pragma omp parallel for
 			for(int x = 0; x < szA1.width; ++x){
+				int x0 = x * stride;
 				int id = dIi[szA1.width * y + x];
 				T *dgW = gradW[id].ptr();
+				T d = dgA1i[szA1.width * y + x];
 
-#pragma omp parallel for
+#pragma omp simd
 				for(int a = 0; a < szW.height; ++a){
-					if(y + a < szA0.height){
+					if(y0 + a < szA0.height){
 						for(int b = 0; b < szW.width; ++b){
-							if(x + b < szA0.width){
-								dgW[a * szW.width + b] += dAi[szA0.width * (y + a) + x + b] * dgA1i[szA1.width * y + x];
+							if(x0 + b < szA0.width){
+								T a0 = dAi[szA0.width * (y0 + a) + x0 + b];
+								dgW[a * szW.width + b] += a0 * d;
 							}
 						}
 					}
@@ -738,6 +744,8 @@ void deriv_prev_cnv(const ct::Mat_<T>& deriv,
 	T *dD = D.ptr();
 	int* dI = indexes.ptr();
 
+	float sz = w_rows * w_cols;
+
 #pragma omp parallel for
 	for(int i = 0; i < m; ++i){
 		T *dAi = &dA[i * deriv.cols];
@@ -745,25 +753,36 @@ void deriv_prev_cnv(const ct::Mat_<T>& deriv,
 		int *dIi = &dI[i * indexes.cols];
 
 #pragma omp parallel for
-		for(int y = 0; y < sL.height; ++y){
-			for(int x = 0; x < sL.width; ++x){
-				int id = dIi[y * sL.width + x];
+		for(int y = 0; y < sLsub1.height; ++y){
+			for(int x = 0; x < sLsub1.width; ++x){
 
-				T *dW = W[id].ptr();
+//				int xi = std::max(0, std::min(x, sL.width - 1));
+//				int yi = std::max(0, std::min(y, sL.height - 1));
+//				int id = dIi[yi * sL.width + xi];
+
+//				T *dW = W[id].ptr();
 //				if(id != 0)
 //					qDebug("id=%d", id);
 
-				for(int wy = 0; wy < w_rows; ++wy){
-					if(y + wy < sL.height && y + wy < sLsub1.height){
-						for(int wx = 0; wx < w_cols; ++wx){
-							if(x + wx < sL.width && x + wx < sLsub1.width){
-								T d = dAi[(y + wy) * sL.width + (x + wx)];
-								T w = dW[(w_rows - wy - 1) * w_cols + (w_cols - wx - 1)];
-								dDi[(y + wy) * sLsub1.width + (x + wx)] = d * w;
+				T sum = 0;
+#pragma omp simd
+				for(int a = 0; a < w_rows; ++a){
+					if(y - a >= 0 && y - a < sL.height){
+						for(int b = 0; b < w_cols; ++b){
+							if(x - b >=0 && x - b < sL.width){
+								int idx = (y - a) * sL.width + (x - b);
+								int id = dIi[idx];
+
+								T *dW = W[id].ptr();
+
+								T d = dAi[idx];
+								T w = dW[(a) * w_cols + (b)];
+								sum += d * w;
 							}
 						}
 					}
 				}
+				dDi[y * sLsub1.width + x] += sum;// / (sz);
 			}
 		}
 	}

@@ -78,6 +78,7 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 				val = std::min(255.f, val);
 				painter.setPen(QColor(val, 0, 0));
 				painter.setBrush(Qt::NoBrush);
+				rt.marginsRemoved(QMargins(1, 1, 1, 1));
 				painter.drawRect(rt);
 			}
 		}
