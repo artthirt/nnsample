@@ -8,7 +8,7 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(8);
+	m_count_cnvW.push_back(3);
 //	m_count_cnvW.push_back(4);
 //	m_count_cnvW.push_back(4);
 	m_conv_length = (int)m_count_cnvW.size();
@@ -146,7 +146,10 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 
 	std::vector<int> indexes;
 
-	getBatchIds(indexes);
+	getBatchIds(indexes, batch);
+
+	if(batch < 0)
+		batch = m_mnist->test().size();
 
 	Matf X = Matf::zeros(batch, m_mnist->X().cols);
 	Matf yp = Matf::zeros(batch, m_mnist->y().cols);
