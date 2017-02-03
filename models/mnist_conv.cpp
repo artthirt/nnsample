@@ -358,6 +358,8 @@ void mnist_conv::init(int seed)
 	m_cnv_out_size = m_cnv.back()[0].szA2;
 	m_cnv_out_len = m_cnv.back().size() * m_cnv.back()[0].szA2.area() * m_count_cnvW.back();
 
+	qDebug("--- input to MLP: %d ----", m_cnv_out_len);
+
 	int input = m_cnv_out_len;
 	int output = m_layers[0];
 
