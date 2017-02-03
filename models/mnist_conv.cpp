@@ -11,10 +11,9 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(4);
-//	m_count_cnvW.push_back(2);
-//	m_count_cnvW.push_back(3);
-//	m_count_cnvW.push_back(4);
+	m_count_cnvW.push_back(2);
+	m_count_cnvW.push_back(11);
+//	m_count_cnvW.push_back(1);
 	m_conv_length = (int)m_count_cnvW.size();
 
 	setConvLength(m_count_cnvW);
@@ -43,7 +42,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 		m_cnv[i].resize(prev);
 		for(int j = 0; j < m_cnv[i].size(); ++j){
 			m_cnv[i][j].init(m_count_cnvW[i], szA0);
-			m_cnv[i][j].setAlpha(0.1);
+			//m_cnv[i][j].setAlpha(0.01);
 		}
 		szA0 = m_cnv[i][0].szA2;
 		prev = m_count_cnvW[i] * prev;
@@ -537,10 +536,10 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 				cnv.backward< Matf (*)(const Matf& mat) >(dsi, derivRelu);
 				di.push_back(cnv.DltA0);
-				for(int k = 0; k < cnv.W.size(); ++k){
-					std::string sw = cnv.W[k];
-					qDebug("W[%d:%d]:\n%s", j, k, sw.c_str());
-				}
+//				for(int k = 0; k < cnv.W.size(); ++k){
+//					std::string sw = cnv.W[k];
+//					qDebug("W[%d:%d]:\n%s", j, k, sw.c_str());
+//				}
 			}
 			ds = di;
 

@@ -143,7 +143,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights();
 
-	layers3.push_back(100);
+	layers3.push_back(300);
+	layers3.push_back(200);
 	layers3.push_back(100);
 	layers3.push_back(10);
 
@@ -234,6 +235,7 @@ void MainWindow::on_dsb_alpha_valueChanged(double arg1)
 {
 	m_nn.setAlpha(arg1);
 	m_mnist_train.setAlpha(arg1);
+	m_mnist_cnv.setAlpha(arg1);
 }
 
 void MainWindow::update_scene()
@@ -328,7 +330,7 @@ void MainWindow::pass_cnv()
 {
 	m_drawCnvWeights.set_prev_weight(m_mnist_cnv.cnvW());
 
-	m_mnist_cnv.pass_batch(300);
+	m_mnist_cnv.pass_batch(500);
 //	on_pb_update_cnv_clicked();
 
 	m_drawCnvWeights.set_weight(m_mnist_cnv.cnvW());

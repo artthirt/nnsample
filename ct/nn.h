@@ -11,6 +11,12 @@ typedef unsigned int uint;
 
 namespace nn{
 
+template< typename T >
+inline T sqr(T val)
+{
+	return val * val;
+}
+
 /**
  * @brief The AdamOptimizer class
  */
@@ -22,6 +28,7 @@ public:
 		m_betha1 = (T)0.9;
 		m_betha2 = (T)0.999;
 		m_iteration = 0;
+		m_init = false;
 	}
 
 	T alpha()const{
@@ -80,6 +87,7 @@ public:
 
 			input = output;
 		}
+		m_init = true;
 		return true;
 	}
 
@@ -151,6 +159,44 @@ public:
 		}
 		return true;
 	}
+	bool pass(const std::vector< ct::Mat_< T > >& gradW, const std::vector< T >& gradB,
+			  std::vector< ct::Mat_<T> >& W, std::vector< T >& b){
+		if(!gradW.size() || gradW.size() != gradB.size() || gradW.size() != W.size())
+			return false;
+
+		if(!m_init){
+			init_simple(gradW, gradB);
+		}
+
+		using namespace ct;
+
+		m_iteration++;
+		T sb1 = (T)(1. / (1. - pow(m_betha1, m_iteration)));
+		T sb2 = (T)(1. / (1. - pow(m_betha2, m_iteration)));
+		T eps = (T)(10e-8);
+
+		for(size_t i = 0; i < gradW.size(); ++i){
+			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
+			m_mbn[i] = m_betha1 * m_mbn[i] + (T)(1. - m_betha1) * gradB[i];
+
+			m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
+			m_vbn[i] = m_betha2 * m_vbn[i] + (T)(1. - m_betha2) * sqr(gradB[i]);
+
+			Mat_<T> mWs = m_mW[i] * sb1;
+			T mBs = m_mbn[i] * sb1;
+			Mat_<T> vWs = m_vW[i] * sb2;
+			T vBs = m_vbn[i] * sb2;
+
+			vWs.sqrt(); vBs = std::sqrt(vBs);
+			vWs += eps; vBs += eps;
+			mWs = elemwiseDiv(mWs, vWs);
+			mBs /= vBs;
+
+			W[i] -= m_alpha * mWs;
+			b[i] -= m_alpha * mBs;
+		}
+		return true;
+	}
 	bool empty() const{
 		return m_mW.empty() || m_mb.empty() || m_vW.empty() || m_vb.empty();
 	}
@@ -161,11 +207,31 @@ private:
 	T m_betha1;
 	T m_betha2;
 	T m_alpha;
+	bool m_init;
 
 	std::vector< ct::Mat_<T> > m_mW;
 	std::vector< ct::Mat_<T> > m_mb;
 	std::vector< ct::Mat_<T> > m_vW;
 	std::vector< ct::Mat_<T> > m_vb;
+	std::vector< T > m_mbn;
+	std::vector< T > m_vbn;
+
+	void init_simple(const std::vector< ct::Mat_< T > >& gradW, const std::vector< T >& gradB){
+		m_mW.resize(gradW.size());
+		m_vW.resize(gradW.size());
+		m_mbn.resize(gradW.size());
+		m_vbn.resize(gradW.size());
+		int rows = gradW[0].rows, cols = gradW[0].cols;
+		for(int i = 0; i < gradW.size(); ++i){
+			m_mW[i].setSize(rows, cols);
+			m_mW[i].fill(0);
+			m_vW[i].setSize(rows, cols);
+			m_vW[i].fill(0);
+			m_mbn[i] = 0;
+			m_vbn[i] = 0;
+		}
+		m_init = true;
+	}
 };
 
 /**
@@ -410,6 +476,11 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 					T *dW = W[w].ptr();
 					T sum = 0;
 
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
 					for(int a = 0; a < w_rows; ++a){
 						if(y + a < szI.height){
 							for(int b = 0; b < w_cols; ++b){
@@ -477,6 +548,11 @@ bool subsample(const ct::Mat_<T> &A0,
 
 				int xm = -1, ym = -1;
 				T maxV = T(-99999999);
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
 						if(y0 + a < szA0.height && x0 + b < szA0.width){
@@ -575,7 +651,11 @@ bool upsample(const ct::Mat_<T> &A1,
 				int x0 = x * kLen;
 
 				T v = dA1i[y * szA1.width + x];
+#ifdef __GNUC__
+#pragma omp simd
+#else
 #pragma omp parallel for
+#endif
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
 						if(y0 + a < szA0.height && x0 + b < szA0.width){
@@ -643,7 +723,11 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 
 #pragma omp parallel for
 	for(int i = 0; i < rows; ++i){
+#ifdef __GNUC__
+#pragma omp simd
+#else
 #pragma omp parallel for
+#endif
 		for(int j = 0; j < list.size(); ++j){
 			T* dL = list[j].ptr();
 			for(int k = 0; k < loc_cols; ++k){
@@ -677,7 +761,11 @@ void hsplit(const ct::Mat_<T>& res, int cols, std::vector< ct::Mat_<T> >& list)
 #pragma omp parallel for
 	for(int i = 0; i < cols; ++i){
 		T *dLi = list[i].ptr();
+#ifdef __GNUC__
+#pragma omp simd
+#else
 #pragma omp parallel for
+#endif
 		for(int j = 0; j < res.rows; ++j){
 			for(int k = 0; k < len; ++k){
 				dLi[j * len + k] = dR[j * res.cols + i * len + k];
@@ -804,53 +892,58 @@ void deriv_conv2D(ct::Mat_<T> & A0,
  * @param D
  */
 template< typename T >
-void deriv_prev_cnv(const ct::Mat_<T>& deriv,
-					const ct::Mat_<T>& W,
+void deriv_prev_cnv(std::vector< ct::Mat_<T> >& deriv,
+					const std::vector< ct::Mat_<T> >& W,
 					const ct::Size& sL, const ct::Size& sLsub1,
 					ct::Mat_<T>& D)
 {
 	if(deriv.empty() || W.empty())
 		return;
 
-	int m = deriv.rows;
-	int w_rows = W.rows;
-	int w_cols = W.cols;
+	int m = deriv[0].rows;
+	int w_rows = W[0].rows;
+	int w_cols = W[0].cols;
 
-	D.setSize(deriv.rows, sLsub1.area());
+	D.setSize(deriv[0].rows, sLsub1.area());
 	D.fill(0);
 
-	T *dA = deriv.ptr();
 	T *dD = D.ptr();
-	T *dW = W.ptr();
 
 
 #pragma omp parallel for
 	for(int i = 0; i < m; ++i){
-		T *dAi = &dA[i * deriv.cols];
 		T *dDi = &dD[i * D.cols];
 
 #pragma omp parallel for
 		for(int y = 0; y < sLsub1.height; ++y){
 			for(int x = 0; x < sLsub1.width; ++x){
 				T sum = 0;
+
+				for(int w = 0; w < W.size(); ++w){
+					T *dA = deriv[w].ptr();
+					T *dAi = &dA[i * deriv[w].cols];
+					T *dW = W[w].ptr();
+
 #ifdef __GNUC__
 #pragma omp simd
 #else
 #pragma omp parallel for
 #endif
-				for(int a = 0; a < w_rows; ++a){
-					if(y - a >= 0 && y - a < sL.height){
-						for(int b = 0; b < w_cols; ++b){
-							if(x - b >=0 && x - b < sL.width){
-								int idx = (y - a) * sL.width + (x - b);
+					for(int a = 0; a < w_rows; ++a){
+						if(y - a >= 0 && y - a < sL.height){
+							for(int b = 0; b < w_cols; ++b){
+								if(x - b >=0 && x - b < sL.width){
+									int idx = (y - a) * sL.width + (x - b);
 
-								T d = dAi[idx];
-								T w = dW[(a) * w_cols + (b)];
-								sum += d * w;
+									T d = dAi[idx];
+									T w = dW[(a) * w_cols + (b)];
+									sum += d * w;
+								}
 							}
 						}
 					}
 				}
+
 				dDi[y * sLsub1.width + x] += sum;// / (sz);
 			}
 		}

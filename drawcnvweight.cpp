@@ -98,7 +98,7 @@ void DrawCnvWeight::paintEvent(QPaintEvent *event)
 	painter.fillRect(rect(), Qt::black);
 
 	QSize s = draw_weight(painter, 0, m_W, true);
-	draw_weight(painter, s.height() + 20, m_firstW, false);
+//	draw_weight(painter, s.height() + 20, m_firstW, false);
 }
 
 QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vector<std::vector<ct::Matf> > &Weights, bool is_prev)
@@ -130,7 +130,7 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 			w = wd_blk * W.cols;
 			h = wd_blk * W.rows;
 
-			if(x > 700){
+			if(x >= rect().width() - (w + 2)){
 				x = 0;
 				y += h + 2;
 			}

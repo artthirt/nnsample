@@ -30,7 +30,7 @@ public:
 	ct::Size szA2;
 	int stride;
 	int weight_size;
-	nn::MomentOptimizer<T> m_optim;
+	nn::AdamOptimizer<T> m_optim;
 
 	void init(int count_weight, const ct::Size& _szA0){
 		W.resize(count_weight);
@@ -96,13 +96,13 @@ public:
 
 		nn::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
-		nn::deriv_prev_cnv(dA1, rotW, szA1, szA0, dA0);
+		nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
 
-		DltA0.setSize(dA0[0].rows, dA0[0].cols);
-		DltA0.fill(0);
-		for(int i = 0; i < dA0.size(); ++i){
-			DltA0 += dA0[i];
-		}
+//		DltA0.setSize(dA0[0].rows, dA0[0].cols);
+//		DltA0.fill(0);
+//		for(int i = 0; i < dA0.size(); ++i){
+//			DltA0 += dA0[i];
+//		}
 //		ct::elemMult(DltA0, A0);
 
 //		for(int k = 0; k < gradW.size(); ++k){
