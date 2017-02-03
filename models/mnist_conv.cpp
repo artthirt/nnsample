@@ -4,11 +4,15 @@
 
 using namespace ct;
 
+const int imageWidth = 28;
+const int imageHeight = 28;
+
 mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
 	m_count_cnvW.push_back(3);
+//	m_count_cnvW.push_back(1);
 //	m_count_cnvW.push_back(4);
 //	m_count_cnvW.push_back(4);
 	m_conv_length = (int)m_count_cnvW.size();
@@ -26,37 +30,44 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	if(!count_cnvW.size())
 		return;
 	m_conv_length = (int)count_cnvW.size();
-	m_cnvW.resize(m_conv_length);
-	m_cnvB.resize(m_conv_length);
 	m_count_cnvW = count_cnvW;
 
 	time_t tm;
 	time(&tm);
 	ct::generator.seed(tm);
 
-//	std::normal_distribution<float> nrm(0.f, 0.01f);
-
-	for(int i = 0; i < m_conv_length; ++i){
-		m_cnvW[i].resize(m_count_cnvW[i]);
-		m_cnvB[i].resize(m_count_cnvW[i]);
-
-		for(int j = 0; j < m_cnvW[i].size(); ++j){
-			Matf &W = m_cnvW[i][j];
-			W = Matf::zeros(3, 3);
-			W.randn(0, 0.1);
-
-			m_cnvB[i][j] = 0;
+	m_cnv.resize(m_conv_length);
+	int prev = 1;
+	ct::Size szA0(imageWidth, imageHeight);
+	for(int i = 0; i < m_cnv.size(); ++i){
+		m_cnv[i].resize(prev);
+		for(int j = 0; j < m_cnv[i].size(); ++j){
+			m_cnv[i][j].init(m_count_cnvW[i], szA0);
 		}
-	}
-	m_MomentOptimizer.resize(m_conv_length);
-	for(int i = 0; i < m_MomentOptimizer.size(); ++i){
-		m_MomentOptimizer[i].setAlpha(0.1f);
+		szA0 = m_cnv[i][0].szA2;
+		prev = m_count_cnvW[i] * prev * m_cnv[i][0].W.size();
 	}
 }
 
-std::vector<std::vector<Matf> > &mnist_conv::cnvW()
+std::vector<std::vector<convnn::convnn<float> > > &mnist_conv::cnv()
 {
-	return m_cnvW;
+	return m_cnv;
+}
+
+std::vector<std::vector<Matf> > mnist_conv::cnvW()
+{
+	std::vector< std::vector < Matf > > res;
+
+	res.resize(m_cnv.size());
+
+	for(int i = 0; i < m_cnv.size(); ++i){
+		for(int j = 0; j < m_cnv[i].size(); ++j){
+			for(int k = 0; k < m_cnv[i][j].W.size(); ++k){
+				res[i].push_back(m_cnv[i][j].W[k]);
+			}
+		}
+	}
+	return res;
 }
 
 Matf mnist_conv::forward(int index, int count)
@@ -144,27 +155,8 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
 
-	std::vector<int> indexes;
-
-	getBatchIds(indexes, batch);
-
-	if(batch < 0)
-		batch = m_mnist->test().size();
-
-	Matf X = Matf::zeros(batch, m_mnist->X().cols);
-	Matf yp = Matf::zeros(batch, m_mnist->y().cols);
-
-	for(int i = 0; i < batch; i++){
-		int id = indexes[i];
-		QByteArray& data = m_mnist->test()[id];
-		uint lb = m_mnist->lb_test()[id];
-
-		for(int j = 0; j < data.size(); j++){
-			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
-		}
-		yp.at(i, lb) = 1.;
-	}
-
+	Matf X, yp;
+	getXyTest(X, yp, batch);
 
 	Matf y = forward(X);
 
@@ -234,6 +226,30 @@ void mnist_conv::getX(Matf &X, int batch)
 	}
 
 	X = m_mnist->X().getRows(indexes);
+}
+
+void mnist_conv::getXyTest(Matf &X, Matf &yp, int batch)
+{
+	if(batch < 0)
+		batch = m_mnist->test().size();
+
+	std::vector<int> indexes;
+
+	getBatchIds(indexes, batch);
+
+	X = Matf::zeros(batch, m_mnist->X().cols);
+	yp = Matf::zeros(batch, m_mnist->y().cols);
+
+	for(int i = 0; i < batch; i++){
+		int id = indexes[i];
+		QByteArray& data = m_mnist->test()[id];
+		uint lb = m_mnist->lb_test()[id];
+
+		for(int j = 0; j < data.size(); j++){
+			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		}
+		yp.at(i, lb) = 1.;
+	}
 }
 
 void mnist_conv::getXy(Matf &X, Matf &y, int batch)
@@ -335,12 +351,13 @@ inline ct::Mat_<T>derivSigmoid(const ct::Mat_<T>& sigm)
 
 void mnist_conv::init(int seed)
 {
-	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size() || m_cnvW.empty())
+	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size() || m_cnv.empty())
 		return;
 
-	m_cnv_out_size = ct::Size(28 - 2 * m_conv_length, 28 - 2 * m_conv_length);
+	m_cnv_out_size = m_cnv.back()[0].szA2;
+	m_cnv_out_len = m_cnv.back().size() * m_cnv.back()[0].W.size() * m_cnv.back()[0].szA2.area();
 
-	int input = m_cnv_out_size.area();
+	int input = m_cnv_out_len;
 	int output = m_layers[0];
 
 	m_W.resize(m_layers.size());
@@ -359,19 +376,19 @@ void mnist_conv::init(int seed)
 		input = output;
 	}
 
-	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_size.area())){
+	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_len)){
 		std::cout << "optimizer not init\n";
 	}
 }
 
-Matf mnist_conv::forward(const ct::Matf &X) const
+Matf mnist_conv::forward(const ct::Matf &X)
 {
 	if(m_W.empty() || m_b.empty() || m_layers.empty())
 		return Matf(0, 0);
 
 	Matf X_out;
 
-	conv(X, X_out, 28, 28);
+	conv(X, X_out);
 
 	Matf x = X_out, z, a;
 
@@ -387,27 +404,32 @@ Matf mnist_conv::forward(const ct::Matf &X) const
 	return a;
 }
 
-void mnist_conv::conv(const Matf &X, Matf &X_out, int w, int h)const
+void mnist_conv::conv(const Matf &X, Matf &X_out)
 {
 	if(X.empty())
 		return;
 
-	std::vector< Matf > va;
-	va.push_back(X);
-	ct::Size sz(w, h), szn, szAn;
-	for(int i = 0; i < m_cnvW.size(); ++i){
+	for(int i = 0; i < m_cnv.size(); ++i){
+		std::vector< convnn::convnn< float > >& ls = m_cnv[i];
 
-		std::vector< Matf > vatt;
-		for(int x = 0; x < va.size(); ++x){
-			std::vector< Matf > An, An1, Masks;
-			szn = nn::conv2D(va[x], sz, 1, m_cnvW[i], m_cnvB[i], An, reLu);
-			nn::subsample(An, szn, An1, Masks, szAn);
-			nn::attach_vector(vatt, An1);
-			sz = szAn;
+		if(i == 0){
+			convnn::convnn< float >& m0 = ls[0];
+			m0.forward(X, reLu);
+		}else{
+			for(int j = 0; j < m_cnv[i - 1].size(); ++j){
+				convnn::convnn< float >& m0 = m_cnv[i - 1][j];
+				for(int l = 0; l < m_count_cnvW[i - 1]; ++l){
+					for(int k = 0; k < m0.W.size(); ++k){
+						int col = j * m_count_cnvW[i - 1] + l * m0.W.size() + k;
+						convnn::convnn< float >& mi = ls[col];
+						mi.forward(m0.A2[k], reLu);
+					}
+				}
+			}
 		}
-		va = vatt;
 	}
-	nn::hconcat(va, X_out);
+
+	convnn::convnn<float>::hconcat(m_cnv.back(), X_out);
 }
 
 void mnist_conv::pass_batch(const Matf &X, const Matf &y)
@@ -418,50 +440,16 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		return;
 	}
 
-	std::vector< Matf > z, a;
-
 	/// forward
 
-	////CONV
-	int w = 28;
-	int h = 28;
+	//// CONV
 
-	std::vector< std::vector< Matf > > va, vc, vm;
-	std::vector< ct::Size > szA;
-	std::vector< ct::Size > szS;
 	Matf cnv_a;
+	conv(X, cnv_a);
 
-	va.resize(m_cnvW.size() + 1);
-	vc.resize(m_cnvW.size());
-	vm.resize(m_cnvW.size());
-	szA.resize(m_cnvW.size() + 1);
-	szS.resize(m_cnvW.size());
+	//// MLP
 
-	va[0].push_back(X);
-	ct::Size sz(w, h), szn, szAn;
-
-	szA[0] = sz;
-	for(int i = 0; i < m_cnvW.size(); ++i){
-
-		for(int x = 0; x < va[i].size(); ++x){
-			std::vector< Matf > An, An1, Mn;
-
-			szn = nn::conv2D(va[i][x], sz, 1, m_cnvW[i], m_cnvB[i], An, reLu);
-			nn::attach_vector(vc[i], An);
-
-			szA[i + 1] = szn;
-			nn::subsample(An, szn, An1, Mn, szAn);
-			szS[i] = szAn;
-
-			nn::attach_vector(va[i + 1], An1);
-			nn::attach_vector(vm[i], Mn);
-
-			sz = szAn;
-		}
-	}
-	nn::hconcat(va.back(), cnv_a);
-
-	////
+	std::vector< Matf > z, a;
 
 	z.resize(m_layers.size());
 	a.resize(m_layers.size() + 1);

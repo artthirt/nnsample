@@ -421,7 +421,7 @@ void MainWindow::on_pb_pass_cnv_clicked()
 void MainWindow::on_pb_test_cnv_clicked()
 {
 	double l2, accuracy;
-	m_mnist_cnv.getEstimateTest(-1, l2, accuracy);
+	m_mnist_cnv.getEstimateTest(100, l2, accuracy);
 	ui->lb_out_cnv->setText("L2(test)=" + QString::number(l2) + "; Acc(test)=" + QString::number(accuracy));
 }
 

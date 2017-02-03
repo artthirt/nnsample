@@ -221,7 +221,6 @@ void test_mat()
 
 	std::vector< ct::Matf > pool, masks;
 	ct::Matf D;
-	ct::Mati indexes;
 
 	nn::subsample(vcn, sz, pool, masks, sz1);
 

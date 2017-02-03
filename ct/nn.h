@@ -11,6 +11,9 @@ typedef unsigned int uint;
 
 namespace nn{
 
+/**
+ * @brief The AdamOptimizer class
+ */
 template< typename T >
 class AdamOptimizer{
 public:
@@ -165,6 +168,9 @@ private:
 	std::vector< ct::Mat_<T> > m_vb;
 };
 
+/**
+ * @brief The MomentOptimizer class
+ */
 template< typename T >
 class MomentOptimizer{
 public:
@@ -216,6 +222,9 @@ private:
 	T m_betha;
 };
 
+/**
+ * @brief The SimpleAutoencoder class
+ */
 template<class T>
 class SimpleAutoencoder
 {
@@ -330,6 +339,16 @@ public:
 private:
 };
 
+/**
+ * @brief get_cnv_sizes
+ * @param sizeIn
+ * @param szW
+ * @param stride
+ * @param szA1
+ * @param szA2
+ */
+void get_cnv_sizes(const ct::Size sizeIn, const ct::Size szW, int stride, ct::Size& szA1, ct::Size &szA2);
+
 template<typename T>
 inline T linear_func(T val)
 {
@@ -338,13 +357,13 @@ inline T linear_func(T val)
 
 /**
  * @brief conv2D
- * @param images	mattrix of images in rows
- * @param width		width image
- * @param height	height image
- * @param stride	stride
- * @param W			weight matrix 3x3
- * @param Res		result of convolution
- * @param func		nonlinear operation
+ * @param A0
+ * @param szI
+ * @param stride
+ * @param W
+ * @param B
+ * @param A1
+ * @param func
  * @return
  */
 template< typename T, typename Func >
@@ -411,6 +430,11 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 
 /**
  * @brief subsample
+ * @param A0
+ * @param szA0
+ * @param A1
+ * @param Mask
+ * @param szA1
  * @return
  */
 template< typename T >
@@ -471,15 +495,25 @@ bool subsample(const ct::Mat_<T> &A0,
 	return true;
 }
 
+/**
+ * @brief subsample
+ * @param A0
+ * @param szA0
+ * @param A1
+ * @param Masks
+ * @param szA1
+ * @return
+ */
 template< typename T >
 bool subsample(const std::vector< ct::Mat_<T> > &A0,
 			   const ct::Size& szA0, std::vector< ct::Mat_<T> > &A1,
 			   std::vector< ct::Mat_<T> > &Masks,
 			   ct::Size& szA1)
 {
-	if(A0.empty() || Masks.empty())
+	if(A0.empty())
 		return false;
 	A1.resize(A0.size());
+	Masks.resize(A0.size());
 
 	for(int i = 0; i < A0.size(); i++){
 		if(!subsample(A0[i], szA0, A1[i], Masks[i], szA1))
@@ -488,6 +522,11 @@ bool subsample(const std::vector< ct::Mat_<T> > &A0,
 	return true;
 }
 
+/**
+ * @brief attach_vector
+ * @param attached
+ * @param slice
+ */
 template< typename T >
 void attach_vector(std::vector< T >& attached, const std::vector< T >& slice)
 {
@@ -495,6 +534,15 @@ void attach_vector(std::vector< T >& attached, const std::vector< T >& slice)
 		attached.push_back(slice[i]);
 }
 
+/**
+ * @brief upsample
+ * @param A1
+ * @param szA1
+ * @param szA0
+ * @param Mask
+ * @param A0
+ * @return
+ */
 template< typename T >
 bool upsample(const ct::Mat_<T> &A1,
 			  const ct::Size& szA1,
@@ -536,6 +584,15 @@ bool upsample(const ct::Mat_<T> &A1,
 	return true;
 }
 
+/**
+ * @brief upsample
+ * @param A1
+ * @param szA1
+ * @param szA0
+ * @param Masks
+ * @param A0
+ * @return
+ */
 template< typename T >
 bool upsample(const std::vector< ct::Mat_<T> > &A1,
 			  ct::Size& szA1,
@@ -555,6 +612,11 @@ bool upsample(const std::vector< ct::Mat_<T> > &A1,
 }
 
 
+/**
+ * @brief hconcat
+ * @param list
+ * @param res
+ */
 template< typename T >
 void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 {
@@ -580,6 +642,12 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 	}
 }
 
+/**
+ * @brief hsplit
+ * @param res
+ * @param cols
+ * @param list
+ */
 template< typename T >
 void hsplit(const ct::Mat_<T>& res, int cols, std::vector< ct::Mat_<T> >& list)
 {
@@ -605,6 +673,191 @@ void hsplit(const ct::Mat_<T>& res, int cols, std::vector< ct::Mat_<T> >& list)
 	}
 }
 
+/**
+ * @brief deriv_conv2D
+ * @param A0
+ * @param gradA1
+ * @param szA0
+ * @param szA1
+ * @param szW
+ * @param stride
+ * @param gradW
+ * @param gradB
+ */
+template< typename T >
+void deriv_conv2D(const ct::Mat_<T>& A0,
+				  const ct::Mat_<T>& gradA1,
+				  const ct::Size& szA0,
+				  const ct::Size& szA1,
+				  const ct::Size &szW,
+				  int stride,
+				  ct::Mat_<T> &gradW,
+				  T &gradB)
+{
+	if(A0.empty() || gradA1.empty() || !stride){
+		std::cout << "deriv_conv2D wrong parameters\n";
+	}
+
+	gradW = ct::Mat_<T>::zeros(szW.height, szW.width);
+	gradB = 0;
+
+	int m = A0.rows;
+
+	T *dA = &(*A0.val)[0];
+	T *dgA1 = &(*gradA1.val)[0];
+	T *dgW = gradW.ptr();
+
+	for(int i = 0; i < m; ++i){
+		T *dAi		= &dA[A0.cols * i];
+		T *dgA1i	= &dgA1[gradA1.cols * i];
+
+#pragma omp parallel for
+		for(int y = 0; y < szA1.height; ++y){
+			int y0 = y * stride;
+#pragma omp parallel for
+			for(int x = 0; x < szA1.width; ++x){
+				int x0 = x * stride;
+				T d = dgA1i[szA1.width * y + x];
+
+#pragma omp simd
+				for(int a = 0; a < szW.height; ++a){
+					if(y0 + a < szA0.height){
+						for(int b = 0; b < szW.width; ++b){
+							if(x0 + b < szA0.width){
+								T a0 = dAi[szA0.width * (y0 + a) + x0 + b];
+								dgW[a * szW.width + b] += a0 * d;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	gradW *= (T)(1./m);
+
+	for(int i = 0; i < m; ++i){
+		T *dgA1i	= &dgA1[gradA1.cols * i];
+		int *dIi	= &dId[indexes.cols * i];
+		for(int y = 0; y < szA1.height; ++y){
+			for(int x = 0; x < szA1.width; ++x){
+				int id = dIi[szA1.width * y + x];
+
+				gradB[id] += dgA1i[szA1.width * y + x];
+			}
+		}
+	}
+	for(int i = 0; i < gradB.size(); ++i){
+		gradB[i] /= (T)m;
+	}
+}
+
+/**
+ * @brief deriv_conv2D
+ * @param A0
+ * @param gradA1
+ * @param szA0
+ * @param szA1
+ * @param szW
+ * @param stride
+ * @param gradW
+ * @param gradB
+ */
+template< typename T >
+void deriv_conv2D(ct::Mat_<T> & A0,
+				  const std::vector< ct::Mat_<T> >& gradA1,
+				  const ct::Size& szA0,
+				  const ct::Size& szA1,
+				  const ct::Size &szW,
+				  int stride,
+				  std::vector< ct::Mat_<T> > &gradW,
+				  std::vector< T > &gradB)
+{
+	gradW.resize(gradA1.size());
+	gradB.resize(gradA1.size());
+
+	for(int i = 0; i < gradA1.size(); ++i){
+		deriv_conv2D(A0, gradA1[i], szA0, szA1, szW, stride, gradW[i], gradB[i]);
+	}
+}
+
+/**
+ * @brief deriv_prev_cnv
+ * @param deriv
+ * @param W
+ * @param sL
+ * @param sLsub1
+ * @param D
+ */
+template< typename T >
+void deriv_prev_cnv(const ct::Mat_<T>& deriv,
+					const ct::Mat_<T>& W,
+					const ct::Size& sL, const ct::Size& sLsub1,
+					ct::Mat_<T>& D)
+{
+	if(deriv.empty() || W.empty() || indexes.empty())
+		return;
+
+	int m = deriv.rows;
+	int w_rows = W.rows;
+	int w_cols = W.cols;
+
+	D.setSize(deriv.rows, sLsub1.area());
+	D.fill(0);
+
+	T *dA = deriv.ptr();
+	T *dD = D.ptr();
+	T *dW = W.ptr();
+
+
+#pragma omp parallel for
+	for(int i = 0; i < m; ++i){
+		T *dAi = &dA[i * deriv.cols];
+		T *dDi = &dD[i * D.cols];
+
+#pragma omp parallel for
+		for(int y = 0; y < sLsub1.height; ++y){
+			for(int x = 0; x < sLsub1.width; ++x){
+				T sum = 0;
+#pragma omp simd
+				for(int a = 0; a < w_rows; ++a){
+					if(y - a >= 0 && y - a < sL.height){
+						for(int b = 0; b < w_cols; ++b){
+							if(x - b >=0 && x - b < sL.width){
+								int idx = (y - a) * sL.width + (x - b);
+
+								T d = dAi[idx];
+								T w = dW[(a) * w_cols + (b)];
+								sum += d * w;
+							}
+						}
+					}
+				}
+				dDi[y * sLsub1.width + x] += sum;// / (sz);
+			}
+		}
+	}
+}
+
+/**
+ * @brief deriv_prev_cnv
+ * @param deriv
+ * @param W
+ * @param sL
+ * @param sLsub1
+ * @param D
+ */
+template< typename T >
+void deriv_prev_cnv(const std::vector< ct::Mat_<T> >& deriv,
+					const std::vector< ct::Mat_<T> >& W,
+					const ct::Size& sL, const ct::Size& sLsub1,
+					std::vector< ct::Mat_<T> >& D)
+{
+	D.resize(deriv.size());
+	for(int i = 0; i < D.size(); ++i){
+		deriv_prev_cnv(deriv[i], W[i], sL, sLsub1, D[i]);
+	}
+}
 
 }
 

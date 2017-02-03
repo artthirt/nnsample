@@ -5,6 +5,8 @@
 #include "mnist_reader.h"
 #include "nn.h"
 
+#include "convnn.h"
+
 #include <random>
 
 class mnist_conv
@@ -16,7 +18,7 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward(const ct::Matf& X) const;
+	ct::Matf forward(const ct::Matf& X);
 	/**
 	 * @brief forward
 	 * @param index
@@ -81,12 +83,13 @@ public:
 	void setMnist(mnist_reader* mnist);
 	void setConvLength(const std::vector< int > &count_cnvW);
 
-	std::vector<std::vector<ct::Matf> > &cnvW();
+	std::vector< std::vector< convnn::convnn<float> > > &cnv();
+
+	std::vector<std::vector<ct::Matf> > cnvW();
 
 private:
 	std::vector< int > m_layers;
-	std::vector< std::vector< ct::Matf > > m_cnvW;
-	std::vector< std::vector< float > > m_cnvB;
+	std::vector< std::vector< convnn::convnn<float> > > m_cnv;
 	std::vector< int > m_count_cnvW;
 	std::vector< ct::Matf > m_W;
 	std::vector< ct::Matf > m_b;
@@ -96,18 +99,19 @@ private:
 	int m_conv_length;
 
 	ct::Size m_cnv_out_size;
+	int m_cnv_out_len;
 
 	nn::AdamOptimizer<float> m_AdamOptimizer;
-	std::vector< nn::MomentOptimizer<float> > m_MomentOptimizer;
 
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 
 	void getX(ct::Matf& X, int batch);
+	void getXyTest(ct::Matf &X, ct::Matf &yp, int batch);
 	void getXy(ct::Matf& X, ct::Matf& y, int batch);
 	void randX(ct::Matf& X);
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 
-	void conv(const ct::Matf &X, ct::Matf &X_out, int w, int h) const;
+	void conv(const ct::Matf &X, ct::Matf &X_out);
 
 };
 
