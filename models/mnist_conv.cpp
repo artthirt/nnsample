@@ -12,7 +12,7 @@ mnist_conv::mnist_conv()
 	m_iteration = 0;
 	m_mnist = 0;
 	m_count_cnvW.push_back(3);
-//	m_count_cnvW.push_back(1);
+	m_count_cnvW.push_back(3);
 //	m_count_cnvW.push_back(4);
 //	m_count_cnvW.push_back(4);
 	m_conv_length = (int)m_count_cnvW.size();
@@ -45,7 +45,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 			m_cnv[i][j].init(m_count_cnvW[i], szA0);
 		}
 		szA0 = m_cnv[i][0].szA2;
-		prev = m_count_cnvW[i] * prev * m_cnv[i][0].W.size();
+		prev = m_count_cnvW[i] * prev;
 	}
 }
 
@@ -355,7 +355,7 @@ void mnist_conv::init(int seed)
 		return;
 
 	m_cnv_out_size = m_cnv.back()[0].szA2;
-	m_cnv_out_len = m_cnv.back().size() * m_cnv.back()[0].W.size() * m_cnv.back()[0].szA2.area();
+	m_cnv_out_len = m_cnv.back().size() * m_cnv.back()[0].szA2.area() * m_count_cnvW.back();
 
 	int input = m_cnv_out_len;
 	int output = m_layers[0];
@@ -417,13 +417,12 @@ void mnist_conv::conv(const Matf &X, Matf &X_out)
 			m0.forward(X, reLu);
 		}else{
 			for(int j = 0; j < m_cnv[i - 1].size(); ++j){
+				int off1 = j * m_count_cnvW[i - 1];
 				convnn::convnn< float >& m0 = m_cnv[i - 1][j];
-				for(int l = 0; l < m_count_cnvW[i - 1]; ++l){
-					for(int k = 0; k < m0.W.size(); ++k){
-						int col = j * m_count_cnvW[i - 1] + l * m0.W.size() + k;
-						convnn::convnn< float >& mi = ls[col];
-						mi.forward(m0.A2[k], reLu);
-					}
+				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
+					int col = off1 + k;
+					convnn::convnn< float >& mi = ls[col];
+					mi.forward(m0.A2[k], reLu);
 				}
 			}
 		}
