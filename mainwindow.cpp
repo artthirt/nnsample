@@ -214,15 +214,7 @@ void MainWindow::onTimeoutMnist()
 	}
 
 	if(ui->pb_pass_cnv->isChecked()){
-		m_drawCnvWeights.set_prev_weight(m_mnist_cnv.cnvW());
-
-		m_mnist_cnv.pass_batch(300);
-	//	on_pb_update_cnv_clicked();
-
-		m_drawCnvWeights.set_weight(m_mnist_cnv.cnvW());
-
-		ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
-
+		pass_cnv();
 		if((m_mnist_cnv.iteration() && m_mnist_cnv.iteration() % 40) == 0){
 			on_pb_update_cnv_clicked();
 		}
@@ -332,6 +324,18 @@ void MainWindow::update_mnist()
 	}
 }
 
+void MainWindow::pass_cnv()
+{
+	m_drawCnvWeights.set_prev_weight(m_mnist_cnv.cnvW());
+
+	m_mnist_cnv.pass_batch(300);
+//	on_pb_update_cnv_clicked();
+
+	m_drawCnvWeights.set_weight(m_mnist_cnv.cnvW());
+
+	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
+}
+
 void MainWindow::on_pb_next_clicked()
 {
 	ui->widgetMNIST->next();
@@ -416,6 +420,7 @@ void MainWindow::on_pb_save_gpu_clicked()
 
 void MainWindow::on_pb_pass_cnv_clicked()
 {
+//	pass_cnv();
 }
 
 void MainWindow::on_pb_test_cnv_clicked()

@@ -62,6 +62,9 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 	float *dW1 = W.ptr();
 	float *dW2 = prevW.ptr();
 
+	QPen pen;
+	pen.setWidth(2);
+
 	float *dW = _W.ptr();
 	for(int y = 0; y < _W.rows; ++y){
 		for(int x = 0; x < _W.cols; ++x){
@@ -76,7 +79,8 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 			if(is_prev && std::abs(v2 - v1) > 1e-9){
 				float val = 100 + 2000 * std::abs((v2 - v1)/(m1 - m2));
 				val = std::min(255.f, val);
-				painter.setPen(QColor(val, 0, 0));
+				pen.setColor(QColor(val, 0, 0));
+				painter.setPen(pen);
 				painter.setBrush(Qt::NoBrush);
 				rt.marginsRemoved(QMargins(1, 1, 1, 1));
 				painter.drawRect(rt);
@@ -125,6 +129,11 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 
 			w = wd_blk * W.cols;
 			h = wd_blk * W.rows;
+
+			if(x > 700){
+				x = 0;
+				y += h + 2;
+			}
 
 			painter.setPen(Qt::NoPen);
 			draw_W(painter, W, m_prevW[i][j], x, y, wd_blk, _max, _min, is_prev);

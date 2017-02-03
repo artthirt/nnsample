@@ -395,9 +395,11 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 	for(int i = 0; i < A1.size(); ++i)
 		A1[i].setSize(A0.rows, sz);
 
+#pragma omp parallel for
 	for(int i = 0; i < m; ++i){
 		const T *dA0i = &A0.at(i);
 
+#pragma omp parallel for
 		for(int y_res = 0; y_res < szO.height; y_res++){
 			int y = y_res * stride;
 			for(int x_res = 0; x_res < szO.width; x_res++){
@@ -462,18 +464,18 @@ bool subsample(const ct::Mat_<T> &A0,
 
 	int kLen = 2;
 
-//#pragma omp parallel for
+#pragma omp parallel for
 	for(int i = 0; i < rows; ++i){
 		const T* dA0i = &A0.at(i);
 		T* dA1i = &A1.at(i);
 		T* dMi = &Mask.at(i);
-//#pragma omp parallel for
+#pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * kLen;
 			for(int x = 0; x < szA1.width; ++x){
 				int x0 = x * kLen;
 
-				int xm = x0, ym = y0;
+				int xm = -1, ym = -1;
 				T maxV = T(-99999999);
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
@@ -481,11 +483,13 @@ bool subsample(const ct::Mat_<T> &A0,
 							T v = dA0i[(y0 + a) * szA0.width + (x0 + b)];
 							if(v > maxV){
 								maxV = v;
-								xm = x0 + b, y0 = y0 + a;
+								xm = x0 + b, ym = y0 + a;
 							}
 						}
 					}
 				}
+				if(xm < 0 || ym < 0)
+					continue;
 				dA1i[y * szA1.width + x] = maxV;
 				dMi[ym * szA0.width + xm] = T(1);
 			}
@@ -550,7 +554,7 @@ bool upsample(const ct::Mat_<T> &A1,
 			  const ct::Mat_<T> &Mask,
 			  ct::Mat_<T>& A0)
 {
-	if(A0.empty() || Mask.empty())
+	if(A1.empty() || Mask.empty())
 		return false;
 
 	int m = A1.rows;
@@ -559,16 +563,19 @@ bool upsample(const ct::Mat_<T> &A1,
 
 	int kLen = 2;
 
+#pragma omp parallel for
 	for(int i = 0; i < m; ++i){
-		T *dA1i = &A1.at(i);
+		const T *dA1i = &A1.at(i);
 		T *dA0i = &A0.at(i);
 
+#pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * kLen;
 			for(int x = 0; x < szA1.width; ++x){
 				int x0 = x * kLen;
 
 				T v = dA1i[y * szA1.width + x];
+#pragma omp parallel for
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
 						if(y0 + a < szA0.height && x0 + b < szA0.width){
@@ -579,7 +586,11 @@ bool upsample(const ct::Mat_<T> &A1,
 			}
 		}
 	}
+
+//	ct::save_mat(Mask, "Mask.txt");
+//	ct::save_mat(A0, "A0_before.txt");
 	A0 = ct::elemwiseMult(A0, Mask);
+//	ct::save_mat(A0, "A0_after.txt");
 
 	return true;
 }
@@ -602,7 +613,7 @@ bool upsample(const std::vector< ct::Mat_<T> > &A1,
 {
 	if(A1.empty() || Masks.empty())
 		return false;
-	A1.resize(A0.size());
+	A0.resize(A1.size());
 
 	for(int i = 0; i < A1.size(); i++){
 		if(!upsample(A1[i], szA1, szA0, Masks[i], A0[i]))
@@ -663,8 +674,10 @@ void hsplit(const ct::Mat_<T>& res, int cols, std::vector< ct::Mat_<T> >& list)
 	}
 
 	T *dR = res.ptr();
+#pragma omp parallel for
 	for(int i = 0; i < cols; ++i){
 		T *dLi = list[i].ptr();
+#pragma omp parallel for
 		for(int j = 0; j < res.rows; ++j){
 			for(int k = 0; k < len; ++k){
 				dLi[j * len + k] = dR[j * res.cols + i * len + k];
@@ -703,8 +716,8 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
 
 	int m = A0.rows;
 
-	T *dA = &(*A0.val)[0];
-	T *dgA1 = &(*gradA1.val)[0];
+	T *dA = A0.ptr();
+	T *dgA1 = gradA1.ptr();
 	T *dgW = gradW.ptr();
 
 	for(int i = 0; i < m; ++i){
@@ -719,12 +732,18 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
 				int x0 = x * stride;
 				T d = dgA1i[szA1.width * y + x];
 
+#ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
+#endif
 				for(int a = 0; a < szW.height; ++a){
-					if(y0 + a < szA0.height){
+					int y1 = y0 + a;
+					if(y1 < szA0.height){
 						for(int b = 0; b < szW.width; ++b){
-							if(x0 + b < szA0.width){
-								T a0 = dAi[szA0.width * (y0 + a) + x0 + b];
+							int x1 = x0 + b;
+							if(x1 < szA0.width){
+								T a0 = dAi[szA0.width * y1 + x1];
 								dgW[a * szW.width + b] += a0 * d;
 							}
 						}
@@ -738,18 +757,13 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
 
 	for(int i = 0; i < m; ++i){
 		T *dgA1i	= &dgA1[gradA1.cols * i];
-		int *dIi	= &dId[indexes.cols * i];
 		for(int y = 0; y < szA1.height; ++y){
 			for(int x = 0; x < szA1.width; ++x){
-				int id = dIi[szA1.width * y + x];
-
-				gradB[id] += dgA1i[szA1.width * y + x];
+				gradB += dgA1i[szA1.width * y + x];
 			}
 		}
 	}
-	for(int i = 0; i < gradB.size(); ++i){
-		gradB[i] /= (T)m;
-	}
+	gradB /= (T)m;
 }
 
 /**
@@ -795,7 +809,7 @@ void deriv_prev_cnv(const ct::Mat_<T>& deriv,
 					const ct::Size& sL, const ct::Size& sLsub1,
 					ct::Mat_<T>& D)
 {
-	if(deriv.empty() || W.empty() || indexes.empty())
+	if(deriv.empty() || W.empty())
 		return;
 
 	int m = deriv.rows;
@@ -819,7 +833,11 @@ void deriv_prev_cnv(const ct::Mat_<T>& deriv,
 		for(int y = 0; y < sLsub1.height; ++y){
 			for(int x = 0; x < sLsub1.width; ++x){
 				T sum = 0;
+#ifdef __GNUC__
 #pragma omp simd
+#else
+#pragma omp parallel for
+#endif
 				for(int a = 0; a < w_rows; ++a){
 					if(y - a >= 0 && y - a < sL.height){
 						for(int b = 0; b < w_cols; ++b){

@@ -22,6 +22,7 @@ public:
 	tvmat A1;
 	tvmat A2;
 	tvmat W;
+	tvmat rotW;
 	std::vector< T > B;
 	tvmat Masks;
 	ct::Size szA0;
@@ -39,14 +40,27 @@ public:
 
 		nn::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
 
-		std::normal_distribution<T> nrm(T(0), T(0.1));
+		std::normal_distribution<T> nrm(T(0), T(0.01));
 
 		for(int i = 0; i < count_weight; ++i){
 			W[i].setSize(weight_size, weight_size);
-			W[i].randn(0, 0.1);
-			B[i] = nrm(ct::generator);
+			W[i].randn(0, 0.01);
+			B[i] = 0;//nrm(ct::generator);
 		}
+		rotateW();
+
 		m_init = true;
+	}
+
+	void setAlpha(T alpha){
+		m_optim.setAlpha(alpha);
+	}
+
+	void rotateW(){
+		rotW.resize(W.size());
+		for(int i = 0; i < W.size(); ++i){
+			ct::flip(W[i], rotW[i]);
+		}
 	}
 
 	template< typename Func >
@@ -71,8 +85,8 @@ public:
 	void backward(const std::vector< ct::Mat_<T> >& Delta, Func func){
 		if(!m_init)
 			throw new std::invalid_argument("convnn::backward: not initialized");
-		std::vector< ct::Mat_<T> dA2, dA1, dA0;
-		nn::upsample(Delta, szA2, szA1, Mask, dA2);
+		std::vector< ct::Mat_<T> > dA2, dA1, dA0;
+		nn::upsample(Delta, szA2, szA1, Masks, dA2);
 
 		back2conv(A1, dA2, dA1, func);
 
@@ -82,15 +96,33 @@ public:
 
 		nn::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
-		nn::deriv_prev_cnv(dA1, W, szA1, szA0, dA0);
+		nn::deriv_prev_cnv(dA1, rotW, szA1, szA0, dA0);
 
-		DltA0.setSize(szA0.height, szA0.width);
+		DltA0.setSize(dA0[0].rows, dA0[0].cols);
 		DltA0.fill(0);
 		for(int i = 0; i < dA0.size(); ++i){
 			DltA0 += dA0[i];
 		}
+//		ct::elemMult(DltA0, A0);
+
+//		for(int k = 0; k < gradW.size(); ++k){
+//			std::string sw = gradW[k];
+//			qDebug("gW[%d]:\n%s", k, sw.c_str());
+
+//			std::stringstream ss;
+//			ss << "A1" << k << ".txt";
+//			ct::save_mat(dA1[k], ss.str());
+//			ss.str("");
+//			ss << "A2" << k << ".txt";
+//			ct::save_mat(dA2[k], ss.str());
+//			ss.str("");
+//			ss << "D" << k << ".txt";
+//			ct::save_mat(Delta[k], ss.str());
+//		}
 
 		m_optim.pass(gradW, gradB, W, B);
+
+		rotateW();
 	}
 
 	static void hconcat(const std::vector< convnn<T> > &cnv, ct::Mat_<T>& _out){

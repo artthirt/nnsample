@@ -972,7 +972,7 @@ public:
 		res << "[";
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				res/* << std::setprecision(4)*/ << val[i * cols + j] << "\t";
+				res << std::setprecision(4) << val[i * cols + j] << "\t";
 			}
 			res << ";\n";
 		}
@@ -993,7 +993,7 @@ public:
 		res << "[";
 		for(int i = 0; i < _rows; i++){
 			for(int j = 0; j < cols; j++){
-				res/* << std::setprecision(4)*/ << val[i * cols + j] << "\t";
+				res << std::setprecision(4) << val[i * cols + j] << "\t";
 			}
 			res << ";\n";
 		}
@@ -1259,6 +1259,12 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Vec_< T, count >& v)
 	return res;
 }
 
+/**
+ * @brief elemwiseMult
+ * @param m1
+ * @param m2
+ * @return m1 .* m2
+ */
 template< typename T >
 inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
 {
@@ -1279,6 +1285,48 @@ inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
 		res_val[i] = m1_val[i] * m2_val[i];
 	}
 	return res;
+}
+
+/**
+ * @brief elemMult
+ * @param A = A .* B
+ * @param B
+ */
+template< typename T >
+inline void elemMult(Mat_<T > &A, const Mat_<T > &B)
+{
+	if(A.cols != B.cols || A.rows != B.rows)
+		return;
+
+	T* dA = A.ptr();
+	T* dB = B.ptr();
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
+	for(int i = 0; i < A.total(); i++){
+		dA[i] *= dB[i];
+	}
+}
+
+
+template< typename T >
+inline void flip(const Mat_<T > &A, Mat_<T > &B)
+{
+	if(A.empty())
+		return;
+
+	B.setSize(A.rows, A.cols);
+
+	T *dA = A.ptr();
+	T *dB = B.ptr();
+
+	for(int i = 0; i < A.rows; ++i){
+		for(int j = 0; j < A.cols; ++j){
+			dB[(B.rows - i - 1) * B.cols + j] = dA[i * A.cols + j];
+		}
+	}
 }
 
 template< typename T >
@@ -2062,6 +2110,18 @@ inline T rad2angle(T val)
 }
 
 ////////////////////////////
+
+template< typename T >
+void save_mat(const Mat_<T>& mat, const std::string& fn)
+{
+	std::string s = mat;			\
+	std::fstream fs;
+	fs.open(fn.c_str(), std::ios_base::out);
+
+	fs << s;
+
+	fs.close();
+}
 
 template< typename T >
 void save_mat10(const Mat_<T>& mat, const std::string& fn)

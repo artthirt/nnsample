@@ -124,6 +124,7 @@ private:
 
 	void update_scene();
 	void update_mnist();
+	void pass_cnv();
 
 	// QWidget interface
 protected:

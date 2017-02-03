@@ -11,9 +11,9 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(3);
-	m_count_cnvW.push_back(3);
-//	m_count_cnvW.push_back(4);
+	m_count_cnvW.push_back(8);
+//	m_count_cnvW.push_back(2);
+//	m_count_cnvW.push_back(3);
 //	m_count_cnvW.push_back(4);
 	m_conv_length = (int)m_count_cnvW.size();
 
@@ -43,6 +43,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 		m_cnv[i].resize(prev);
 		for(int j = 0; j < m_cnv[i].size(); ++j){
 			m_cnv[i][j].init(m_count_cnvW[i], szA0);
+			m_cnv[i][j].setAlpha(0.1);
 		}
 		szA0 = m_cnv[i][0].szA2;
 		prev = m_count_cnvW[i] * prev;
@@ -509,6 +510,40 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		dB[i] = (sumRows(d) * (1.f/m)).t();
 
 		d = di;
+	}
+
+	/// convolution
+	{
+		std::vector< Matf > ds;
+
+		nn::hsplit(d, m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
+
+		for(int i = m_cnv.size() - 1; i > -1; i--){
+			std::vector< convnn::convnn<float > >& lrs = m_cnv[i];
+			std::vector< Matf > di;
+
+			qDebug("LR[%d]-----", i);
+
+			for(int j = 0; j < lrs.size(); ++j){
+				convnn::convnn<float > &cnv = lrs[j];
+
+				std::vector< Matf >dsi;
+
+				for(int k = 0; k < cnv.W.size(); ++k){
+					dsi.push_back(ds[j * cnv.W.size() + k]);
+				}
+
+				cnv.backward< Matf (*)(const Matf& mat) >(dsi, derivRelu);
+				di.push_back(cnv.DltA0);
+				for(int k = 0; k < cnv.W.size(); ++k){
+					std::string sw = cnv.W[k];
+					qDebug("W[%d:%d]:\n%s", j, k, sw.c_str());
+				}
+			}
+			ds = di;
+
+			qDebug("----");
+		}
 	}
 
 	m_AdamOptimizer.pass(dW, dB, m_W, m_b);
