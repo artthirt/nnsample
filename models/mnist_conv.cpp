@@ -11,7 +11,7 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(8);
+	m_count_cnvW.push_back(4);
 //	m_count_cnvW.push_back(2);
 //	m_count_cnvW.push_back(3);
 //	m_count_cnvW.push_back(4);
