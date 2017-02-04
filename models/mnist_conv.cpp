@@ -48,6 +48,65 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	}
 }
 
+void mnist_conv::random_update_weights()
+{
+	double l2, acc, l2n, accn;
+	getEstimate(200, l2, acc);
+	save_weights();
+
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		for(size_t j = 0; j < m_cnv[i].size(); ++j){
+			m_cnv[i][j].update_random();
+		}
+	}
+
+	for(size_t i = 0; i < m_W.size(); ++i){
+		m_W[i].randn(0, 0.1);
+		m_b[i].randn(0, 0.1);
+	}
+
+	getEstimate(200, l2n, accn);
+
+	if(accn < acc){
+		restore_weights();
+	}
+}
+
+void mnist_conv::save_weights()
+{
+
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		for(size_t j = 0; j < m_cnv[i].size(); ++j){
+			m_cnv[i][j].save_weight();
+		}
+	}
+
+	m_prevW.resize(m_W.size());
+	m_prevb.resize(m_b.size());
+
+	for(size_t i = 0; i < m_prevW.size(); ++i){
+		m_W[i].copyTo(m_prevW[i]);
+		m_b[i].copyTo(m_prevb[i]);
+	}
+}
+
+void mnist_conv::restore_weights()
+{
+	if(m_prevW.size() || m_prevb.size())
+		return;
+
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		for(size_t j = 0; j < m_cnv[i].size(); ++j){
+			m_cnv[i][j].restore_weights();
+		}
+	}
+
+	for(size_t i = 0; i < m_prevW.size(); ++i){
+		m_prevW[i].copyTo(m_W[i]);
+		m_prevb[i].copyTo(m_b[i]);
+	}
+}
+
 std::vector<std::vector<convnn::convnn<float> > > &mnist_conv::cnv()
 {
 	return m_cnv;

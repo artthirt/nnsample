@@ -83,6 +83,8 @@ public:
 	void setMnist(mnist_reader* mnist);
 	void setConvLength(const std::vector< int > &count_cnvW);
 
+	void random_update_weights();
+
 	std::vector< std::vector< convnn::convnn<float> > > &cnv();
 
 	std::vector<std::vector<ct::Matf> > cnvW();
@@ -93,6 +95,8 @@ private:
 	std::vector< int > m_count_cnvW;
 	std::vector< ct::Matf > m_W;
 	std::vector< ct::Matf > m_b;
+	std::vector< ct::Matf > m_prevW;
+	std::vector< ct::Matf > m_prevb;
 	mnist_reader *m_mnist;
 	std::mt19937 m_generator;
 	uint m_iteration;
@@ -112,6 +116,9 @@ private:
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 
 	void conv(const ct::Matf &X, ct::Matf &X_out);
+
+	void save_weights();
+	void restore_weights();
 
 };
 

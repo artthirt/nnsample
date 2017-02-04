@@ -346,6 +346,16 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
+           <widget class="QPushButton" name="pb_update_weight">
+            <property name="text">
+             <string>Random Update weights</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QLabel" name="lb_l2cnv">
             <property name="font">
              <font>

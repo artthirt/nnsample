@@ -143,13 +143,13 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights();
 
+	layers3.push_back(500);
 	layers3.push_back(400);
-	layers3.push_back(200);
 	layers3.push_back(200);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(9);
-	cnv_layers.push_back(3);
+	cnv_layers.push_back(22);
+	cnv_layers.push_back(1);
 //	cnv_layers.push_back(1);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
@@ -224,6 +224,10 @@ void MainWindow::onTimeoutMnist()
 		if((m_mnist_cnv.iteration() && m_mnist_cnv.iteration() % 40) == 0){
 			on_pb_update_cnv_clicked();
 		}
+	}
+
+	if(ui->pb_update_weight->isChecked()){
+		pass_random();
 	}
 }
 
@@ -341,6 +345,15 @@ void MainWindow::pass_cnv()
 	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());
 
 	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
+}
+
+void MainWindow::pass_random()
+{
+	m_mnist_cnv.random_update_weights();
+	double l2, accuracy;
+	m_mnist_cnv.getEstimate(2000, l2, accuracy);
+	ui->lb_l2cnv->setText(QString("L2=%1; Acc=%2;\tIteration=%3").arg(l2, 0, 'f', 9).arg(accuracy, 0, 'f', 5).arg(m_mnist_cnv.iteration()));
+	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());
 }
 
 void MainWindow::on_pb_next_clicked()
@@ -490,3 +503,4 @@ void MainWindow::on_pb_mode_cnv_clicked(bool checked)
 	}
 
 }
+

@@ -123,6 +123,7 @@ private:
 	void update_scene();
 	void update_mnist();
 	void pass_cnv();
+	void pass_random();
 
 	// QWidget interface
 protected:

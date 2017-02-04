@@ -22,7 +22,9 @@ public:
 	tvmat A1;
 	tvmat A2;
 	tvmat W;
+	tvmat prevW;
 	std::vector< T > B;
+	std::vector< T > prevB;
 	tvmat Masks;
 	ct::Size szA0;
 	ct::Size szA1;
@@ -44,10 +46,36 @@ public:
 		for(int i = 0; i < count_weight; ++i){
 			W[i].setSize(weight_size, weight_size);
 			W[i].randn(0, 0.1);
-			B[i] = 0;//nrm(ct::generator);
+			B[i] = nrm(ct::generator);
 		}
 
 		m_init = true;
+	}
+
+	void save_weight(){
+		prevW.resize(W.size());
+		prevB.resize(B.size());
+		for(int i = 0; i < W.size(); ++i){
+			W[i].copyTo(prevW[i]);
+			prevB[i] = B[i];
+		}
+	}
+	void restore_weights(){
+		if(prevW.empty() || prevB.empty())
+			return;
+		for(int i = 0; i < W.size(); ++i){
+			prevW[i].copyTo(W[i]);
+			B[i] = prevB[i];
+		}
+	}
+
+	void update_random(){
+		std::normal_distribution<T> nrm(T(0), T(0.1));
+		for(int i = 0; i < W.size(); ++i){
+			W[i].setSize(weight_size, weight_size);
+			W[i].randn(0, 0.1);
+			B[i] = nrm(ct::generator);
+		}
 	}
 
 	void setAlpha(T alpha){
