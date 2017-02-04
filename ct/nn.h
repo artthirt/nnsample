@@ -165,7 +165,7 @@ public:
 			return false;
 
 		if(!m_init){
-			init_simple(gradW, gradB);
+			init_simple(gradW.size(), gradW[0].size());
 		}
 
 		using namespace ct;
@@ -216,16 +216,15 @@ private:
 	std::vector< T > m_mbn;
 	std::vector< T > m_vbn;
 
-	void init_simple(const std::vector< ct::Mat_< T > >& gradW, const std::vector< T >& gradB){
-		m_mW.resize(gradW.size());
-		m_vW.resize(gradW.size());
-		m_mbn.resize(gradW.size());
-		m_vbn.resize(gradW.size());
-		int rows = gradW[0].rows, cols = gradW[0].cols;
-		for(int i = 0; i < gradW.size(); ++i){
-			m_mW[i].setSize(rows, cols);
+	void init_simple(int len, const ct::Size& sz){
+		m_mW.resize(len);
+		m_vW.resize(len);
+		m_mbn.resize(len);
+		m_vbn.resize(len);
+		for(int i = 0; i < len; ++i){
+			m_mW[i].setSize(sz.height, sz.width);
 			m_mW[i].fill(0);
-			m_vW[i].setSize(rows, cols);
+			m_vW[i].setSize(sz.height, sz.width);
 			m_vW[i].fill(0);
 			m_mbn[i] = 0;
 			m_vbn[i] = 0;
@@ -458,7 +457,7 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 	int sz = szO.area();
 
 	A1.resize(W.size());
-	for(int i = 0; i < A1.size(); ++i)
+	for(size_t i = 0; i < A1.size(); ++i)
 		A1[i].setSize(A0.rows, sz);
 
 #pragma omp parallel for
@@ -471,7 +470,7 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 			for(int x_res = 0; x_res < szO.width; x_res++){
 				int x = x_res * stride;
 
-				for(int w = 0; w < W.size(); ++w){
+				for(size_t w = 0; w < W.size(); ++w){
 					T *dA1i = &(A1[w].at(i));
 					T *dW = W[w].ptr();
 					T sum = 0;
@@ -595,7 +594,7 @@ bool subsample(const std::vector< ct::Mat_<T> > &A0,
 	A1.resize(A0.size());
 	Masks.resize(A0.size());
 
-	for(int i = 0; i < A0.size(); i++){
+	for(size_t i = 0; i < A0.size(); i++){
 		if(!subsample(A0[i], szA0, A1[i], Masks[i], szA1))
 			return false;
 	}
@@ -695,7 +694,7 @@ bool upsample(const std::vector< ct::Mat_<T> > &A1,
 		return false;
 	A0.resize(A1.size());
 
-	for(int i = 0; i < A1.size(); i++){
+	for(size_t i = 0; i < A1.size(); i++){
 		if(!upsample(A1[i], szA1, szA0, Masks[i], A0[i]))
 			return false;
 	}
@@ -728,7 +727,7 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 #else
 #pragma omp parallel for
 #endif
-		for(int j = 0; j < list.size(); ++j){
+		for(int j = 0; j < (int)list.size(); ++j){
 			T* dL = list[j].ptr();
 			for(int k = 0; k < loc_cols; ++k){
 				dR[i * cols + j * loc_cols + k] = dL[i * loc_cols + k];
@@ -878,7 +877,7 @@ void deriv_conv2D(ct::Mat_<T> & A0,
 	gradW.resize(gradA1.size());
 	gradB.resize(gradA1.size());
 
-	for(int i = 0; i < gradA1.size(); ++i){
+	for(size_t i = 0; i < gradA1.size(); ++i){
 		deriv_conv2D(A0, gradA1[i], szA0, szA1, szW, stride, gradW[i], gradB[i]);
 	}
 }
@@ -919,7 +918,7 @@ void deriv_prev_cnv(std::vector< ct::Mat_<T> >& deriv,
 			for(int x = 0; x < sLsub1.width; ++x){
 				T sum = 0;
 
-				for(int w = 0; w < W.size(); ++w){
+				for(size_t w = 0; w < W.size(); ++w){
 					T *dA = deriv[w].ptr();
 					T *dAi = &dA[i * deriv[w].cols];
 					T *dW = W[w].ptr();
@@ -965,7 +964,7 @@ void deriv_prev_cnv(const std::vector< ct::Mat_<T> >& deriv,
 					std::vector< ct::Mat_<T> >& D)
 {
 	D.resize(deriv.size());
-	for(int i = 0; i < D.size(); ++i){
+	for(size_t i = 0; i < D.size(); ++i){
 		deriv_prev_cnv(deriv[i], W[i], sL, sLsub1, D[i]);
 	}
 }

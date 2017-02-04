@@ -131,7 +131,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->setMnist(&m_mnist);
 	ui->widgetMNIST->update();
 
-	std::vector<int> layers2, layers3;
+	std::vector<int> layers2, layers3, cnv_layers;
 //	layers2.push_back(600);
 //	layers2.push_back(500);
 //	layers2.push_back(400);
@@ -143,14 +143,18 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights();
 
-	layers3.push_back(300);
+	layers3.push_back(400);
 	layers3.push_back(200);
-	layers3.push_back(100);
+	layers3.push_back(200);
 	layers3.push_back(10);
+
+	cnv_layers.push_back(6);
+	cnv_layers.push_back(4);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
 
+	m_mnist_cnv.setConvLength(cnv_layers);
 	m_mnist_cnv.setLayers(layers3);
 	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);
@@ -328,12 +332,12 @@ void MainWindow::update_mnist()
 
 void MainWindow::pass_cnv()
 {
-	m_drawCnvWeights.set_prev_weight(m_mnist_cnv.cnvW());
+	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
 	m_mnist_cnv.pass_batch(100);
 //	on_pb_update_cnv_clicked();
 
-	m_drawCnvWeights.set_weight(m_mnist_cnv.cnvW());
+	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());
 
 	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
 }
@@ -471,15 +475,8 @@ void MainWindow::on_pb_update_cnv_clicked()
 	}
 }
 
-void MainWindow::on_pb_show_weights_clicked()
-{
-	m_drawCnvWeights.show();
-}
-
-
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-	m_drawCnvWeights.close();
 	QMainWindow::closeEvent(event);
 }
 

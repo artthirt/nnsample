@@ -527,7 +527,7 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 void mnist_train::copyWbMat2GpuMat()
 {
 #ifdef _USE_GPU
-	for(int i = 0; i < m_W.size(); i++){
+	for(size_t i = 0; i < m_W.size(); i++){
 		gpumat::convert_to_gpu(m_W[i], m_gW[i]);
 		gpumat::convert_to_gpu(m_b[i], m_gb[i]);
 	}
@@ -537,7 +537,7 @@ void mnist_train::copyWbMat2GpuMat()
 void mnist_train::copyWbGpuMat2Mat()
 {
 #ifdef _USE_GPU
-	for(int i = 0; i < m_W.size(); i++){
+	for(size_t i = 0; i < m_W.size(); i++){
 		gpumat::convert_to_mat(m_gW[i], m_W[i]);
 		gpumat::convert_to_mat(m_gb[i], m_b[i]);
 	}
@@ -661,7 +661,7 @@ void mnist_train::pass_batch(const Matf &X, const Matf &y)
 		dW[i] *= 1./m;
 		//dW[i] += (m_lambda/m * m_W[i]);
 
-		if(i < D.size()){
+		if(i < (int)D.size()){
 			dW[i] = elemwiseMult(dW[i], D[i]);
 		}
 
@@ -821,7 +821,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 	int max_layers = m_dropout_count;//std::min((int)(m_layers.size() - 2), m_dropout_count);
 
 	for(size_t i = 0; i < m_layers.size(); i++){
-		if(i < max_layers){
+		if(i < (size_t)max_layers){
 			Matf d;
 			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.92f, d);
 			gpumat::convert_to_gpu(d, m_Dropout[i]);
@@ -883,7 +883,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 void mnist_train::save_gpu_matricies()
 {
-	for(int i = 0; i < m_gW.size(); ++i){
+	for(size_t i = 0; i < m_gW.size(); ++i){
 		gpumat::save_gmat(m_gW[i], QString("./weigths/g_W%1.txt").arg(i).toStdString());
 		gpumat::save_gmat(m_gb[i], QString("./weigths/g_b%1.txt").arg(i).toStdString());
 	}

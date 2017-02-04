@@ -21,10 +21,10 @@ typedef std::vector< unsigned char > vchar;
 	qDebug("%s time(ms): %f", caption, tcc);		\
 	qDebug("%s\n", s.c_str());						\
 }
-//	std::cout << caption << " time(ms): " << tcc;	\
-//	std::cout << endl << s.c_str();					\
-//	std::cout << endl;								\
-}
+//	std::cout << caption << " time(ms): " << tcc;
+//	std::cout << endl << s.c_str();
+//	std::cout << endl;
+//}
 
 #define PRINT_MAT(m, caption) {					\
 	std::string s = m;							\
@@ -212,7 +212,7 @@ void test_mat()
 		}															\
 		qDebug("%s", s.toStdString().c_str());						\
 	}																\
-	qDebug("");														\
+	qDebug(" ");														\
 }
 
 	qDebug("LAYERS");
@@ -227,7 +227,7 @@ void test_mat()
 	qDebug("MAXPOOL");
 	PRINT_IMAGE(pool[0], sz1.width, sz1.height);
 
-	auto gradRelu = [](float v){return v > 0? 1 : 0;};
+//	auto gradRelu = [](float v){return v > 0? 1 : 0;};
 
 	qDebug("END TEST");
 }

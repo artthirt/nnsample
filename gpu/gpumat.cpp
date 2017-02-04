@@ -74,7 +74,7 @@ GpuMat &GpuMat::operator =(const GpuMat &mat)
 		return *this;
 
 	cudaError_t err = cudaSuccess;
-	if(mat.rows != rows || mat.cols != cols || mat.type != mat.type){
+	if(mat.rows != rows || mat.cols != cols || mat.type != type){
 		release();
 
 		rows = mat.rows;

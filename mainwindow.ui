@@ -310,13 +310,37 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <widget class="WidgetMNIST" name="widgetMNISTCnv" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
+         <widget class="QTabWidget" name="tabWidget">
+          <property name="currentIndex">
+           <number>0</number>
           </property>
+          <widget class="QWidget" name="tab_4">
+           <attribute name="title">
+            <string>Numbers</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="WidgetMNIST" name="widgetMNISTCnv" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tab_5">
+           <attribute name="title">
+            <string>Weights (convolution)</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="DrawCnvWeight" name="wdg_cnvW" native="true"/>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
         <item>
@@ -365,13 +389,6 @@
             </property>
             <property name="checkable">
              <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pb_show_weights">
-            <property name="text">
-             <string>Show Weights</string>
             </property>
            </widget>
           </item>
@@ -439,6 +456,12 @@
    <class>WidgetMNIST</class>
    <extends>QWidget</extends>
    <header>widgetmnist.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DrawCnvWeight</class>
+   <extends>QWidget</extends>
+   <header>drawcnvweight.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

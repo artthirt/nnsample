@@ -94,8 +94,6 @@ private slots:
 
 	void on_pb_update_cnv_clicked();
 
-	void on_pb_show_weights_clicked();
-
 	void on_pb_mode_cnv_clicked(bool checked);
 
 private:
@@ -121,8 +119,6 @@ private:
 	mnist_conv m_mnist_cnv;
 
 	mnist_reader m_mnist;
-
-	DrawCnvWeight m_drawCnvWeights;
 
 	void update_scene();
 	void update_mnist();

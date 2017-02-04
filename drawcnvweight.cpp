@@ -21,9 +21,9 @@ void copy_weights(const std::vector<std::vector<ct::Matf> > &W,
 {
 	Wout.clear();
 	Wout.resize(W.size());
-	for(int i = 0; i < W.size(); i++){
+	for(size_t i = 0; i < W.size(); i++){
 		Wout[i].resize(W[i].size());
-		for(int j = 0; j < W[i].size(); j++){
+		for(size_t j = 0; j < W[i].size(); j++){
 			W[i][j].copyTo(Wout[i][j]);
 		}
 	}
@@ -97,7 +97,8 @@ void DrawCnvWeight::paintEvent(QPaintEvent *event)
 
 	painter.fillRect(rect(), Qt::black);
 
-	QSize s = draw_weight(painter, 0, m_W, true);
+	/*QSize s =*/
+	draw_weight(painter, 0, m_W, true);
 //	draw_weight(painter, s.height() + 20, m_firstW, false);
 }
 
@@ -110,13 +111,13 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 
 	int x = 0, y = offset, w = 0, h = 0;
 
-	for(int i = 0; i < Weights.size(); ++i){
+	for(size_t i = 0; i < Weights.size(); ++i){
 		const std::vector< ct::Matf > &Ws = Weights[i];
 		x = 0;
 
 		float _max = -99999999.f, _min = 999999999.f;
 
-		for(int j = 0; j < Ws.size(); ++j){
+		for(size_t j = 0; j < Ws.size(); ++j){
 			float m1 = Ws[j].max();
 			float m2 = Ws[j].min();
 
@@ -124,7 +125,7 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 			_min = std::min(m2, _min);
 		}
 
-		for(int j = 0; j < Ws.size(); ++j){
+		for(size_t j = 0; j < Ws.size(); ++j){
 			ct::Matf W = Ws[j];
 
 			w = wd_blk * W.cols;

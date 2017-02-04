@@ -22,7 +22,6 @@ public:
 	tvmat A1;
 	tvmat A2;
 	tvmat W;
-	tvmat rotW;
 	std::vector< T > B;
 	tvmat Masks;
 	ct::Size szA0;
@@ -47,7 +46,6 @@ public:
 			W[i].randn(0, 0.1);
 			B[i] = 0;//nrm(ct::generator);
 		}
-		rotateW();
 
 		m_init = true;
 	}
@@ -56,12 +54,6 @@ public:
 		m_optim.setAlpha(alpha);
 	}
 
-	void rotateW(){
-		rotW.resize(W.size());
-		for(int i = 0; i < W.size(); ++i){
-			ct::flip(W[i], rotW[i]);
-		}
-	}
 
 	template< typename Func >
 	bool forward(const ct::Mat_<T>& mat, Func func){
@@ -76,7 +68,7 @@ public:
 	template< typename Func >
 	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, Func func){
 		dA1.resize(A1.size());
-		for(int i = 0; i < A1.size(); i++){
+		for(size_t i = 0; i < A1.size(); i++){
 			dA1[i] = ct::elemwiseMult(dA2[i], func(A1[i]));
 		}
 	}
@@ -98,31 +90,7 @@ public:
 
 		nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
 
-//		DltA0.setSize(dA0[0].rows, dA0[0].cols);
-//		DltA0.fill(0);
-//		for(int i = 0; i < dA0.size(); ++i){
-//			DltA0 += dA0[i];
-//		}
-//		ct::elemMult(DltA0, A0);
-
-//		for(int k = 0; k < gradW.size(); ++k){
-//			std::string sw = gradW[k];
-//			qDebug("gW[%d]:\n%s", k, sw.c_str());
-
-//			std::stringstream ss;
-//			ss << "A1" << k << ".txt";
-//			ct::save_mat(dA1[k], ss.str());
-//			ss.str("");
-//			ss << "A2" << k << ".txt";
-//			ct::save_mat(dA2[k], ss.str());
-//			ss.str("");
-//			ss << "D" << k << ".txt";
-//			ct::save_mat(Delta[k], ss.str());
-//		}
-
 		m_optim.pass(gradW, gradB, W, B);
-
-		rotateW();
 	}
 
 	static void hconcat(const std::vector< convnn<T> > &cnv, ct::Mat_<T>& _out){
@@ -130,7 +98,7 @@ public:
 			return;
 		std::vector< ct::Mat_<T> > slice;
 
-		for(int i = 0; i < cnv.size(); ++i){
+		for(size_t i = 0; i < cnv.size(); ++i){
 			ct::Mat_< T > res;
 			nn::hconcat(cnv[i].A2, res);
 			slice.push_back(res);

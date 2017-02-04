@@ -11,8 +11,8 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(6);
-	m_count_cnvW.push_back(4);
+	m_count_cnvW.push_back(8);
+	m_count_cnvW.push_back(3);
 //	m_count_cnvW.push_back(1);
 	m_conv_length = (int)m_count_cnvW.size();
 
@@ -38,11 +38,10 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	m_cnv.resize(m_conv_length);
 	int prev = 1;
 	ct::Size szA0(imageWidth, imageHeight);
-	for(int i = 0; i < m_cnv.size(); ++i){
+	for(size_t i = 0; i < m_cnv.size(); ++i){
 		m_cnv[i].resize(prev);
-		for(int j = 0; j < m_cnv[i].size(); ++j){
+		for(size_t j = 0; j < m_cnv[i].size(); ++j){
 			m_cnv[i][j].init(m_count_cnvW[i], szA0);
-			m_cnv[i][j].setAlpha(0.01);
 		}
 		szA0 = m_cnv[i][0].szA2;
 		prev = m_count_cnvW[i] * prev;
@@ -60,9 +59,9 @@ std::vector<std::vector<Matf> > mnist_conv::cnvW()
 
 	res.resize(m_cnv.size());
 
-	for(int i = 0; i < m_cnv.size(); ++i){
-		for(int j = 0; j < m_cnv[i].size(); ++j){
-			for(int k = 0; k < m_cnv[i][j].W.size(); ++k){
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		for(size_t j = 0; j < m_cnv[i].size(); ++j){
+			for(size_t k = 0; k < m_cnv[i][j].W.size(); ++k){
 				res[i].push_back(m_cnv[i][j].W[k]);
 			}
 		}
@@ -105,6 +104,12 @@ Matf mnist_conv::forward_test(int index, int count)
 void mnist_conv::setAlpha(double alpha)
 {
 	m_AdamOptimizer.setAlpha(alpha);
+
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		for(size_t j = 0; j < m_cnv[i].size(); ++j){
+			m_cnv[i][j].setAlpha(alpha);
+		}
+	}
 }
 
 void mnist_conv::setLayers(const std::vector<int> &layers)
@@ -411,14 +416,14 @@ void mnist_conv::conv(const Matf &X, Matf &X_out)
 	if(X.empty())
 		return;
 
-	for(int i = 0; i < m_cnv.size(); ++i){
+	for(size_t i = 0; i < m_cnv.size(); ++i){
 		std::vector< convnn::convnn< float > >& ls = m_cnv[i];
 
 		if(i == 0){
 			convnn::convnn< float >& m0 = ls[0];
 			m0.forward(X, reLu);
 		}else{
-			for(int j = 0; j < m_cnv[i - 1].size(); ++j){
+			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
 				int off1 = j * m_count_cnvW[i - 1];
 				convnn::convnn< float >& m0 = m_cnv[i - 1][j];
 				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
@@ -504,7 +509,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		dW[i] *= 1./m;
 		//dW[i] += (m_lambda/m * m_W[i]);
 
-		if(i < D.size()){
+		if(i < (int)D.size()){
 			dW[i] = elemwiseMult(dW[i], D[i]);
 		}
 
@@ -525,12 +530,12 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 //			qDebug("LR[%d]-----", i);
 
-			for(int j = 0; j < lrs.size(); ++j){
+			for(size_t j = 0; j < lrs.size(); ++j){
 				convnn::convnn<float > &cnv = lrs[j];
 
 				std::vector< Matf >dsi;
 
-				for(int k = 0; k < cnv.W.size(); ++k){
+				for(size_t k = 0; k < cnv.W.size(); ++k){
 					dsi.push_back(ds[j * cnv.W.size() + k]);
 				}
 
