@@ -359,6 +359,16 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pb_mode_cnv">
+            <property name="text">
+             <string>mode test/train</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pb_show_weights">
             <property name="text">
              <string>Show Weights</string>

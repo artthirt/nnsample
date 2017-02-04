@@ -11,8 +11,8 @@ mnist_conv::mnist_conv()
 {
 	m_iteration = 0;
 	m_mnist = 0;
-	m_count_cnvW.push_back(2);
-	m_count_cnvW.push_back(11);
+	m_count_cnvW.push_back(6);
+	m_count_cnvW.push_back(4);
 //	m_count_cnvW.push_back(1);
 	m_conv_length = (int)m_count_cnvW.size();
 
@@ -42,7 +42,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 		m_cnv[i].resize(prev);
 		for(int j = 0; j < m_cnv[i].size(); ++j){
 			m_cnv[i][j].init(m_count_cnvW[i], szA0);
-			//m_cnv[i][j].setAlpha(0.01);
+			m_cnv[i][j].setAlpha(0.01);
 		}
 		szA0 = m_cnv[i][0].szA2;
 		prev = m_count_cnvW[i] * prev;
@@ -523,7 +523,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 			std::vector< convnn::convnn<float > >& lrs = m_cnv[i];
 			std::vector< Matf > di;
 
-			qDebug("LR[%d]-----", i);
+//			qDebug("LR[%d]-----", i);
 
 			for(int j = 0; j < lrs.size(); ++j){
 				convnn::convnn<float > &cnv = lrs[j];
@@ -543,7 +543,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 			}
 			ds = di;
 
-			qDebug("----");
+//			qDebug("----");
 		}
 	}
 

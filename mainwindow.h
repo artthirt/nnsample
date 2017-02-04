@@ -96,6 +96,8 @@ private slots:
 
 	void on_pb_show_weights_clicked();
 
+	void on_pb_mode_cnv_clicked(bool checked);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;

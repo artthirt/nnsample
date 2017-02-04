@@ -40,11 +40,11 @@ public:
 
 		nn::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
 
-		std::normal_distribution<T> nrm(T(0), T(0.01));
+		std::normal_distribution<T> nrm(T(0), T(0.1));
 
 		for(int i = 0; i < count_weight; ++i){
 			W[i].setSize(weight_size, weight_size);
-			W[i].randn(0, 0.01);
+			W[i].randn(0, 0.1);
 			B[i] = 0;//nrm(ct::generator);
 		}
 		rotateW();
