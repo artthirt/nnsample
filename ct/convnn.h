@@ -69,7 +69,7 @@ public:
 	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, Func func){
 		dA1.resize(A1.size());
 		for(size_t i = 0; i < A1.size(); i++){
-			dA1[i] = ct::elemwiseMult(dA2[i], func(A1[i]));
+			ct::elemwiseMult(dA2[i], func(A1[i]), dA1[i]);
 		}
 	}
 

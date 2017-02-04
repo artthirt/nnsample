@@ -605,6 +605,8 @@ public:
 
 	///********************
 	inline T* ptr(){
+		if(empty())
+			return 0;
 		T* val = &(*this->val)[0];
 		return &val[0];
 	}
@@ -1260,40 +1262,12 @@ inline Mat_<T> operator* (const Mat_<T>& m1, const Vec_< T, count >& v)
 }
 
 /**
- * @brief elemwiseMult
- * @param m1
- * @param m2
- * @return m1 .* m2
- */
-template< typename T >
-inline Mat_<T> elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2)
-{
-	Mat_<T> res;
-	if(m1.cols != m2.cols || m1.rows != m2.rows)
-		return res;
-	res = Mat_<T>(m1.rows, m1.cols);
-
-	T* res_val = &(*res.val)[0];
-	T* m1_val = &(*m1.val)[0];
-	T* m2_val = &(*m2.val)[0];
-#ifdef __GNUC__
-#pragma omp simd
-#else
-#pragma omp parallel for
-#endif
-	for(int i = 0; i < m1.total(); i++){
-		res_val[i] = m1_val[i] * m2_val[i];
-	}
-	return res;
-}
-
-/**
  * @brief elemMult
  * @param A = A .* B
  * @param B
  */
 template< typename T >
-inline void elemMult(Mat_<T > &A, const Mat_<T > &B)
+inline void elemwiseMult(Mat_<T > &A, const Mat_<T > &B)
 {
 	if(A.cols != B.cols || A.rows != B.rows)
 		return;
@@ -1310,6 +1284,38 @@ inline void elemMult(Mat_<T > &A, const Mat_<T > &B)
 	}
 }
 
+/**
+ * @brief elemwiseMult
+ * @param m1
+ * @param m2
+ * @param C  = m1 .* m2
+ */
+template< typename T >
+inline void elemwiseMult(const Mat_<T > &m1, const Mat_<T > &m2, Mat_<T>& C)
+{
+	if(m1.empty() || m2.empty() || m1.cols != m2.cols || m1.rows != m2.rows)
+		return;
+	if(C.ptr() != m1.ptr() && C.ptr() != m2.ptr()){
+		C.setSize(m1.rows, m1.cols);
+	}else{
+		if(C.ptr() == m1.ptr())
+			elemwiseMult(C, m2);
+		if(C.ptr() == m2.ptr())
+			elemwiseMult(C, m1);
+	}
+
+	T* res_val = C.ptr();
+	T* m1_val = m1.ptr();
+	T* m2_val = m2.ptr();
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
+	for(int i = 0; i < m1.total(); i++){
+		res_val[i] = m1_val[i] * m2_val[i];
+	}
+}
 
 template< typename T >
 inline void flip(const Mat_<T > &A, Mat_<T > &B)

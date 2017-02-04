@@ -62,7 +62,7 @@ double nnmodel::L2() const
 {
 	Matd y = forward_model(m_X);
 	Matd d = m_y - y;
-	d = elemwiseMult(d, d);
+	elemwiseMult(d, d);
 	double L2 = d.sum() * 1./d.rows;
 
 	return L2;
@@ -318,7 +318,7 @@ void nnmodel::pass_batch_model(const Matd &X, const Matd y)
 		Matd sz = derivRelu(a[i]);
 
 		Matd di = d * m_W[i].t();
-		di = elemwiseMult(di, sz);
+		elemwiseMult(di, sz);
 		dW[i] = a[i].t() * d;
 		dW[i] *= 1./m;
 		dB[i] = (sumRows(d) * (1./m)).t();

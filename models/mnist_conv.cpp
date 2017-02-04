@@ -138,12 +138,12 @@ void mnist_conv::getEstimate(int batch, double &l2, double &accuracy)
 
 	Matf d = yp - y;
 
-	Matf ml2 = elemwiseMult(d, d);
-	ml2 = sumRows(ml2);
-	ml2 *= 1./m;
+	elemwiseMult(d, d);
+	d = sumRows(d);
+	d *= 1./m;
 
 	//////////// l2
-	l2 = ml2.sum();
+	l2 = d.sum();
 
 	int right = 0;
 	for(int i = 0; i < m; i++){
@@ -169,12 +169,12 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 
 	Matf d = yp - y;
 
-	Matf ml2 = elemwiseMult(d, d);
-	ml2 = sumRows(ml2);
-	ml2 *= 1.f/m;
+	elemwiseMult(d, d);
+	d = sumRows(d);
+	d *= 1.f/m;
 
 	//////////// l2
-	l2 = ml2.sum();
+	l2 = d.sum();
 
 	int right = 0;
 	for(int i = 0; i < m; i++){
@@ -469,7 +469,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < D.size()){
 			dropout(m_W[i].rows, m_W[i].cols, 0.9f, D[i]);
-			Wi = elemwiseMult(m_W[i], D[i]);
+			elemwiseMult(m_W[i], D[i], Wi);
 			z[i] = a[i] * Wi;
 		}else{
 			z[i] = a[i] * m_W[i];
@@ -501,7 +501,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 			//Matf di = d * m_W[i].t();
 			matmulT2(d, m_W[i], di);
-			di = elemwiseMult(di, sz);
+			elemwiseMult(di, sz);
 		}
 		//dW[i] = a[i].t() * d;
 		matmulT1(a[i], d, dW[i]);
@@ -510,7 +510,7 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		//dW[i] += (m_lambda/m * m_W[i]);
 
 		if(i < (int)D.size()){
-			dW[i] = elemwiseMult(dW[i], D[i]);
+			elemwiseMult(dW[i], D[i]);
 		}
 
 		dB[i] = (sumRows(d) * (1.f/m)).t();

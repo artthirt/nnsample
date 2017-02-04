@@ -362,7 +362,7 @@ public:
 			if(i > 0){
 				sz = (*deriv)(a[i]);
 				matmulT2(d, W[i], di);
-				di = elemwiseMult(di, sz);
+				elemwiseMult(di, sz);
 			}
 			matmulT1(a[i], d, dW[i]);
 			dW[i] *= (T)(1./m);
@@ -396,7 +396,7 @@ public:
 		}
 		T m = (T)X.rows;
 		d = a[2] - X;
-		d = elemwiseMult(d, d);
+		elemwiseMult(d, d);
 		T res = d.sum() / m;
 		return res;
 	}
@@ -668,7 +668,7 @@ bool upsample(const ct::Mat_<T> &A1,
 
 //	ct::save_mat(Mask, "Mask.txt");
 //	ct::save_mat(A0, "A0_before.txt");
-	A0 = ct::elemwiseMult(A0, Mask);
+	ct::elemwiseMult(A0, Mask);
 //	ct::save_mat(A0, "A0_after.txt");
 
 	return true;
