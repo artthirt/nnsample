@@ -41,13 +41,7 @@ public:
 
 		nn::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
 
-		std::normal_distribution<T> nrm(T(0), T(0.1));
-
-		for(int i = 0; i < count_weight; ++i){
-			W[i].setSize(weight_size, weight_size);
-			W[i].randn(0, 0.1);
-			B[i] = nrm(ct::generator);
-		}
+		update_random();
 
 		m_init = true;
 	}
@@ -70,11 +64,10 @@ public:
 	}
 
 	void update_random(){
-		std::normal_distribution<T> nrm(T(0), T(0.1));
 		for(int i = 0; i < W.size(); ++i){
 			W[i].setSize(weight_size, weight_size);
 			W[i].randn(0, 0.1);
-			B[i] = nrm(ct::generator);
+			B[i] = 0.1;
 		}
 	}
 
