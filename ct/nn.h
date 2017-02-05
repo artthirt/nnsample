@@ -467,6 +467,12 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 #pragma omp parallel for
 		for(int y_res = 0; y_res < szO.height; y_res++){
 			int y = y_res * stride;
+
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
 			for(int x_res = 0; x_res < szO.width; x_res++){
 				int x = x_res * stride;
 
@@ -475,11 +481,6 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 					T *dW = W[w].ptr();
 					T sum = 0;
 
-#ifdef __GNUC__
-#pragma omp simd
-#else
-#pragma omp parallel for
-#endif
 					for(int a = 0; a < w_rows; ++a){
 						if(y + a < szI.height){
 							for(int b = 0; b < w_cols; ++b){
@@ -542,16 +543,17 @@ bool subsample(const ct::Mat_<T> &A0,
 #pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * kLen;
-			for(int x = 0; x < szA1.width; ++x){
-				int x0 = x * kLen;
 
-				int xm = -1, ym = -1;
-				T maxV = T(-99999999);
 #ifdef __GNUC__
 #pragma omp simd
 #else
 #pragma omp parallel for
 #endif
+			for(int x = 0; x < szA1.width; ++x){
+				int x0 = x * kLen;
+
+				int xm = -1, ym = -1;
+				T maxV = T(-99999999);
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
 						if(y0 + a < szA0.height && x0 + b < szA0.width){
@@ -646,15 +648,15 @@ bool upsample(const ct::Mat_<T> &A1,
 #pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * kLen;
-			for(int x = 0; x < szA1.width; ++x){
-				int x0 = x * kLen;
-
-				T v = dA1i[y * szA1.width + x];
 #ifdef __GNUC__
 #pragma omp simd
 #else
 #pragma omp parallel for
 #endif
+			for(int x = 0; x < szA1.width; ++x){
+				int x0 = x * kLen;
+
+				T v = dA1i[y * szA1.width + x];
 				for(int a = 0; a < kLen; ++a){
 					for(int b = 0; b < kLen; ++b){
 						if(y0 + a < szA0.height && x0 + b < szA0.width){
@@ -722,13 +724,12 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
 
 #pragma omp parallel for
 	for(int i = 0; i < rows; ++i){
-#ifdef __GNUC__
-#pragma omp simd
-#else
 #pragma omp parallel for
-#endif
 		for(int j = 0; j < (int)list.size(); ++j){
 			T* dL = list[j].ptr();
+#ifdef __GNUC__
+#pragma omp simd
+#endif
 			for(int k = 0; k < loc_cols; ++k){
 				dR[i * cols + j * loc_cols + k] = dL[i * loc_cols + k];
 			}

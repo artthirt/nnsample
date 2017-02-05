@@ -148,12 +148,12 @@ MainWindow::MainWindow(QWidget *parent) :
 //	layers3.push_back(200);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(3);
+	cnv_layers.push_back(5);
 	cnv_layers.push_back(5);
 //	cnv_layers.push_back(1);
 
-	ws.push_back(3);
-	ws.push_back(3);
+	ws.push_back(5);
+	ws.push_back(5);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
@@ -162,6 +162,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_cnv.setLayers(layers3);
 	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);
+
+	ui->sb_timeout_train->setValue(m_timer_mnist.interval());
 }
 
 MainWindow::~MainWindow()
@@ -507,3 +509,8 @@ void MainWindow::on_pb_mode_cnv_clicked(bool checked)
 
 }
 
+
+void MainWindow::on_sb_timeout_train_valueChanged(int arg1)
+{
+	m_timer_mnist.setInterval(arg1);
+}

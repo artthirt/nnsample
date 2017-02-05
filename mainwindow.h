@@ -96,6 +96,8 @@ private slots:
 
 	void on_pb_mode_cnv_clicked(bool checked);
 
+	void on_sb_timeout_train_valueChanged(int arg1);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
