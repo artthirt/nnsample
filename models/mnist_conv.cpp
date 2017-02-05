@@ -24,7 +24,7 @@ void mnist_conv::setMnist(mnist_reader *mnist)
 	m_mnist = mnist;
 }
 
-void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
+void mnist_conv::setConvLength(const std::vector<int> &count_cnvW, std::vector<int> *weight_sizes)
 {
 	if(!count_cnvW.size())
 		return;
@@ -41,6 +41,11 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW)
 	for(size_t i = 0; i < m_cnv.size(); ++i){
 		m_cnv[i].resize(prev);
 		for(size_t j = 0; j < m_cnv[i].size(); ++j){
+
+			if(weight_sizes && weight_sizes->size() == m_count_cnvW.size()){
+				m_cnv[i][j].setWeightSize((*weight_sizes)[i]);
+			}
+
 			m_cnv[i][j].init(m_count_cnvW[i], szA0);
 		}
 		szA0 = m_cnv[i][0].szA2;

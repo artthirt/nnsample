@@ -131,7 +131,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->widgetMNIST->setMnist(&m_mnist);
 	ui->widgetMNIST->update();
 
-	std::vector<int> layers2, layers3, cnv_layers;
+	std::vector<int> layers2, layers3, cnv_layers, ws;
 //	layers2.push_back(600);
 //	layers2.push_back(500);
 //	layers2.push_back(400);
@@ -148,14 +148,17 @@ MainWindow::MainWindow(QWidget *parent) :
 //	layers3.push_back(200);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(10);
-	cnv_layers.push_back(3);
+	cnv_layers.push_back(20);
+	cnv_layers.push_back(1);
 //	cnv_layers.push_back(1);
+
+	ws.push_back(5);
+	ws.push_back(3);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
 
-	m_mnist_cnv.setConvLength(cnv_layers);
+	m_mnist_cnv.setConvLength(cnv_layers, &ws);
 	m_mnist_cnv.setLayers(layers3);
 	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);

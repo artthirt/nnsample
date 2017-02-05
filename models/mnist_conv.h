@@ -81,7 +81,7 @@ public:
 	 * @param mnist
 	 */
 	void setMnist(mnist_reader* mnist);
-	void setConvLength(const std::vector< int > &count_cnvW);
+	void setConvLength(const std::vector< int > &count_cnvW, std::vector< int >* weight_sizes = 0);
 
 	void random_update_weights();
 
