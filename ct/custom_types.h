@@ -581,7 +581,7 @@ public:
 		return rows * cols;
 	}
 	void setSize(int rows, int cols){
-		if(!empty()){
+		if(!val.empty()){
 			if(rows == this->rows && cols == this->rows)
 				return;
 			this->rows = rows;
@@ -594,6 +594,15 @@ public:
 			val().resize(rows * cols);
 		}
 	}
+	void clear(){
+		if(empty()){
+			return;
+		}
+		rows = 0;
+		cols = 0;
+		val().clear();
+	}
+
 	void fill(T val){
 		if(empty())
 			return;
@@ -825,7 +834,7 @@ public:
 		return res;
 	}
 	bool empty() const{
-		return val.empty();
+		return val.empty() || val.get()->empty();
 	}
 	/**
 	 * @brief mean

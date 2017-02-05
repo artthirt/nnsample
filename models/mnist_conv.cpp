@@ -459,7 +459,7 @@ Matf mnist_conv::forward(const ct::Matf &X)
 
 	Matf X_out;
 
-	conv(X, X_out);
+	conv(X, X_out, false);
 
 	Matf x = X_out, z, a;
 
@@ -475,7 +475,7 @@ Matf mnist_conv::forward(const ct::Matf &X)
 	return a;
 }
 
-void mnist_conv::conv(const Matf &X, Matf &X_out)
+void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 {
 	if(X.empty())
 		return;
@@ -500,6 +500,14 @@ void mnist_conv::conv(const Matf &X, Matf &X_out)
 	}
 
 	convnn::convnn<float>::hconcat(m_cnv.back(), X_out);
+
+	if(!saved){
+		for(size_t i = 0; i < m_cnv.size(); ++i){
+			for(size_t j = 0; j < m_cnv[i].size(); ++j){
+				m_cnv[i][j].clear();
+			}
+		}
+	}
 }
 
 void mnist_conv::pass_batch(const Matf &X, const Matf &y)

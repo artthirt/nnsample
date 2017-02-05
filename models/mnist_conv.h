@@ -115,7 +115,7 @@ private:
 	void randX(ct::Matf& X);
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 
-	void conv(const ct::Matf &X, ct::Matf &X_out);
+	void conv(const ct::Matf &X, ct::Matf &X_out, bool saved = true);
 
 	void save_weights();
 	void restore_weights();

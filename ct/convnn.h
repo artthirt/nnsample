@@ -81,6 +81,12 @@ public:
 		m_optim.setAlpha(alpha);
 	}
 
+	void clear(){
+		A0.clear();
+		A1.clear();
+		A1.clear();
+		Masks.clear();
+	}
 
 	template< typename Func >
 	bool forward(const ct::Mat_<T>& mat, Func func){
@@ -89,7 +95,8 @@ public:
 		A0 = mat;
 		nn::conv2D(A0, szA0, stride, W, B, A1, func);
 		ct::Size sztmp;
-		return nn::subsample(A1, szA1, A2, Masks, sztmp);
+		bool res = nn::subsample(A1, szA1, A2, Masks, sztmp);
+		return res;
 	}
 
 	template< typename Func >
