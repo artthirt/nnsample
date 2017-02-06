@@ -143,17 +143,18 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights();
 
+	layers3.push_back(500);
 	layers3.push_back(400);
-	layers3.push_back(400);
-//	layers3.push_back(200);
+	layers3.push_back(200);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(5);
-	cnv_layers.push_back(5);
+	cnv_layers.push_back(10);
+	cnv_layers.push_back(4);
 //	cnv_layers.push_back(1);
 
 	ws.push_back(5);
 	ws.push_back(5);
+//	ws.push_back(3);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
