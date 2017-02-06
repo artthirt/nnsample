@@ -3,28 +3,41 @@
 
 #include "gpumat.h"
 
-namespace internal{
+/**
+  size of block for cuda gpu
+*/
+#define BLOCKSIZE	32
 
-struct Mtx{
-	int rows;
-	int cols;
-	u_char* data;
+namespace gpumat{
 
-	Mtx(){
-		rows = cols = 0;
-		data = 0;
+	enum etypefunction{
+		RELU = 1,
+	};
+
+	namespace internal{
+
+		struct Mtx{
+			int rows;
+			int cols;
+			u_char* data;
+
+			Mtx(){
+				rows = cols = 0;
+				data = 0;
+			}
+			Mtx(int rows, int cols, void* data){
+				this->rows = rows;
+				this->cols = cols;
+				this->data = (u_char*)data;
+			}
+			Mtx(const gpumat::GpuMat& mat){
+				rows = mat.rows;
+				cols = mat.cols;
+				data = mat.data;
+			}
+	};
+
 	}
-	Mtx(int rows, int cols, void* data){
-		this->rows = rows;
-		this->cols = cols;
-		this->data = (u_char*)data;
-	}
-	Mtx(const gpumat::GpuMat& mat){
-		rows = mat.rows;
-		cols = mat.cols;
-		data = mat.data;
-	}
-};
 
 }
 

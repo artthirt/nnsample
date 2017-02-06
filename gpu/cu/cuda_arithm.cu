@@ -9,11 +9,10 @@ using namespace gpumat;
 
 ///////// begin internal namespace ///////////////
 
+namespace gpumat{
 namespace internal{
 
 ////////////////////////////////
-
-#define BLOCKSIZE	32
 
 /**
  * @brief memset
@@ -1056,6 +1055,7 @@ __global__ void sum_rows_shared(Mtx C, Mtx cols, T val = (T)1.)
 	}
 }
 
+}
 }
 
 //////// end namespace /////////////////

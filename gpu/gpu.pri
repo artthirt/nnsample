@@ -5,11 +5,13 @@ DEFINES += _USE_GPU
 HEADERS += \
     $$PWD/gpumat.h \
     $$PWD/helper_gpu.h \
-    $$PWD/cuda_common.h
+    $$PWD/cuda_common.h \
+    $$PWD/convnn_gpu.h
 
 SOURCES += \
     $$PWD/gpumat.cpp \
-    $$PWD/helper_gpu.cpp
+    $$PWD/helper_gpu.cpp \
+    $$PWD/convnn_gpu.cpp
 
 CUDA_SOURCES += $$PWD/cu/cuda_arithm.cu \
                 $$PWD/cu/cuda_conv.cu

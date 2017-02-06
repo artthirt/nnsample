@@ -11,6 +11,8 @@
 #include <fstream>
 #include <iomanip>
 
+#include "common_types.h"
+
 #include "shared_memory.h"
 
 #define PRINT_MAT10(mat) {		\
@@ -492,22 +494,6 @@ std::ostream& operator<< (std::ostream& stream, const Vec_<T, count >& v)
 }
 
 /////////////////////////////////////////////
-
-struct Size{
-	Size(){
-		width = height = 0;
-	}
-	Size(int w, int h){
-		width = w;
-		height = h;
-	}
-	int area() const{
-		return width * height;
-	}
-
-	int width;
-	int height;
-};
 
 typedef std::vector< unsigned char > vector_uchar;
 typedef std::shared_ptr< vector_uchar > shared_uvector;
