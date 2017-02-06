@@ -202,6 +202,50 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 	}
 }
 
+template< typename T >
+__global__ void deriv_prev_conv2d(SmallMtxArray deriv, SmallMtxArray W,
+								  ct::Size sL, ct::Size sLsub1, int stride, Mtx D)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if(row < D.rows && col < D.cols){
+		int y = col / sLsub1.width;
+		int x = col - y * sLsub1.width;
+
+		int x0 = x * stride;
+		int y0 = y * stride;
+
+		T *dD = (T*)D.data;
+
+		T *dDi = &dD[row * D.cols];
+
+		T sum = 0;
+		for(int w = 0; w < W.count; ++w){
+			T *dDrv = (T*)deriv.mtx[w].data;
+			T *dDrvi = &dDrv[row * deriv.mtx[w].cols];
+
+			Mtx& Wi = W.mtx[w];
+			T *dW = (T*)Wi.data;
+
+			for(int a = 0; a < Wi.rows; ++a){
+				int yi = y0 - a;
+				if(yi >=0 && yi < sL.height){
+					for(int b = 0; b < Wi.cols; ++b){
+						int xi = x0 - b;
+						if(xi >=0 && xi < sL.width){
+							T d = dDrvi[yi * sL.width + xi];
+							T w = dW[a * Wi.cols + b];
+							sum += d * w;
+						}
+					}/* W.cols */
+				}
+			}/* W.rows */
+		}/* W */
+		dDi[y * sLsub1.width + x] = sum;
+	}
+}
+
 }/*@internal end*/
 
 }/*@gpumat end*/
@@ -301,4 +345,28 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 		break;
 	}
 
+}
+
+extern "C"
+void cuda_deriv_prev_conv2d(std::vector<GpuMat> &deriv,
+							const std::vector<GpuMat> &W,
+							const ct::Size &sL, const ct::Size &sLsub1, int stride,
+							GpuMat &D)
+{
+	int x1 = D.cols / BLOCKSIZE + 1;
+	int x2 = D.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	internal::SmallMtxArray sderiv(deriv);
+	internal::SmallMtxArray sW(W);
+
+	switch (D.type) {
+	case GPU_DOUBLE:
+		internal::deriv_prev_conv2d<double> <<<dimGrid, dimBlock>>>(sderiv, sW, sL, sLsub1, stride, D);
+		break;
+	case GPU_FLOAT:
+		internal::deriv_prev_conv2d<float> <<<dimGrid, dimBlock>>>(sderiv, sW, sL, sLsub1, stride, D);
+		break;
+	}
 }

@@ -100,6 +100,20 @@ void deriv_conv2D(const GpuMat& A0,
 				  GpuMat &gradW,
 				  float &gradB);
 
+/**
+ * @brief deriv_prev_cnv
+ * @param deriv
+ * @param W
+ * @param sL
+ * @param sLsub1
+ * @param D
+ */
+void deriv_prev_cnv(std::vector< GpuMat >& deriv,
+					const std::vector< GpuMat >& W,
+					const ct::Size& sL, const ct::Size& sLsub1, int stride,
+					GpuMat& D);
+
+
 }
 
 #endif // CONVNN_GPU_H

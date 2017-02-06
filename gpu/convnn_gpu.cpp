@@ -41,6 +41,13 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
 				  int stride, GpuMat &gradW, float &gradB);
 
+extern "C"
+void cuda_deriv_prev_conv2d(std::vector<GpuMat> &deriv,
+							const std::vector<GpuMat> &W,
+							const ct::Size &sL, const ct::Size &sLsub1, int stride,
+							GpuMat &D);
+
+
 /////////////////////////////
 
 namespace gpumat{
@@ -139,7 +146,7 @@ void deriv_conv2D(const GpuMat &A0, const GpuMat &gradA1,
 				  GpuMat &gradW, float &gradB)
 {
 	if(A0.empty() || gradA1.empty() || !stride){
-		std::cout << "deriv_conv2D wrong parameters\n";
+		std::cout << "gpumat::deriv_conv2D wrong parameters\n";
 	}
 
 	gradW.resize(szW.height, szW.width, A0.type);
@@ -150,6 +157,17 @@ void deriv_conv2D(const GpuMat &A0, const GpuMat &gradA1,
 	cuda_deriv_conv2d(A0, gradA1, szA0, szA1, stride, gradW, gradB);
 
 	// need reduce for B
+}
+
+void deriv_prev_cnv(std::vector<GpuMat> &deriv, const std::vector<GpuMat> &W,
+					const ct::Size &sL, const ct::Size &sLsub1, int stride, GpuMat &D)
+{
+	if(deriv.empty() || W.empty())
+		std::cout << "gpumat::deriv_prev_cnv wrong parameters\n";
+
+	D.resize(deriv[0].rows, sLsub1.area(), deriv[0].type);
+
+	cuda_deriv_prev_conv2d(deriv, W, sL, sLsub1, stride, D);
 }
 
 }

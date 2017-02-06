@@ -35,10 +35,29 @@ namespace gpumat{
 				cols = mat.cols;
 				data = mat.data;
 			}
-	};
+		};
 
-	}
+		struct SmallMtxArray{
+			enum {maxcount = 64};
+			SmallMtxArray(){
 
-}
+			}
+			SmallMtxArray(const std::vector< GpuMat >& gmat){
+				if(maxcount < gmat.size())
+					throw new std::invalid_argument("not enough size of array for store matrices");
+
+				count = gmat.size();
+				for(int i = 0; i < count; ++i){
+					mtx[i] = gmat[i];
+				}
+			}
+
+			int count;
+			internal::Mtx mtx[maxcount];
+		};
+
+	}/* @end internal */
+
+}/* @end gpumat */
 
 #endif // CUDA_COMMON_H
