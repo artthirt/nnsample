@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 
+#include "common_types.h"
+
 #ifdef _MSC_VER
 	typedef unsigned char u_char;
 #endif
@@ -48,6 +50,8 @@ public:
 	int size() const;
 	int total() const;
 	bool empty() const;
+
+	ct::Size sz() const;
 
 	void resize(int rows, int cols, int type);
 	void resize(const GpuMat& mat);

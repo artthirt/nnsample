@@ -130,6 +130,11 @@ bool GpuMat::empty() const
 	return data == nullptr;
 }
 
+ct::Size GpuMat::sz() const
+{
+	return ct::Size(cols, rows);
+}
+
 void GpuMat::resize(int rows, int cols, int type)
 {
 	if(!rows || ! cols)

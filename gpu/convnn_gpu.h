@@ -101,6 +101,26 @@ void deriv_conv2D(const GpuMat& A0,
 				  float &gradB);
 
 /**
+ * @brief deriv_conv2D
+ * @param A0
+ * @param gradA1
+ * @param szA0
+ * @param szA1
+ * @param szW
+ * @param stride
+ * @param gradW
+ * @param gradB
+ */
+void deriv_conv2D(const GpuMat & A0,
+				  const std::vector< GpuMat>& gradA1,
+				  const ct::Size& szA0,
+				  const ct::Size& szA1,
+				  const ct::Size &szW,
+				  int stride,
+				  std::vector< GpuMat > &gradW,
+				  std::vector< float > &gradB);
+
+/**
  * @brief deriv_prev_cnv
  * @param deriv
  * @param W
@@ -108,11 +128,10 @@ void deriv_conv2D(const GpuMat& A0,
  * @param sLsub1
  * @param D
  */
-void deriv_prev_cnv(std::vector< GpuMat >& deriv,
+void deriv_prev_cnv(const std::vector<GpuMat> &deriv,
 					const std::vector< GpuMat >& W,
 					const ct::Size& sL, const ct::Size& sLsub1, int stride,
 					GpuMat& D);
-
 
 }
 

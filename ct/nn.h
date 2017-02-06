@@ -843,15 +843,11 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
 
 	gradW *= (T)(1./m);
 
-	for(int i = 0; i < m; ++i){
-		T *dgA1i	= &dgA1[gradA1.cols * i];
-		for(int y = 0; y < szA1.height; ++y){
-			for(int x = 0; x < szA1.width; ++x){
-				gradB += dgA1i[szA1.width * y + x];
-			}
-		}
+	gradB = 0;
+	for(int i = 0; i < gradA1.total(); ++i){
+		gradB += dgA1[i];
 	}
-	gradB /= (T)m;
+	gradB /= (T)gradA1.total();
 }
 
 /**
@@ -866,7 +862,7 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
  * @param gradB
  */
 template< typename T >
-void deriv_conv2D(ct::Mat_<T> & A0,
+void deriv_conv2D(const ct::Mat_<T> & A0,
 				  const std::vector< ct::Mat_<T> >& gradA1,
 				  const ct::Size& szA0,
 				  const ct::Size& szA1,

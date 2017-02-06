@@ -253,7 +253,7 @@ void internal_test_gpu()
 {
 	ct::Matf A, W1, W2, tmp;
 	conv_mat(A, W1, W2);
-	gpumat::GpuMat gA, gAi, gMi, gAi2;
+	gpumat::GpuMat gA, gAi, gMi, gAi2, gD;
 	std::vector< gpumat::GpuMat > gWs, gA1;
 	std::vector< float > bs;
 	gWs.resize(2);
@@ -291,6 +291,25 @@ void internal_test_gpu()
 	gpumat::convert_to_mat(gAi2, tmp);
 	qDebug("Upsample");
 	PRINT_IMAGE(tmp, szO.width, szO.height);
+
+	std::vector< gpumat::GpuMat > derivs, ws;
+	gpumat::GpuMat ggW;
+	float ggB;
+	derivs.push_back(gAi2);
+	ws.push_back(gWs[0]);
+
+	gpumat::deriv_prev_cnv(derivs, ws, szO, szA0, 1, gD);
+
+	gpumat::convert_to_mat(gD, tmp);
+	qDebug("DerivPrevLayer");
+	PRINT_IMAGE(tmp, szA0.width, szA0.height);
+
+	gpumat::deriv_conv2D(gA, gD, szA0, szO, gWs[0].sz(), 1, ggW, ggB);
+
+	gpumat::convert_to_mat(ggW, tmp);
+	qDebug("DerivPrevLayer: B=%f", ggB);
+	ct::Size szW = ggW.sz();
+	PRINT_IMAGE(tmp, szW.width, szW.height);
 }
 
 #endif

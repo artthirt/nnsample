@@ -1,6 +1,8 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
+#include <thrust/reduce.h>
+#include <thrust/execution_policy.h>
 
 #include "gpumat.h"
 #include "cuda_common.h"
@@ -335,20 +337,29 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
 	switch (A0.type) {
-		case GPU_DOUBLE:
-		internal::deriv_conv2d<double> <<<dimGrid, dimBlock>>>(A0, gradA1, szA0, szA1,
-															   gradW, stride);
-		break;
-	case GPU_FLOAT:
-		internal::deriv_conv2d<float> <<<dimGrid, dimBlock>>>(A0, gradA1, szA0, szA1,
-															  gradW, stride);
-		break;
+		case GPU_DOUBLE:{
+			internal::deriv_conv2d<double> <<<dimGrid, dimBlock>>>(A0, gradA1, szA0, szA1,
+																   gradW, stride);
+			double val = thrust::reduce(thrust::device, (double*)gradA1.data, (double*)gradA1.data + gradA1.total());
+			val /= gradA1.total();
+			gradB = val;
+			break;
+		}
+		case GPU_FLOAT:{
+			internal::deriv_conv2d<float> <<<dimGrid, dimBlock>>>(A0, gradA1, szA0, szA1,
+																  gradW, stride);
+			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());
+			val /= gradA1.total();
+			gradB = val;
+			break;
+		}
 	}
+	gpumat::mulval(gradW, (double)1./gradA1.rows);
 
 }
 
 extern "C"
-void cuda_deriv_prev_conv2d(std::vector<GpuMat> &deriv,
+void cuda_deriv_prev_conv2d(const std::vector<GpuMat> &deriv,
 							const std::vector<GpuMat> &W,
 							const ct::Size &sL, const ct::Size &sLsub1, int stride,
 							GpuMat &D)
