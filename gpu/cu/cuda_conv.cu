@@ -213,8 +213,8 @@ __global__ void deriv_prev_conv2d(SmallMtxArray deriv, SmallMtxArray W,
 		int y = col / sLsub1.width;
 		int x = col - y * sLsub1.width;
 
-		int x0 = x * stride;
-		int y0 = y * stride;
+		int x0 = x / stride;
+		int y0 = y / stride;
 
 		T *dD = (T*)D.data;
 
