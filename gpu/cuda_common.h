@@ -40,7 +40,7 @@ namespace gpumat{
 		struct SmallMtxArray{
 			enum {maxcount = 64};
 			SmallMtxArray(){
-
+				count = 0;
 			}
 			SmallMtxArray(const std::vector< GpuMat >& gmat){
 				if(maxcount < gmat.size())
@@ -54,6 +54,36 @@ namespace gpumat{
 
 			int count;
 			internal::Mtx mtx[maxcount];
+		};
+		template< typename T>
+		struct SmallSingleArray{
+			enum {maxcount = 64};
+
+			SmallSingleArray(){
+				count = 0;
+			}
+			SmallSingleArray(const std::vector< T >& gv){
+				if(maxcount < gv.size())
+					throw new std::invalid_argument("not enough size of array for store matrices");
+
+				count = gv.size();
+				for(int i = 0; i < count; ++i){
+					values[i] = gv[i];
+				}
+			}
+			template< typename C >
+			SmallSingleArray(const std::vector< C >& gv){
+				if(maxcount < gv.size())
+					throw new std::invalid_argument("not enough size of array for store matrices");
+
+				count = gv.size();
+				for(int i = 0; i < count; ++i){
+					values[i] = gv[i];
+				}
+			}
+
+			int count;
+			T values[maxcount];
 		};
 
 	}/* @end internal */

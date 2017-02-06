@@ -38,7 +38,9 @@ inline __device__ T deriv_reLu(T val)
 ////////////
 
 template< typename T >
-__global__ void conv2d(Mtx A0, Mtx W, Mtx A1, ct::Size szI, ct::Size szO, int stride, double B, etypefunction func)
+__global__ void conv2d(Mtx A0, SmallMtxArray W, SmallMtxArray A1,
+					   ct::Size szI, ct::Size szO, int stride,
+					   SmallSingleArray<T> B, etypefunction func)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -52,7 +54,7 @@ __global__ void conv2d(Mtx A0, Mtx W, Mtx A1, ct::Size szI, ct::Size szO, int st
 			break;
 	}
 
-	if(row < A1.rows && col < A1.cols){
+	if(row < A1.mtx[0].rows && col < A1.mtx[0].cols){
 		int yr = col / szO.width;
 		int xr = col - yr * szO.width;
 
@@ -60,26 +62,30 @@ __global__ void conv2d(Mtx A0, Mtx W, Mtx A1, ct::Size szI, ct::Size szO, int st
 		int y = yr * stride;
 
 		T *dA0 = (T*)A0.data;
-		T *dW = (T*)W.data;
-		T *dA1 = (T*)A1.data;
-
 		T *dA0i = &dA0[row * A0.cols];
-		T *dA1i = &dA1[row * A1.cols];
 
-		T sum = 0;
-		for(int a = 0; a < W.rows; ++a){
-			if(y + a < szI.height){
-				for(int b = 0; b < W.cols; ++b){
-					if(x + b < szI.width){
-						sum += dA0i[(y + a) * szI.width + (x + b)] * dW[a * W.cols + b];
+		for(int w = 0; w < W.count; ++w){
+			Mtx& Wi = W.mtx[w];
+			Mtx A1I = A1.mtx[w];
+			T *dA1 = (T*)A1I.data;
+			T *dA1i = &dA1[row * A1I.cols];
+
+			T *dW = (T*)Wi.data;
+			T sum = 0;
+			for(int a = 0; a < Wi.rows; ++a){
+				if(y + a < szI.height){
+					for(int b = 0; b < Wi.cols; ++b){
+						if(x + b < szI.width){
+							sum += dA0i[(y + a) * szI.width + (x + b)] * dW[a * Wi.cols + b];
+						}
 					}
 				}
 			}
-		}
 
-		sum += B;
-		sum = _func(sum);
-		dA1i[col] = sum;
+			sum += B.values[w];
+			sum = _func(sum);
+			dA1i[col] = sum;
+		}
 	}
 }
 
@@ -268,13 +274,17 @@ void cuda_conv2d(const GpuMat &A0,
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	for(int i = 0; i < W.size(); ++i){
-		switch (A0.type) {
-		case GPU_DOUBLE:
-			internal::conv2d<double> <<<dimGrid, dimBlock>>>(A0, W[i], A1[i], szI, szO, stride, B[i], func);
+	internal::SmallMtxArray sW(W), sA1(A1);
+
+	switch (A0.type) {
+		case GPU_DOUBLE:{
+			internal::SmallSingleArray<double> sB(B);
+			internal::conv2d<double> <<<dimGrid, dimBlock>>>(A0, sW, sA1, szI, szO, stride, sB, func);
 			break;
-		case GPU_FLOAT:
-			internal::conv2d<float> <<<dimGrid, dimBlock>>>(A0, W[i], A1[i], szI, szO, stride, B[i], func);
+		}
+		case GPU_FLOAT:{
+			internal::SmallSingleArray<float> sB(B);
+			internal::conv2d<float> <<<dimGrid, dimBlock>>>(A0, sW, sA1, szI, szO, stride, sB, func);
 			break;
 		}
 	}
