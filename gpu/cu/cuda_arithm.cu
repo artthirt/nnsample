@@ -3,6 +3,7 @@
 #include <curand_kernel.h>
 
 #include "gpumat.h"
+#include "cuda_common.h"
 
 using namespace gpumat;
 
@@ -11,27 +12,6 @@ using namespace gpumat;
 namespace internal{
 
 ////////////////////////////////
-
-struct Mtx{
-	int rows;
-	int cols;
-	u_char* data;
-
-	Mtx(){
-		rows = cols = 0;
-		data = 0;
-	}
-	Mtx(int rows, int cols, void* data){
-		this->rows = rows;
-		this->cols = cols;
-		this->data = (u_char*)data;
-	}
-	Mtx(const GpuMat& mat){
-		rows = mat.rows;
-		cols = mat.cols;
-		data = mat.data;
-	}
-};
 
 #define BLOCKSIZE	32
 

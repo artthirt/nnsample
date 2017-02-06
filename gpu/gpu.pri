@@ -4,13 +4,15 @@ DEFINES += _USE_GPU
 
 HEADERS += \
     $$PWD/gpumat.h \
-    $$PWD/helper_gpu.h
+    $$PWD/helper_gpu.h \
+    $$PWD/cuda_common.h
 
 SOURCES += \
     $$PWD/gpumat.cpp \
     $$PWD/helper_gpu.cpp
 
-CUDA_SOURCES += $$PWD/cu/cuda_arithm.cu
+CUDA_SOURCES += $$PWD/cu/cuda_arithm.cu \
+                $$PWD/cu/cuda_conv.cu
 
 win32{
     CUDA_DIR					= "c:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/"
@@ -78,3 +80,4 @@ else {
     cuda.dependency_type = TYPE_C
     QMAKE_EXTRA_COMPILERS += cuda
 }
+
