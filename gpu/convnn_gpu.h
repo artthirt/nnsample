@@ -4,13 +4,59 @@
 #include "common_types.h"
 #include "cuda_common.h"
 #include "gpumat.h"
+#include "helper_gpu.h"
+#include "nn.h"
 
 namespace gpumat{
 
 class convnn
 {
 public:
+	typedef std::vector< GpuMat > tvmat;
+
 	convnn();
+
+	gpumat::GpuMat A0;
+	gpumat::GpuMat DltA0;
+	tvmat A1;
+	tvmat A2;
+	tvmat W;
+	tvmat prevW;
+	std::vector< float > B;
+	tvmat Masks;
+	ct::Size szA0;
+	ct::Size szA1;
+	ct::Size szA2;
+	int stride;
+	int weight_size;
+	gpumat::AdamOptimizer m_optim;
+
+	void setWeightSize(int ws);
+
+	void init(int count_weight, const ct::Size& _szA0);
+
+	void update_random();
+
+	void setAlpha(double alpha);
+
+	void clear();
+
+	void forward(const gpumat::GpuMat & mat, gpumat::etypefunction func);
+
+	void apply_func(const GpuMat& A, GpuMat& B, etypefunction func);
+
+	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, etypefunction func);
+
+	void backward(const std::vector< gpumat::GpuMat >& Delta, gpumat::etypefunction func);
+
+	void hconcat(const std::vector< convnn > &cnv, gpumat::GpuMat & _out);
+
+
+private:
+	bool m_init;
+
+	std::vector< gpumat::GpuMat  > dA2, dA1;
+	std::vector< gpumat::GpuMat  > slice;
 };
 
 ct::Size conv2D(const GpuMat& A0,
@@ -133,6 +179,22 @@ void deriv_prev_cnv(const std::vector<GpuMat> &deriv,
 					const ct::Size& sL, const ct::Size& sLsub1, int stride,
 					GpuMat& D);
 
-}
+
+/**
+ * @brief hsplit
+ * @param res
+ * @param cols
+ * @param list
+ */
+void hsplit(const GpuMat& res, int cols, std::vector< GpuMat >& list);
+
+/**
+ * @brief hconcat
+ * @param list
+ * @param res
+ */
+void hconcat(const std::vector< GpuMat >& list, GpuMat& res);
+
+}/* @end gpumat */
 
 #endif // CONVNN_GPU_H

@@ -291,6 +291,40 @@ __global__ void deriv_prev_conv2d(SmallMtxArray deriv, SmallMtxArray W,
 	}
 }
 
+template< typename T >
+__global__ void hsplit(Mtx Res, SmallMtxArray List)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if(row < Res.rows && col < Res.cols){
+		T *dR =(T*)Res.data;
+
+		int lid = col / List.mtx[0].cols;
+		Mtx& mtx = List.mtx[lid];
+		int lcol = col - lid * mtx.cols;
+		T* dM = (T*)mtx.data;
+		dM[row * mtx.cols + lcol] = dR[row * Res.cols + col];
+	}
+}
+
+template< typename T >
+__global__ void hconcat(SmallMtxArray List, Mtx Res)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if(row < Res.rows && col < Res.cols){
+		T *dR =(T*)Res.data;
+
+		int lid = col / List.mtx[0].cols;
+		Mtx& mtx = List.mtx[lid];
+		int lcol = col - lid * mtx.cols;
+		T* dM = (T*)mtx.data;
+		dR[row * Res.cols + col] = dM[row * mtx.cols + lcol];
+	}
+}
+
 }/*@internal end*/
 
 }/*@gpumat end*/
@@ -442,6 +476,47 @@ void cuda_deriv_prev_conv2d(const std::vector<GpuMat> &deriv,
 		break;
 	case GPU_FLOAT:
 		internal::deriv_prev_conv2d<float> <<<dimGrid, dimBlock>>>(sderiv, sW, sL, sLsub1, stride, D);
+		break;
+	}
+}
+
+extern "C"
+void cuda_hsplit(const GpuMat &res, std::vector<GpuMat> &list)
+{
+	int x1 = res.cols / BLOCKSIZE + 1;
+	int x2 = res.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	internal::SmallMtxArray slist(list);
+
+	switch (res.type) {
+	case GPU_DOUBLE:
+		internal::hsplit<double> <<<dimGrid, dimBlock>>>(res, slist);
+		break;
+	case GPU_FLOAT:
+		internal::hsplit<float> <<<dimGrid, dimBlock>>>(res, slist);
+		break;
+	}
+
+}
+
+extern "C"
+void cuda_hconcat(const std::vector<GpuMat> &list, GpuMat &res)
+{
+	int x1 = res.cols / BLOCKSIZE + 1;
+	int x2 = res.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	internal::SmallMtxArray slist(list);
+
+	switch (res.type) {
+	case GPU_DOUBLE:
+		internal::hconcat<double> <<<dimGrid, dimBlock>>>(slist, res);
+		break;
+	case GPU_FLOAT:
+		internal::hconcat<float> <<<dimGrid, dimBlock>>>(slist, res);
 		break;
 	}
 }

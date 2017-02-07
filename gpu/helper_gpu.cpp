@@ -44,6 +44,7 @@ AdamOptimizer::AdamOptimizer()
 	m_betha1 = 0.9;
 	m_betha2 = 0.999;
 	m_iteration = 0;
+	m_init = false;
 }
 
 double AdamOptimizer::alpha() const{
@@ -116,6 +117,8 @@ bool AdamOptimizer::init(const std::vector<int> &layers, int samples, int type)
 
 		input = output;
 	}
+
+	m_init = true;
 	return true;
 }
 
@@ -164,6 +167,73 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 		//b[i] -= m_alpha * mBs;
 	}
 	return true;
+}
+
+bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW,
+						 const std::vector<float> &gradB,
+						 std::vector<GpuMat> &W,
+						 std::vector<float> &b)
+{
+	if(!gradW.size() || gradW.size() != gradB.size() || gradW.size() != W.size())
+		return false;
+
+	using namespace ct;
+
+	if(!m_init){
+		init_single(gradW.size(), gradW[0].type, gradW[0].sz());
+	}
+
+	m_iteration++;
+	float sb1 = (1. / (1. - pow(m_betha1, m_iteration)));
+	float sb2 = (1. / (1. - pow(m_betha2, m_iteration)));
+	float eps = 1e-9;
+
+	for(size_t i = 0; i < gradW.size(); ++i){
+
+		gpumat::add(m_mW[i], gradW[i], m_betha1, (1. - m_betha1));
+		m_mb_single[i] = m_betha1 * m_mb_single[i] + (1. - m_betha1) * gradB[i];
+
+		gpumat::elemwiseSqr(gradW[i], sW[i]);
+		float sB = gradB[i] * gradB[i];
+
+		gpumat::add(m_vW[i], sW[i], m_betha2, (1. - m_betha2));
+		m_vb_single[i] = m_betha2 * m_vb_single[i] + (1 - m_betha2) * sB;
+		//m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
+		//m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
+
+//		Mat_<T> mWs = m_mW[i] * sb1;
+//		Mat_<T> mBs = m_mb[i] * sb1;
+//		Mat_<T> vWs = m_vW[i] * sb2;
+//		Mat_<T> vBs = m_vb[i] * sb2;
+
+//		vWs.sqrt(); vBs.sqrt();
+//		vWs += eps; vBs += eps;
+//		mWs = elemwiseDiv(mWs, vWs);
+//		mBs = elemwiseDiv(mBs, vBs);
+
+		/// W = -alpha * (sb1 * mW / (sqrt(sb2 * vW) + eps))
+
+		gpumat::sub_adamGrad(W[i], m_mW[i], m_vW[i], m_alpha, sb1, sb2);
+
+		b[i] -= m_alpha * (sb1 * m_mb_single[i] / sqrt(sb2 * m_vb_single[i] + eps));
+		//W[i] -= m_alpha * mWs;
+		//b[i] -= m_alpha * mBs;
+	}
+	return true;
+
+}
+
+void AdamOptimizer::init_single(int count, int type, const ct::Size &szW)
+{
+	m_mW.resize(count);
+	m_vW.resize(count);
+	m_mb_single.resize(count, 0);
+	m_vb_single.resize(count, 0);
+	for(int i = 0; i < count; ++i){
+		m_mW[i].resize(szW, type);
+		m_vW[i].resize(szW, type);
+	}
+	m_init = true;
 }
 
 ///////////////////////////////////////////

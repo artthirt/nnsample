@@ -330,6 +330,28 @@ void internal_test_gpu()
 	ct::Size szW = ggW.sz();
 	PRINT_IMAGE(tmp, szW.width, szW.height);
 
+	std::vector< gpumat::GpuMat > list;
+
+	float data[10 * 12];
+	for(int i = 0; i < 10; ++i){
+		for(int j = 0; j < 12; ++j){
+			data[i * 12 + j] = i + j;
+		}
+	}
+
+	gA.resize(10, 12, gpumat::GPU_FLOAT);
+	gA.setData(data);
+
+	gpumat::hsplit(gA, 4, list);
+
+	s1 = list[0].print();
+	s2 = list[1].print();
+	qDebug("HSPLIT:\nSRC\n%s\nL[0]\n%s\nL[1]\n%s", gA.print().c_str(), s1.c_str(), s2.c_str());
+
+	list.pop_back();
+	gpumat::hconcat(list, gA);
+	qDebug("HCONCAT:\nDST\n%s", gA.print().c_str());
+
 	qDebug("END GPUMAT TEST");
 }
 

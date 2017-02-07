@@ -14,7 +14,7 @@ GpuMat::GpuMat()
 	rows = 0;
 	cols = 0;
 	type = 0;
-	data = 0;
+	data = nullptr;
 }
 
 GpuMat::GpuMat(int rows, int cols, int type)
@@ -159,6 +159,11 @@ void GpuMat::resize(int rows, int cols, int type)
 	assert(err == cudaSuccess);
 }
 
+void GpuMat::resize(const ct::Size &sz, int type)
+{
+	resize(sz.height, sz.width, type);
+}
+
 void GpuMat::resize(const GpuMat &mat)
 {
 	if(mat.empty())
@@ -206,6 +211,11 @@ void GpuMat::getData(void *data) const
 
 	cudaError_t err = cudaMemcpy(data, this->data, size(), cudaMemcpyDeviceToHost);
 	assert(err == cudaSuccess);
+}
+
+void GpuMat::free()
+{
+	release();
 }
 
 void GpuMat::swap_dims()
@@ -301,7 +311,7 @@ void GpuMat::release()
 	if(data){
 		cudaError_t err = cudaFree(data);
 		assert(err == cudaSuccess);
-		data = 0;
+		data = nullptr;
 	}
 }
 

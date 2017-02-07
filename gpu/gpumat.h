@@ -54,12 +54,15 @@ public:
 	ct::Size sz() const;
 
 	void resize(int rows, int cols, int type);
+	void resize(const ct::Size& sz, int type);
 	void resize(const GpuMat& mat);
 
 	void copyTo(GpuMat& mat);
 
 	void setData(void* data);
 	void getData(void *data) const;
+
+	void free();
 
 	void swap_dims();
 

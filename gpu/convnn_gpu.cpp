@@ -7,7 +7,115 @@ using namespace gpumat;
 
 convnn::convnn()
 {
+	stride = 1;
+	weight_size = 3;
+	m_init = false;
 
+}
+
+void convnn::setWeightSize(int ws)
+{
+	weight_size = ws;
+	if(W.size())
+		init(W.size(), szA0);
+}
+
+void convnn::init(int count_weight, const ct::Size &_szA0)
+{
+	W.resize(count_weight);
+	B.resize(count_weight);
+
+	szA0 = _szA0;
+
+	nn::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
+
+	update_random();
+
+	m_init = true;
+}
+
+void convnn::update_random()
+{
+	for(int i = 0; i < W.size(); ++i){
+		ct::Matf Wi(weight_size, weight_size);
+		Wi.randn(0, 0.1);
+		gpumat::convert_to_gpu(Wi, W[i]);
+		B[i] = 0.1;
+	}
+}
+
+void convnn::setAlpha(double alpha)
+{
+	m_optim.setAlpha(alpha);
+}
+
+void convnn::clear()
+{
+	A0.free();
+	A1.clear();
+	A1.clear();
+	Masks.clear();
+}
+
+void convnn::forward(const GpuMat &mat, etypefunction func)
+{
+	if(!m_init)
+		throw new std::invalid_argument("convnn::forward: not initialized");
+	A0 = mat;
+	gpumat::conv2D(A0, szA0, stride, W, B, A1, func);
+	ct::Size sztmp;
+	gpumat::subsample(A1, szA1, A2, Masks, sztmp);
+}
+
+void convnn::apply_func(const GpuMat &A, GpuMat &B, etypefunction func)
+{
+	switch (func) {
+		default:
+		case RELU:
+			gpumat::deriv_reLu(A, B);
+			break;
+	}
+}
+
+void convnn::back2conv(const convnn::tvmat &A1, const convnn::tvmat &dA2, convnn::tvmat &dA1, etypefunction func)
+{
+	dA1.resize(A1.size());
+	for(size_t i = 0; i < A1.size(); i++){
+		apply_func(A1[i], dA1[i], func);
+		gpumat::elemwiseMult(dA1[i], dA2[i]);
+	}
+}
+
+void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func)
+{
+	if(!m_init)
+		throw new std::invalid_argument("convnn::backward: not initialized");
+	gpumat::upsample(Delta, szA2, szA1, Masks, dA2);
+
+	back2conv(A1, dA2, dA1, func);
+
+	tvmat gradW;
+	std::vector< float > gradB;
+	ct::Size szW(weight_size, weight_size);
+
+	gpumat::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+
+	gpumat::deriv_prev_cnv(dA1, W, szA1, szA0, stride, DltA0);
+
+	m_optim.pass(gradW, gradB, W, B);
+}
+
+void convnn::hconcat(const std::vector<convnn> &cnv, GpuMat &_out)
+{
+	if(cnv.empty())
+		return;
+
+	for(size_t i = 0; i < cnv.size(); ++i){
+		GpuMat res;
+		gpumat::hconcat(cnv[i].A2, res);
+		slice.push_back(res);
+	}
+	gpumat::hconcat(slice, _out);
 }
 
 /////////////////////////////////////////
@@ -47,6 +155,11 @@ void cuda_deriv_prev_conv2d(const std::vector<GpuMat> &deriv,
 							const ct::Size &sL, const ct::Size &sLsub1, int stride,
 							GpuMat &D);
 
+extern "C"
+void cuda_hsplit(const GpuMat &res, std::vector<GpuMat> &list);
+
+extern "C"
+void cuda_hconcat(const std::vector<GpuMat> &list, GpuMat &res);
 
 /////////////////////////////
 
@@ -189,6 +302,51 @@ void deriv_prev_cnv(const std::vector<GpuMat> &deriv, const std::vector<GpuMat> 
 	D.resize(deriv[0].rows, sLsub1.area(), deriv[0].type);
 
 	cuda_deriv_prev_conv2d(deriv, W, sL, sLsub1, stride, D);
+}
+
+void hsplit(const GpuMat &res, int cols, std::vector<GpuMat> &list)
+{
+	if(res.empty() || (res.cols % cols) != 0)
+		throw new std::invalid_argument("hsplit: wrong parameters");
+
+	int len = res.cols / cols;
+
+	list.resize(cols);
+
+	for(int i = 0; i < cols; ++i){
+		list[i].resize(res.rows, len, res.type);
+	}
+
+	cuda_hsplit(res, list);
+}
+
+void hconcat(const std::vector<GpuMat> &list, GpuMat &res)
+{
+	if(list.empty())
+		return;
+	int rows		= list[0].rows;
+	int loc_cols	= list[0].cols;
+	int cols		= loc_cols * (int)list.size();
+
+	res.resize(rows, cols, list[0].type);
+
+	cuda_hconcat(list, res);
+
+//	T *dR = res.ptr();
+
+//#pragma omp parallel for
+//	for(int i = 0; i < rows; ++i){
+//#pragma omp parallel for
+//		for(int j = 0; j < (int)list.size(); ++j){
+//			T* dL = list[j].ptr();
+//#ifdef __GNUC__
+//#pragma omp simd
+//#endif
+//			for(int k = 0; k < loc_cols; ++k){
+//				dR[i * cols + j * loc_cols + k] = dL[i * loc_cols + k];
+//			}
+//		}
+//	}
 }
 
 
