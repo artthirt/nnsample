@@ -174,10 +174,13 @@ __global__ void upsample(Mtx A1, Mtx Mask, Mtx A0, ct::Size szA1, ct::Size szA0)
 }
 
 template< typename T >
-__global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx gW, int stride)
+__global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx gW, int stride, Mtx Blocks)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	extern __shared__ int iW[];
+	T *sW = (T*)iW;
 
 	if(row < gA1.rows && col < gA1.cols){
 		int y = col / szA1.width;
@@ -187,13 +190,20 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 		int y0 = y * stride;
 
 		T *dA0 = (T*)A0.data;
-		T *dgW = (T*)gW.data;
+//		T *dgW = (T*)gW.data;
 		T *dgA1 = (T*)gA1.data;
+
+		T *dB = (T*)Blocks.data;
 
 		T *dA0i = &dA0[row * A0.cols];
 		T *dgA1i = &dgA1[row * gA1.cols];
 
 		T d = dgA1i[y * szA1.width + x];
+
+		int brow = row * gW.rows;
+		int bcol = col * gW.cols;
+
+		T *dBi = &dB[brow * Blocks.cols + bcol];
 
 		for(int a = 0; a < gW.rows; ++a){
 			int y1 = y0 + a;
@@ -202,12 +212,39 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 					int x1 = x0 + b;
 					if(x1 < szA0.width){
 						T a0 = dA0i[y1 * szA0.width + x1];
-						dgW[a * gW.cols + b] += d * a0;
+						dBi[(a) * Blocks.cols + (b)] = d * a0;
 					}
 				}
 			}
 		}
+
 	}
+}
+
+template< typename T >
+__global__ void reduce_blocks(Mtx Blocks, Mtx W, T val = 1.)
+{
+	int row = threadIdx.y + blockIdx.y * blockDim.y;
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if(row < W.rows && col < W.cols){
+		T *dW = (T*)W.data;
+		T *dB = (T*)Blocks.data;
+
+		int ca = Blocks.rows / W.rows;
+		int cb = Blocks.cols / W.cols;
+		for(int a = 0; a < ca; ++a){
+			for(int b = 0; b < cb; ++b){
+				int ra = a * W.rows;
+				int rb = b * W.cols;
+
+				T *dBi = &dB[ra * Blocks.cols + rb];
+				dW[row * W.cols + col] += dBi[row * Blocks.cols + col];
+			}
+		}
+		dW[row * W.cols + col] *= val;
+	}
+
 }
 
 template< typename T >
@@ -335,6 +372,17 @@ void cuda_upsample(const GpuMat &A1,
 	}
 }
 
+template< typename T >
+void cuda_reduce_blocks(const GpuMat& Blocks, GpuMat& W, T val)
+{
+	int x1 = W.cols / BLOCKSIZE + 1;
+	int x2 = W.rows / BLOCKSIZE + 1;
+
+	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	internal::reduce_blocks<T> <<< dimGrid, dimBlock >>>(Blocks, W, val);
+}
+
 extern "C"
 void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
@@ -346,25 +394,31 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
+	gpumat::GpuMat blocks(gradA1.rows * gradW.rows, gradA1.cols * gradW.cols, gradW.type);
+	gpumat::memset(blocks, 0);
+
 	switch (A0.type) {
 		case GPU_DOUBLE:{
-			internal::deriv_conv2d<double> <<<dimGrid, dimBlock>>>(A0, gradA1, szA0, szA1,
-																   gradW, stride);
+			internal::deriv_conv2d<double> <<<dimGrid, dimBlock, gradW.size() >>>(A0, gradA1, szA0, szA1,
+																   gradW, stride, blocks);
+			cuda_reduce_blocks<double>(blocks, gradW, 1./gradA1.rows);
 			double val = thrust::reduce(thrust::device, (double*)gradA1.data, (double*)gradA1.data + gradA1.total());
 			val /= gradA1.total();
 			gradB = val;
 			break;
 		}
 		case GPU_FLOAT:{
-			internal::deriv_conv2d<float> <<<dimGrid, dimBlock>>>(A0, gradA1, szA0, szA1,
-																  gradW, stride);
+			internal::deriv_conv2d<float> <<<dimGrid, dimBlock, gradW.size() >>>(A0, gradA1, szA0, szA1,
+																  gradW, stride, blocks);
+//			std::cout << blocks.print() << std::endl << A0.print() << std::endl << gradA1.print() << std::endl;
+			cuda_reduce_blocks<float>(blocks, gradW, 1./gradA1.rows);
 			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());
 			val /= gradA1.total();
 			gradB = val;
 			break;
 		}
 	}
-	gpumat::mulval(gradW, (double)1./gradA1.rows);
+//	gpumat::mulval(gradW, (double)1./gradA1.rows);
 
 }
 

@@ -812,10 +812,8 @@ void deriv_conv2D(const ct::Mat_<T>& A0,
 		T *dAi		= &dA[A0.cols * i];
 		T *dgA1i	= &dgA1[gradA1.cols * i];
 
-#pragma omp parallel for
 		for(int y = 0; y < szA1.height; ++y){
 			int y0 = y * stride;
-#pragma omp parallel for
 			for(int x = 0; x < szA1.width; ++x){
 				int x0 = x * stride;
 				T d = dgA1i[szA1.width * y + x];

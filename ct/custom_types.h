@@ -976,7 +976,7 @@ public:
 		res << "]";
 		return res.str();
 	}
-	std::string print(int _rows) const{
+	std::string print(int _rows = -1) const{
 		if(this->val.empty())
 			return "";
 

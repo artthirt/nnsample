@@ -30,7 +30,7 @@ typedef std::vector< unsigned char > vchar;
 	for(int i = 0; i < height; ++i){							\
 		QString s;												\
 		for(int j = 0; j < width; ++j){							\
-			s += QString::number(dcn[i * width + j]) + "\t";	\
+			s += QString::number(dcn[i * width + j], 'f', 2) + "\t";	\
 		}														\
 		qDebug("%s", s.toStdString().c_str());					\
 	}															\
@@ -204,10 +204,10 @@ void test_mat()
 	s1 = sm;
 	qDebug("SOFTMAX:\n%s\n", s1.c_str());
 
-	Matf ims, W1, W2;
-	conv_mat(ims, W1, W2);
+	Matf A0, W1, W2, Ai, Ai2, Mi;
+	conv_mat(A0, W1, W2);
 
-	std::vector< ct::Matf > vW, vcn, gradW;
+	std::vector< ct::Matf > vW, vcn, gradW, A1;
 	std::vector< float > gradB;
 	vW.push_back(W1);
 	vW.push_back(W2);
@@ -216,31 +216,50 @@ void test_mat()
 	b.push_back(0);
 	b.push_back(0);
 
+	ct::Size szA0(ww, hh);
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
-	ct::Size sz, sz1;
+	ct::Size szO = nn::conv2D(A0, szA0, 1, vW, b, A1, [](float val){return std::max(val, 0.f);}), szAi;
 
-	CALC_MAT(sz = nn::conv2D(ims, ct::Size(ww, hh), 1, vW, b, vcn, nn::linear_func<float>), ims, "CALC", 10);
+	s1 = A1[0].print();
+	s2 = A1[1].print();
 
-	qDebug("IMAGE:\n");
-	PRINT_IMAGE(ims, ww, hh);
+	qDebug("***MAT CONV2D**\nA1[0]:\n%s\nA1[1]:\n%s\n******", s1.c_str(), s2.c_str());
 
-	qDebug("CONV:\n");
+	qDebug("Conv2d[0]");
+	PRINT_IMAGE(A1[0], szO.width, szO.height);
+	qDebug("Conv2d[1]");
+	PRINT_IMAGE(A1[1], szO.width, szO.height);
 
-	qDebug("LAYERS");
-	PRINT_IMAGE(vcn[0], sz.width, sz.height);
-	PRINT_IMAGE(vcn[1], sz.width, sz.height);
+	nn::subsample(A1[0], szO, Ai, Mi, szAi);
+	qDebug("Subsample");
+	PRINT_IMAGE(Ai, szAi.width, szAi.height);
 
-	std::vector< ct::Matf > pool, masks;
-	ct::Matf D;
+	qDebug("Mask");
+	PRINT_IMAGE(Mi, szO.width, szO.height);
 
-	nn::subsample(vcn, sz, pool, masks, sz1);
+	nn::upsample(Ai, szAi, szO, Mi, Ai2);
 
-	qDebug("MAXPOOL");
-	PRINT_IMAGE(pool[0], sz1.width, sz1.height);
+	qDebug("Upsample");
+	PRINT_IMAGE(Ai2, szO.width, szO.height);
 
-//	auto gradRelu = [](float v){return v > 0? 1 : 0;};
+	std::vector< ct::Matf > derivs, ws;
+	ct::Matf ggW, D;
+	float ggB;
+	derivs.push_back(Ai2);
+	ws.push_back(vW[0]);
 
-	qDebug("END TEST");
+	nn::deriv_prev_cnv(derivs, ws, szO, szA0, D);
+
+	qDebug("DerivPrevLayer");
+	PRINT_IMAGE(D, szA0.width, szA0.height);
+
+	nn::deriv_conv2D(A0, Ai2, szA0, szO, ws[0].size(), 1, ggW, ggB);
+
+	qDebug("DerivPrevLayer: B=%f", ggB);
+	ct::Size szW = ggW.size();
+	PRINT_IMAGE(ggW, szW.width, szW.height);
+
+	qDebug("END MAT TEST");
 }
 
 #ifdef _USE_GPU
@@ -304,12 +323,14 @@ void internal_test_gpu()
 	qDebug("DerivPrevLayer");
 	PRINT_IMAGE(tmp, szA0.width, szA0.height);
 
-	gpumat::deriv_conv2D(gA, gD, szA0, szO, gWs[0].sz(), 1, ggW, ggB);
+	gpumat::deriv_conv2D(gA, gAi2, szA0, szO, gWs[0].sz(), 1, ggW, ggB);
 
 	gpumat::convert_to_mat(ggW, tmp);
 	qDebug("DerivPrevLayer: B=%f", ggB);
 	ct::Size szW = ggW.sz();
 	PRINT_IMAGE(tmp, szW.width, szW.height);
+
+	qDebug("END GPUMAT TEST");
 }
 
 #endif
