@@ -281,13 +281,9 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 //					DMtx HSub = getSubMatrix<T>(H, 1, 3, gW.rows, gW.cols);
 //					val = getEl<T>(HSub, a, b);
 					for(int y = 0; y < blkY; ++y){
-						if(y < szA0.height){
-							for(int x = 0; x < blkX; ++x){
-								if(x < szA0.width){
-									DMtx HSub = getSubMatrix<T>(H, y, x, gW.rows, gW.cols);
-									val += getEl<T>(HSub, a, b);
-								}
-							}
+						for(int x = 0; x < blkX; ++x){
+							DMtx HSub = getSubMatrix<T>(H, y, x, gW.rows, gW.cols);
+							val += getEl<T>(HSub, a, b);
 						}
 					}
 

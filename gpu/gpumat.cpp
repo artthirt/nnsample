@@ -180,22 +180,7 @@ void GpuMat::resize(const GpuMat &mat)
 	if(mat.empty())
 		return;
 
-	if(size() == mat.size()){
-		this->rows = mat.rows;
-		this->cols = mat.cols;
-		this->type = mat.type;
-
-		return;
-	}
-
-	release();
-
-	this->rows = mat.rows;
-	this->cols = mat.cols;
-	this->type = mat.type;
-
-	cudaError_t err = cudaMalloc(&data, size());
-	assert(err == cudaSuccess);
+	resize(mat.rows, mat.cols, mat.type);
 }
 
 void GpuMat::copyTo(GpuMat &mat) const

@@ -134,7 +134,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	std::vector<int> layers2, layers3, cnv_layers, ws;
 //	layers2.push_back(600);
 //	layers2.push_back(500);
-//	layers2.push_back(400);
+	layers2.push_back(400);
 	layers2.push_back(100);
 	layers2.push_back(100);
 	layers2.push_back(10);
@@ -143,17 +143,17 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights();
 
-	layers3.push_back(500);
+//	layers3.push_back(500);
 	layers3.push_back(400);
 	layers3.push_back(200);
 	layers3.push_back(10);
 
 	cnv_layers.push_back(3);
-	cnv_layers.push_back(2);
+//	cnv_layers.push_back(2);
 //	cnv_layers.push_back(1);
 
 	ws.push_back(5);
-	ws.push_back(5);
+//	ws.push_back(5);
 //	ws.push_back(3);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
@@ -220,7 +220,7 @@ void MainWindow::onTimeoutMnist()
 		qDebug() << "Iteration" << m_mnist_train.iteration();
 		ui->lb_out->setText("Pass: #" + QString::number(m_mnist_train.iteration()));
 
-		if((m_mnist_train.iteration() % 100) == 0){
+		if((m_mnist_train.iteration() % 40) == 0){
 			update_mnist();
 		}
 	}

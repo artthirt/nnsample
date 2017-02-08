@@ -171,6 +171,9 @@ private:
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 
 	void getX(ct::Matf& X, int batch);
+	void getXyTest(ct::Matf &X, ct::Matf &yp, int batch);
+	void getXy(ct::Matf& X, ct::Matf& y, int batch);
+	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 	void randX(ct::Matf& X);
 
 #ifdef _USE_GPU

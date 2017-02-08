@@ -58,20 +58,18 @@ public:
 
 	bool empty() const;
 
-	bool init(const std::vector< int >& layers, int samples, int type);
-
 	bool pass(const std::vector< gpumat::GpuMat >& gradW, const std::vector< gpumat::GpuMat >& gradB,
 			  std::vector< gpumat::GpuMat >& W, std::vector< gpumat::GpuMat >& b);
 	bool pass(const std::vector< gpumat::GpuMat >& gradW, const std::vector< float >& gradB,
 			  std::vector< gpumat::GpuMat >& W, std::vector< float >& b);
 
-	void init_single(int count, int type, const ct::Size& szW);
 private:
 	uint32_t m_iteration;
 	double m_betha1;
 	double m_betha2;
 	double m_alpha;
-	bool m_init;
+	bool m_init_matB;
+	bool m_init_singleB;
 
 	std::vector< gpumat::GpuMat > sB, sW;
 
@@ -82,6 +80,9 @@ private:
 
 	std::vector< float > m_mb_single;
 	std::vector< float > m_vb_single;
+
+	void init_single(const std::vector<GpuMat> &gradW);
+	bool init(const std::vector<GpuMat> &gradW, const std::vector<GpuMat> &gradB);
 };
 
 class SimpleAutoencoder

@@ -42,24 +42,29 @@ AdamOptimizer::AdamOptimizer()
 {
 	m_alpha = 0.001;
 	m_betha1 = 0.9;
-	m_betha2 = 0.999;
+	m_betha2 = 0.99;
 	m_iteration = 0;
-	m_init = false;
+	m_init_matB = false;
+	m_init_singleB = false;
 }
 
-double AdamOptimizer::alpha() const{
+double AdamOptimizer::alpha() const
+{
 	return m_alpha;
 }
 
-void AdamOptimizer::setAlpha(double v){
+void AdamOptimizer::setAlpha(double v)
+{
 	m_alpha = v;
 }
 
-double AdamOptimizer::betha1() const{
+double AdamOptimizer::betha1() const
+{
 	return m_betha1;
 }
 
-void AdamOptimizer::setBetha1(double v){
+void AdamOptimizer::setBetha1(double v)
+{
 	m_betha1 = v;
 }
 
@@ -67,11 +72,13 @@ double AdamOptimizer::betha2() const{
 	return m_betha2;
 }
 
-void AdamOptimizer::setBetha2(double v){
+void AdamOptimizer::setBetha2(double v)
+{
 	m_betha2 = v;
 }
 
-uint32_t AdamOptimizer::iteration() const{
+uint32_t AdamOptimizer::iteration() const
+{
 	return m_iteration;
 }
 
@@ -80,55 +87,45 @@ bool AdamOptimizer::empty() const
 	return m_mW.empty() || m_mb.empty();
 }
 
-bool AdamOptimizer::init(const std::vector<int> &layers, int samples, int type)
+bool AdamOptimizer::init(const std::vector<GpuMat> &gradW, const std::vector<GpuMat> &gradB)
 {
-	if(!samples || layers.empty())
-		return false;
-
-	using namespace ct;
-
 	m_iteration = 0;
 
-	int input = samples;
-	int output = layers[0];
+	m_mW.resize(gradW.size());
+	m_mb.resize(gradW.size());
 
-	m_mW.resize(layers.size());
-	m_mb.resize(layers.size());
+	m_vW.resize(gradW.size());
+	m_vb.resize(gradW.size());
 
-	m_vW.resize(layers.size());
-	m_vb.resize(layers.size());
+	sW.resize(gradW.size());
+	sB.resize(gradW.size());
 
-	sW.resize(layers.size());
-	sB.resize(layers.size());
+	for(size_t i = 0; i < gradW.size(); i++){
+		m_mW[i].resize(gradW[i]);
+		m_vW[i].resize(gradW[i]);
 
-	for(size_t i = 0; i < layers.size(); i++){
-		output = layers[i];
-
-		m_mW[i].resize(input, output, type);
-		m_vW[i].resize(input, output, type);
-
-		m_mb[i].resize(output, 1, type);
-		m_vb[i].resize(output, 1, type);
+		m_mb[i].resize(gradB[i]);
+		m_vb[i].resize(gradB[i]);
 
 		m_mW[i].zeros();
 		m_vW[i].zeros();
 		m_mb[i].zeros();
 		m_vb[i].zeros();
-
-		input = output;
 	}
 
-	m_init = true;
+	m_init_matB = true;
 	return true;
 }
 
 bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<GpuMat> &gradB,
 						 std::vector<GpuMat> &W, std::vector<GpuMat> &b)
 {
-	if(!gradW.size() || gradW.size() != gradB.size() || gradW.size() != W.size())
+	if(gradW.empty() || gradB.empty() || W.empty() || b.empty())
 		return false;
 
-	using namespace ct;
+	if(!m_init_matB){
+		init(gradW, gradB);
+	}
 
 	m_iteration++;
 	double sb1 = (1. / (1. - pow(m_betha1, m_iteration)));
@@ -138,33 +135,19 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW, const std::vector<Gpu
 
 		gpumat::add(m_mW[i], gradW[i], m_betha1, (1. - m_betha1));
 		gpumat::add(m_mb[i], gradB[i], m_betha1, (1. - m_betha1));
-		//m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
-		//m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
 
 		gpumat::elemwiseSqr(gradW[i], sW[i]);
 		gpumat::elemwiseSqr(gradB[i], sB[i]);
 
 		gpumat::add(m_vW[i], sW[i], m_betha2, (1. - m_betha2));
 		gpumat::add(m_vb[i], sB[i], m_betha2, (1. - m_betha2));
-		//m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
-		//m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
-
-//		Mat_<T> mWs = m_mW[i] * sb1;
-//		Mat_<T> mBs = m_mb[i] * sb1;
-//		Mat_<T> vWs = m_vW[i] * sb2;
-//		Mat_<T> vBs = m_vb[i] * sb2;
-
-//		vWs.sqrt(); vBs.sqrt();
-//		vWs += eps; vBs += eps;
-//		mWs = elemwiseDiv(mWs, vWs);
-//		mBs = elemwiseDiv(mBs, vBs);
 
 		/// W = -alpha * (sb1 * mW / (sqrt(sb2 * vW) + eps))
 
+//		gpumat::add(W[i], m_mW[i], 1, -m_alpha);
+//		gpumat::add(b[i], m_mb[i], 1, -m_alpha);
 		gpumat::sub_adamGrad(W[i], m_mW[i], m_vW[i], m_alpha, sb1, sb2);
 		gpumat::sub_adamGrad(b[i], m_mb[i], m_vb[i], m_alpha, sb1, sb2);
-		//W[i] -= m_alpha * mWs;
-		//b[i] -= m_alpha * mBs;
 	}
 	return true;
 }
@@ -174,19 +157,17 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW,
 						 std::vector<GpuMat> &W,
 						 std::vector<float> &b)
 {
-	if(!gradW.size() || gradW.size() != gradB.size() || gradW.size() != W.size())
+	if(gradW.empty() || gradB.empty() || W.empty() || b.empty())
 		return false;
 
-	using namespace ct;
-
-	if(!m_init){
-		init_single(gradW.size(), gradW[0].type, gradW[0].sz());
+	if(!m_init_singleB){
+		init_single(gradW);
 	}
 
 	m_iteration++;
 	float sb1 = (1. / (1. - pow(m_betha1, m_iteration)));
 	float sb2 = (1. / (1. - pow(m_betha2, m_iteration)));
-	float eps = 1e-9;
+	float eps = 10e-8;
 
 	for(size_t i = 0; i < gradW.size(); ++i){
 
@@ -198,25 +179,10 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW,
 
 		gpumat::add(m_vW[i], sW[i], m_betha2, (1. - m_betha2));
 		m_vb_single[i] = m_betha2 * m_vb_single[i] + (1 - m_betha2) * sB;
-		//m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
-		//m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
-
-//		Mat_<T> mWs = m_mW[i] * sb1;
-//		Mat_<T> mBs = m_mb[i] * sb1;
-//		Mat_<T> vWs = m_vW[i] * sb2;
-//		Mat_<T> vBs = m_vb[i] * sb2;
-
-//		vWs.sqrt(); vBs.sqrt();
-//		vWs += eps; vBs += eps;
-//		mWs = elemwiseDiv(mWs, vWs);
-//		mBs = elemwiseDiv(mBs, vBs);
-//		std::string s1 = m_mW[i].print();
-//		std::string s2 = m_vW[i].print();
-//		qDebug("mW\n%s", s1.c_str());
-//		qDebug("bW\n%s", s2.c_str());
 
 		/// W = -alpha * (sb1 * mW / (sqrt(sb2 * vW) + eps))
 
+		//gpumat::add(W[i], gradW[i], 1., -m_alpha);
 		gpumat::sub_adamGrad(W[i], m_mW[i], m_vW[i], m_alpha, sb1, sb2);
 
 		b[i] -= m_alpha * (sb1 * m_mb_single[i]) / (sqrt(sb2 * m_vb_single[i]) + eps);
@@ -227,22 +193,24 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW,
 
 }
 
-void AdamOptimizer::init_single(int count, int type, const ct::Size &szW)
+void AdamOptimizer::init_single(const std::vector<GpuMat> &gradW)
 {
-	m_mW.resize(count);
-	m_vW.resize(count);
-	m_mb_single.resize(count, 0);
-	m_vb_single.resize(count, 0);
-	for(int i = 0; i < count; ++i){
-		m_mW[i].resize(szW, type);
-		m_vW[i].resize(szW, type);
+	m_iteration = 0;
+
+	m_mW.resize(gradW.size());
+	m_vW.resize(gradW.size());
+	m_mb_single.resize(gradW.size(), 0);
+	m_vb_single.resize(gradW.size(), 0);
+	for(int i = 0; i < gradW.size(); ++i){
+		m_mW[i].resize(gradW[i]);
+		m_vW[i].resize(gradW[i]);
 
 		m_mW[i].zeros();
 		m_vW[i].zeros();
 	}
-	sW.resize(count);
+	sW.resize(gradW.size());
 
-	m_init = true;
+	m_init_singleB = true;
 }
 
 ///////////////////////////////////////////
@@ -268,8 +236,6 @@ void SimpleAutoencoder::init(GpuMat &_W, GpuMat &_b, int samples, int neurons, S
 	b.resize(2);
 	dW.resize(2);
 	db.resize(2);
-
-	adam.init(layers, samples, _W.type);
 
 	W[0] = _W;
 	b[0] = _b;

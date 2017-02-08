@@ -122,29 +122,10 @@ void mnist_train::getEstimate(int batch, double &l2, double &accuracy, bool use_
 	if(m_mnist->X().empty() || m_mnist->y().empty())
 		return;
 
-	std::vector<int> indexes;
-	if(batch < 0){
-		batch = m_mnist->train().size();
-		indexes.resize(batch);
-		for(int i = 0; i < batch; i++){
-			indexes[i] = i;
-		}
-	}else{
-		indexes.resize(batch);
-		std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
-		std::map<int, bool> set;
-		for(int i = 0; i < batch; i++){
-			int v = ud(m_generator);
-			while(set.find(v) != set.end()){
-				v = ud(m_generator);
-			}
-			set[v] = true;
-			indexes[i] = v;
-		}
-	}
+	Matf X;
+	Matf yp;
 
-	Matf X = m_mnist->X().getRows(indexes);
-	Matf yp = m_mnist->y().getRows(indexes);
+	getXy(X, yp, batch);
 
 #ifdef _USE_GPU
 	Matf y;
@@ -183,44 +164,8 @@ void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy, bool 
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
 
-	std::vector<int> indexes;
-
-	if(batch > 0){
-
-		indexes.resize(batch);
-		std::uniform_int_distribution<int> ud(0, m_mnist->test().size() - 1);
-		std::map<int, bool> set;
-		for(int i = 0; i < batch; i++){
-			int v = ud(m_generator);
-			while(set.find(v) != set.end()){
-				v = ud(m_generator);
-			}
-			set[v] = true;
-			indexes[i] = v;
-		}
-
-	}else{
-		batch = m_mnist->test().size();
-		indexes.resize(batch);
-
-		for(int i = 0; i < batch; i++){
-			indexes[i] = (int)i;
-		}
-	}
-
-	Matf X = Matf::zeros(batch, m_mnist->X().cols);
-	Matf yp = Matf::zeros(batch, m_mnist->y().cols);
-
-	for(int i = 0; i < batch; i++){
-		int id = indexes[i];
-		QByteArray& data = m_mnist->test()[id];
-		uint lb = m_mnist->lb_test()[id];
-
-		for(int j = 0; j < data.size(); j++){
-			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
-		}
-		yp.at(i, lb) = 1.;
-	}
+	Matf X, yp;
+	getXyTest(X, yp, batch);
 
 #ifdef _USE_GPU
 	Matf y;
@@ -291,22 +236,7 @@ void mnist_train::pass_batch(int batch)
 
 	Matf X, y;
 
-	std::vector<int> indexes;
-	indexes.resize(batch);
-	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
-	std::map<int, bool> set;
-
-	for(int i = 0; i < batch; i++){
-		int v = ud(m_generator);
-		while(set.find(v) != set.end()){
-			v = ud(m_generator);
-		}
-		set[v] = true;
-		indexes[i] = v;
-	}
-
-	X = m_mnist->X().getRows(indexes);
-	y = m_mnist->y().getRows(indexes);
+	getXy(X, y, batch);
 
 #if 1
 	std::uniform_int_distribution<int> udtr(-3, 3);
@@ -578,6 +508,50 @@ void mnist_train::getX(Matf &X, int batch)
 	X = m_mnist->X().getRows(indexes);
 }
 
+void mnist_train::getXyTest(Matf &X, Matf &yp, int batch)
+{
+	if(batch < 0)
+		batch = m_mnist->test().size();
+
+	std::vector<int> indexes;
+
+	getBatchIds(indexes, batch);
+
+	X = Matf::zeros(batch, m_mnist->X().cols);
+	yp = Matf::zeros(batch, m_mnist->y().cols);
+
+	for(int i = 0; i < batch; i++){
+		int id = indexes[i];
+		QByteArray& data = m_mnist->test()[id];
+		uint lb = m_mnist->lb_test()[id];
+
+		for(int j = 0; j < data.size(); j++){
+			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		}
+		yp.at(i, lb) = 1.;
+	}
+}
+
+void mnist_train::getXy(Matf &X, Matf &y, int batch)
+{
+	std::vector<int> indexes;
+	indexes.resize(batch);
+	std::uniform_int_distribution<int> ud(0, m_mnist->train().size() - 1);
+	std::map<int, bool> set;
+
+	for(int i = 0; i < batch; i++){
+		int v = ud(m_generator);
+		while(set.find(v) != set.end()){
+			v = ud(m_generator);
+		}
+		set[v] = true;
+		indexes[i] = v;
+	}
+
+	X = m_mnist->X().getRows(indexes);
+	y = m_mnist->y().getRows(indexes);
+}
+
 void mnist_train::randX(Matf &X)
 {
 #if 1
@@ -597,6 +571,32 @@ void mnist_train::randX(Matf &X)
 	}
 #endif
 
+}
+
+void mnist_train::getBatchIds(std::vector<int> &indexes, int batch)
+{
+	if(batch > 0){
+
+		indexes.resize(batch);
+		std::uniform_int_distribution<int> ud(0, m_mnist->test().size() - 1);
+		std::map<int, bool> set;
+		for(int i = 0; i < batch; i++){
+			int v = ud(m_generator);
+			while(set.find(v) != set.end()){
+				v = ud(m_generator);
+			}
+			set[v] = true;
+			indexes[i] = v;
+		}
+
+	}else{
+		batch = m_mnist->test().size();
+		indexes.resize(batch);
+
+		for(int i = 0; i < batch; i++){
+			indexes[i] = (int)i;
+		}
+	}
 }
 
 void mnist_train::pass_batch(const Matf &X, const Matf &y)
@@ -736,17 +736,13 @@ void mnist_train::init_gpu(int seed)
 
 		Matf Wi = Matf(input, output);
 		Matf bi = Matf::ones(output, 1);
-		Wi.randn(0., n, seed);
-		bi.randn(0, n, seed);
+		Wi.randn(0., n);
+		bi.randn(0, n);
 
 		gpumat::convert_to_gpu(Wi, m_gW[i]);
 		gpumat::convert_to_gpu(bi, m_gb[i]);
 
 		input = output;
-	}
-
-	if(!m_gpu_adam.init(m_layers, m_mnist->X().cols, gpumat::GPU_FLOAT)){
-		std::cout << "optimizer not init\n";
 	}
 }
 
@@ -806,12 +802,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 	/// forward
 
-//	std::vector< Matf > z, a;
-//	z.resize(m_layers.size());
-//	a.resize(m_layers.size() + 1);
 	g_a[0] = X;
-
-//	Matf D1, Dt1, D2, Dt2, D3, Dt3;
 
 	if(m_DropoutT.empty()){
 		m_Dropout.resize(m_dropout_count);

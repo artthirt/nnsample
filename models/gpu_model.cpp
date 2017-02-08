@@ -91,9 +91,6 @@ void gpu_model::init_gpu(const std::vector< int >& layers, int seed)
 		input = output;
 	}
 
-	if(!m_gpu_adam.init(m_layers, m_cnv_out_len, gpumat::GPU_FLOAT)){
-		std::cout << "optimizer not init\n";
-	}
 	m_init = true;
 }
 
@@ -204,7 +201,7 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 //					ds[i][kidx++] = ds[i + 1][j * cnv.W.size() + k];
 //					//dsi.push_back(ds[j * cnv.W.size() + k]);
 //				}
-				kidx = j * cnv.W.size() + (cnv.W.size());
+				kidx += (cnv.W.size());
 
 //				for(int l = kfirst; l < kidx; ++l){
 //					qt_work_mat::q_save_mat(ds[i + 1][l], QString::number(l) + "_dsi.txt");
