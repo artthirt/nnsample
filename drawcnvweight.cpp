@@ -76,15 +76,15 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 			float v1 = dW1[y * W.cols + x];
 			float v2 = dW2[y * W.cols + x];
 
-			if(is_prev && std::abs(v2 - v1) > 1e-9){
-				float val = 100 + 2000 * std::abs((v2 - v1)/(m1 - m2));
-				val = std::min(255.f, val);
-				pen.setColor(QColor(val, 0, 0));
-				painter.setPen(pen);
-				painter.setBrush(Qt::NoBrush);
-				rt.marginsRemoved(QMargins(1, 1, 1, 1));
-				painter.drawRect(rt);
-			}
+//			if(is_prev && std::abs(v2 - v1) > 1e-9){
+//				float val = 100 + 2000 * std::abs((v2 - v1)/(m1 - m2));
+//				val = std::min(255.f, val);
+//				pen.setColor(QColor(val, 0, 0));
+//				painter.setPen(pen);
+//				painter.setBrush(Qt::NoBrush);
+//				rt.marginsRemoved(QMargins(1, 1, 1, 1));
+//				painter.drawRect(rt);
+//			}
 		}
 	}
 }

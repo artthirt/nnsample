@@ -147,9 +147,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	layers3.push_back(200);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(10);
-	cnv_layers.push_back(4);
-//	cnv_layers.push_back(1);
+	cnv_layers.push_back(12);
+	cnv_layers.push_back(2);
+//	cnv_layers.push_back(3);
 
 	ws.push_back(5);
 	ws.push_back(5);
@@ -340,12 +340,9 @@ void MainWindow::pass_cnv()
 {
 //	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
-	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 400,
+	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 100,
 						   ui->chb_use_gpu_cnv->isChecked());
 //	on_pb_update_cnv_clicked();
-
-	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());
-
 	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
 }
 
@@ -445,6 +442,8 @@ void MainWindow::on_pb_test_cnv_clicked()
 
 void MainWindow::on_pb_update_cnv_clicked()
 {
+	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());
+
 	double l2, accuracy;
 	m_mnist_cnv.getEstimate(2000, l2, accuracy, ui->chb_use_gpu_cnv->isChecked());
 	ui->lb_l2cnv->setText(QString("L2=%1; Acc=%2;\tIteration=%3").arg(l2, 0, 'f', 9).arg(accuracy, 0, 'f', 5).arg(m_mnist_cnv.iteration()));
