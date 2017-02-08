@@ -10,7 +10,8 @@ SOURCES += $$PWD/main.cpp\
     $$PWD/models/mnist_train.cpp \
     $$PWD/models/mnist_conv.cpp \
     $$PWD/tests.cpp \
-    $$PWD/qt_work_mat.cpp
+    $$PWD/qt_work_mat.cpp \
+    $$PWD/models/gpu_model.cpp
 
 HEADERS  += $$PWD/mainwindow.h \
     $$PWD/glview.h \
@@ -22,7 +23,8 @@ HEADERS  += $$PWD/mainwindow.h \
     $$PWD/models/mnist_conv.h \
     $$PWD/models/mnist_utils.h \
     $$PWD/tests.h \
-    $$PWD/qt_work_mat.h
+    $$PWD/qt_work_mat.h \
+    $$PWD/models/gpu_model.h
 
 HEADERS += \
     $$PWD/drawcnvweight.h

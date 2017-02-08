@@ -798,7 +798,7 @@ void mnist_train::pass_batch_gpu(int batch)
 
 void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 {
-	if(m_W.empty() || m_b.empty() || m_layers.empty() ||
+	if(m_gW.empty() || m_gb.empty() || m_layers.empty() ||
 			m_layers.back() != y.cols){
 		std::cout << "wrong parameters of model\n";
 		return;
