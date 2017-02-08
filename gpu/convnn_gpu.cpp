@@ -3,6 +3,8 @@
 
 #include "exception"
 
+#include "qt_work_mat.h"
+
 using namespace gpumat;
 
 convnn::convnn()
@@ -101,6 +103,20 @@ void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int 
 	gpumat::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
 	gpumat::deriv_prev_cnv(dA1, W, szA1, szA0, stride, DltA0);
+
+//	for(int i = 0; i < gradW.size(); ++i){
+//		std::stringstream ss;
+//		ss << "_gW_" << i << ".txt";
+//		qt_work_mat::q_save_mat(gradW[i], ss.str().c_str());
+//		ss.str("");
+//		ss << "_dA1_" << i << ".txt";
+//		qt_work_mat::q_save_mat(dA1[i], ss.str().c_str());
+//		ss.str("");
+//		ss << "_W_" << i << ".txt";
+//		qt_work_mat::q_save_mat(W[i], ss.str().c_str());
+//	}
+//	qt_work_mat::q_save_mat(A0, "_A0.txt");
+//	qt_work_mat::q_save_mat(DltA0, "_DltA0.txt");
 
 	m_optim.pass(gradW, gradB, W, B);
 }

@@ -101,3 +101,11 @@ void qt_work_mat::q_save_mat(const gpumat::GpuMat &mat, const QString &filename)
 	gpumat::convert_to_mat(mat, lmat);
 	q_save_mat(lmat, filename);
 }
+
+void qt_work_mat::q_load_mat(const QString &filename, gpumat::GpuMat &mat)
+{
+	ct::Matf matf;
+	q_load_mat(filename, matf);
+	if(!matf.empty())
+		gpumat::convert_to_gpu(matf, mat);
+}

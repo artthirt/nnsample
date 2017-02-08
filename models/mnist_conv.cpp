@@ -69,12 +69,26 @@ std::vector<std::vector<Matf> > mnist_conv::cnvW()
 {
 	std::vector< std::vector < Matf > > res;
 
-	res.resize(m_cnv.size());
+	if(m_use_gpu){
+		res.resize(m_gpu_model.cnv().size());
 
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		for(size_t j = 0; j < m_cnv[i].size(); ++j){
-			for(size_t k = 0; k < m_cnv[i][j].W.size(); ++k){
-				res[i].push_back(m_cnv[i][j].W[k]);
+		for(size_t i = 0; i < m_gpu_model.cnv().size(); ++i){
+			for(size_t j = 0; j < m_gpu_model.cnv()[i].size(); ++j){
+				for(size_t k = 0; k < m_gpu_model.cnv()[i][j].W.size(); ++k){
+					ct::Matf Wf;
+					gpumat::convert_to_mat(m_gpu_model.cnv()[i][j].W[k], Wf);
+					res[i].push_back(Wf);
+				}
+			}
+		}
+	}else{
+		res.resize(m_cnv.size());
+
+		for(size_t i = 0; i < m_cnv.size(); ++i){
+			for(size_t j = 0; j < m_cnv[i].size(); ++j){
+				for(size_t k = 0; k < m_cnv[i][j].W.size(); ++k){
+					res[i].push_back(m_cnv[i][j].W[k]);
+				}
 			}
 		}
 	}

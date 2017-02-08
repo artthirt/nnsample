@@ -339,7 +339,7 @@ void MainWindow::update_mnist()
 
 void MainWindow::pass_cnv()
 {
-	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
+//	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
 	m_mnist_cnv.pass_batch(100, ui->chb_use_gpu_cnv->isChecked());
 //	on_pb_update_cnv_clicked();

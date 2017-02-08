@@ -40,6 +40,8 @@ public:
 
 	void setLayers(const std::vector<int> &layers);
 
+	std::vector<std::vector<gpumat::convnn> > &cnv();
+
 private:
 	std::vector< int > m_layers;
 	std::vector< std::vector< gpumat::convnn > > m_cnv;

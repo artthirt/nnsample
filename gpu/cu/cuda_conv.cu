@@ -530,9 +530,9 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 		case GPU_FLOAT:{
 			internal::deriv_conv2d<float> <<<dimGrid, dimBlock, size_shared >>>(A0, gradA1, szA0, szA1,
 																  gradW, stride, blocks);
-			std::cout << blocks.print() << std::endl;
+//			std::cout << blocks.print() << std::endl;
 //			std::cout << blocks.print() << std::endl << A0.print() << std::endl << gradA1.print() << std::endl;
-			cuda_reduce_blocks<float>(blocks, gradW, 1./gradA1.rows);
+			cuda_reduce_blocks<float>(blocks, gradW, 1.f/gradA1.rows);
 			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());
 			val /= gradA1.total();
 			gradB = val;

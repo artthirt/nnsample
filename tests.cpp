@@ -415,6 +415,35 @@ void internal_test_gpu()
 		qDebug("deriv_conv2D: B=%f", gradB);
 		PRINT_IMAGE(tmp, 5, 5);
 	}
+
+	if(0){
+		std::vector< ct::Matf > dA1, gW, W;
+		std::vector< float> b;
+		ct::Matf A0, D;
+
+		qt_work_mat::q_load_mat("_A0.txt", A0);
+
+		dA1.resize(2);
+		W.resize(2);
+		for(int i = 0; i < 2; i++){
+			std::stringstream ss;
+			ss << "_dA1_" << i << ".txt";
+			qt_work_mat::q_load_mat(ss.str().c_str(), dA1[i]);
+			ss.str("");
+			ss << "_W_" << i << ".txt";
+			qt_work_mat::q_load_mat(ss.str().c_str(), W[i]);
+		}
+		nn::deriv_conv2D(A0, dA1, ct::Size(12, 12), ct::Size(8, 8), ct::Size(5, 5),
+							 1, gW, b);
+		qDebug("deriv_conv2D: B=%f, %f", b[0], b[1]);
+		for(int i = 0; i < gW.size(); ++i){
+			PRINT_IMAGE(gW[i], 5, 5);
+		}
+
+		nn::deriv_prev_cnv(dA1, W, ct::Size(8, 8), ct::Size(12, 12), D);
+		qt_work_mat::q_save_mat(D, "TestD.txt");
+	}
+
 	qDebug("END GPUMAT TEST");
 }
 

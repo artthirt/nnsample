@@ -210,12 +210,16 @@ bool AdamOptimizer::pass(const std::vector<GpuMat> &gradW,
 //		vWs += eps; vBs += eps;
 //		mWs = elemwiseDiv(mWs, vWs);
 //		mBs = elemwiseDiv(mBs, vBs);
+//		std::string s1 = m_mW[i].print();
+//		std::string s2 = m_vW[i].print();
+//		qDebug("mW\n%s", s1.c_str());
+//		qDebug("bW\n%s", s2.c_str());
 
 		/// W = -alpha * (sb1 * mW / (sqrt(sb2 * vW) + eps))
 
 		gpumat::sub_adamGrad(W[i], m_mW[i], m_vW[i], m_alpha, sb1, sb2);
 
-		b[i] -= m_alpha * (sb1 * m_mb_single[i] / sqrt(sb2 * m_vb_single[i] + eps));
+		b[i] -= m_alpha * (sb1 * m_mb_single[i]) / (sqrt(sb2 * m_vb_single[i]) + eps);
 		//W[i] -= m_alpha * mWs;
 		//b[i] -= m_alpha * mBs;
 	}
@@ -232,9 +236,11 @@ void AdamOptimizer::init_single(int count, int type, const ct::Size &szW)
 	for(int i = 0; i < count; ++i){
 		m_mW[i].resize(szW, type);
 		m_vW[i].resize(szW, type);
+
+		m_mW[i].zeros();
+		m_vW[i].zeros();
 	}
 	sW.resize(count);
-	sB.resize(count);
 
 	m_init = true;
 }

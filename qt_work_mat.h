@@ -26,6 +26,12 @@ void q_save_mat(const gpumat::GpuMat &mat, const QString &filename);
  * @param mat
  */
 void q_load_mat(const QString &filename, ct::Matf& mat);
+/**
+ * @brief q_load_mat
+ * @param filename
+ * @param mat
+ */
+void q_load_mat(const QString &filename, gpumat::GpuMat &mat);
 
 }
 

@@ -177,22 +177,21 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 
 	/// convolution
 	{
-		ds.resize(m_cnv.size() + 1);
+		ds.resize(m_cnv.size());
 
 		gpumat::hsplit(g_d[0], m_cnv.back().size() * m_cnv.back()[0].W.size(), ds.back());
 
-		for(int i = 0; i < ds.back().size(); ++i){
-			qt_work_mat::q_save_mat(ds.back()[i], QString::number(i) + "_ds.txt");
-		}
+//		for(int i = 0; i < ds.back().size(); ++i){
+//			qt_work_mat::q_save_mat(ds.back()[i], QString("ds_%1.txt").arg(i));
+//		}
 
 		for(int i = m_cnv.size() - 1; i > -1; i--){
 			std::vector< gpumat::convnn >& lrs = m_cnv[i];
-			std::vector< gpumat::GpuMat > di;
 
 //			qDebug("LR[%d]-----", i);
 
 			if(i > 0)
-				ds[i].resize(lrs.size());
+				ds[i - 1].resize(lrs.size());
 
 			int kidx = 0;
 			int nidx = 0;
@@ -205,15 +204,15 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 //					ds[i][kidx++] = ds[i + 1][j * cnv.W.size() + k];
 //					//dsi.push_back(ds[j * cnv.W.size() + k]);
 //				}
-				kidx += j * cnv.W.size() + (cnv.W.size());
+				kidx = j * cnv.W.size() + (cnv.W.size());
 
-				for(int l = kfirst; l < kidx; ++l){
-					qt_work_mat::q_save_mat(ds[i + 1][l], QString::number(l) + "_dsi.txt");
-				}
+//				for(int l = kfirst; l < kidx; ++l){
+//					qt_work_mat::q_save_mat(ds[i + 1][l], QString::number(l) + "_dsi.txt");
+//				}
 
-				cnv.backward(ds[i + 1], gpumat::RELU, kfirst, kidx);
-				ds[i][nidx++] = cnv.DltA0;
-				qt_work_mat::q_save_mat(cnv.DltA0, "dltA0_" + QString::number(nidx) + ".txt");
+				cnv.backward(ds[i], gpumat::RELU, kfirst, kidx);
+				if(i > 0)
+					ds[i - 1][nidx++] = cnv.DltA0;
 			}
 		}
 	}
@@ -244,6 +243,11 @@ void gpu_model::setAlpha(double val)
 void gpu_model::setLayers(const std::vector<int> &layers)
 {
 	init_gpu(layers, 1);
+}
+
+std::vector<std::vector<gpumat::convnn> > &gpu_model::cnv()
+{
+	return m_cnv;
 }
 
 void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
