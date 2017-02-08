@@ -259,6 +259,23 @@ void test_mat()
 	ct::Size szW = ggW.size();
 	PRINT_IMAGE(ggW, szW.width, szW.height);
 
+	float test_data[] = {
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+		1, 1, 1, 1
+	},
+	test_data2[] = {
+		2, 2,
+		2, 2
+	};
+	ct::Matf Test(1, 16, test_data), Test2(1, 4, test_data2);
+
+	nn::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), ws[0].size(), 1, ggW, ggB);
+	qDebug("DerivPrevLayer: B=%f", ggB);
+	szW = ggW.size();
+	PRINT_IMAGE(ggW, szW.width, szW.height);
+
 	qDebug("END MAT TEST");
 }
 
@@ -351,6 +368,26 @@ void internal_test_gpu()
 	list.pop_back();
 	gpumat::hconcat(list, gA);
 	qDebug("HCONCAT:\nDST\n%s", gA.print().c_str());
+
+	float test_data[] = {
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+		1, 1, 1, 1,
+		1, 1, 1, 1
+	},
+	test_data2[] = {
+		2, 2,
+		2, 2
+	};
+	gpumat::GpuMat Test(1, 16, gpumat::GPU_FLOAT), Test2(1, 4, gpumat::GPU_FLOAT);
+	Test.setData(test_data);
+	Test2.setData(test_data2);
+
+	gpumat::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), gWs[0].sz(), 1, ggW, ggB);
+	gpumat::convert_to_mat(ggW, tmp);
+	qDebug("DerivPrevLayer: B=%f", ggB);
+	szW = ggW.sz();
+	PRINT_IMAGE(tmp, szW.width, szW.height);
 
 	qDebug("END GPUMAT TEST");
 }

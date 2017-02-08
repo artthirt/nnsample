@@ -6,7 +6,8 @@ HEADERS += \
     $$PWD/gpumat.h \
     $$PWD/helper_gpu.h \
     $$PWD/cuda_common.h \
-    $$PWD/convnn_gpu.h
+    $$PWD/convnn_gpu.h \
+    $$PWD/cu/common_devices.h
 
 SOURCES += \
     $$PWD/gpumat.cpp \

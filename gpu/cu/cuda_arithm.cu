@@ -5,6 +5,8 @@
 #include "gpumat.h"
 #include "cuda_common.h"
 
+#include "common_devices.h"
+
 using namespace gpumat;
 
 ///////// begin internal namespace ///////////////
@@ -813,37 +815,6 @@ __global__ void adamgrad(Mtx A, const Mtx mA, const Mtx vA, T alpha, T sb1, T sb
 }
 
 ///*******************
-
-struct DMtx{
-	int stride;
-	u_char *data;
-};
-
-template< typename T >
-inline __device__ DMtx getSubMatrix(Mtx A, int row, int col)
-{
-	DMtx res;
-
-	T *d = (T*)A.data;
-	res.stride = A.cols;
-	res.data = (u_char*)&d[A.cols * BLOCKSIZE * row + col * BLOCKSIZE];
-	return res;
-}
-
-template< typename T >
-inline __device__ T getEl(DMtx A, int row, int col)
-{
-//	T *d = (T*)A.data;
-	return ((T*)A.data)[A.stride * row + col];
-}
-
-template< typename T >
-inline __device__ void setEl(DMtx A, int row, int col, T val)
-{
-//	T *d = (T*)A.data;
-	((T*)A.data)[A.stride * row + col] = val;
-}
-
 
 /**
  * @brief matmul_shared

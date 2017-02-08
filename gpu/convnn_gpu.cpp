@@ -36,7 +36,7 @@ void convnn::init(int count_weight, const ct::Size &_szA0)
 
 void convnn::update_random()
 {
-	for(int i = 0; i < W.size(); ++i){
+	for(size_t i = 0; i < W.size(); ++i){
 		ct::Matf Wi(weight_size, weight_size);
 		Wi.randn(0, 0.1);
 		gpumat::convert_to_gpu(Wi, W[i]);

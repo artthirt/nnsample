@@ -8,6 +8,8 @@
 #include "cuda_common.h"
 #include "common_types.h"
 
+#include "common_devices.h"
+
 using namespace gpumat;
 
 ///////// begin internal namespace ///////////////
@@ -16,6 +18,42 @@ namespace gpumat{
 
 namespace internal{
 
+
+class Singleton{
+public:
+	Singleton(){
+		std::fill((char*)&m_prop, (char*)&m_prop + sizeof(cudaDeviceProp), '\0');
+		cudaError_t err = cudaGetDevice(& m_device);
+		if(err == CUDA_SUCCESS){
+			err = cudaGetDeviceProperties(&m_prop, m_device);
+			if(err == CUDA_SUCCESS){
+				std::cout << "Gpu work. Shared memory: " << m_prop.sharedMemPerBlock << std::endl;
+			}else{
+				std::cout << "gpu not work\n";
+			}
+		}
+	}
+
+	cudaDeviceProp &prop(){
+		return m_prop;
+	}
+
+	int shared_memory() const{
+		return m_prop.sharedMemPerBlock;
+	}
+
+	static Singleton &instance(){
+		return m_instance;
+	}
+
+private:
+	static Singleton m_instance;
+
+	int m_device;
+	cudaDeviceProp m_prop;
+};
+
+Singleton Singleton::m_instance;
 
 template< typename T >
 inline __device__ T empty(T val)
@@ -179,31 +217,42 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
+	int srow = threadIdx.y, scol = threadIdx.x;
+
 	extern __shared__ int iW[];
 	T *sW = (T*)iW;
+
 
 	if(row < gA1.rows && col < gA1.cols){
 		int y = col / szA1.width;
 		int x = col - y * szA1.width;
 
+		Mtx H(blockDim.y * gW.rows, blockDim.x * gW.cols, sW);
+
+		int blkX = blockDim.x;
+		int blkY = blockDim.y;
+
+		DMtx HSub = getSubMatrix<T>(H, srow, scol, gW.rows, gW.cols);
+
+		for(int a = 0; a < gW.rows; ++a){
+			for(int b = 0; b < gW.cols; ++b){
+				setEl(HSub, a, b, 0);
+			}
+		}
+
+		__syncthreads();
+
+
 		int x0 = x * stride;
 		int y0 = y * stride;
 
 		T *dA0 = (T*)A0.data;
-//		T *dgW = (T*)gW.data;
 		T *dgA1 = (T*)gA1.data;
-
-		T *dB = (T*)Blocks.data;
 
 		T *dA0i = &dA0[row * A0.cols];
 		T *dgA1i = &dgA1[row * gA1.cols];
 
 		T d = dgA1i[y * szA1.width + x];
-
-		int brow = row * gW.rows;
-		int bcol = col * gW.cols;
-
-		T *dBi = &dB[brow * Blocks.cols + bcol];
 
 		for(int a = 0; a < gW.rows; ++a){
 			int y1 = y0 + a;
@@ -212,8 +261,38 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 					int x1 = x0 + b;
 					if(x1 < szA0.width){
 						T a0 = dA0i[y1 * szA0.width + x1];
-						dBi[(a) * Blocks.cols + (b)] = d * a0;
+						setEl<T>(HSub, a, b, d * a0);
 					}
+				}
+			}
+		}
+
+		__syncthreads();
+
+		if(srow == 0 && scol == 0){
+			int brow = blockIdx.y;
+			int bcol = blockIdx.x;
+
+			DMtx BSub = getSubMatrix<T>(Blocks, brow, bcol, gW.rows, gW.cols);
+
+			for(int a = 0; a < gW.rows; ++a){
+				for(int b = 0; b < gW.cols; ++b){
+					T val = getEl<T>(BSub, a, b);
+
+					DMtx HSub = getSubMatrix<T>(H, 1, 3, gW.rows, gW.cols);
+					val = getEl<T>(HSub, a, b);
+					for(int y = 0; y < blkY; ++y){
+						if(y * blockDim.y + a < Blocks.rows){
+							for(int x = 0; x < blkX; ++x){
+								if(x * blockDim.x + b < Blocks.cols){
+									DMtx HSub = getSubMatrix<T>(H, y, x, gW.rows, gW.cols);
+									val += getEl<T>(HSub, a, b);
+								}
+							}
+						}
+					}
+
+					setEl<T>(BSub, a, b, val);
 				}
 			}
 		}
@@ -423,17 +502,22 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  int stride,
 				  GpuMat &gradW, float &gradB)
 {
-	int x1 = gradA1.cols / BLOCKSIZE + 1;
-	int x2 = gradA1.rows / BLOCKSIZE + 1;
+	int blocksize = 8;
+	int x1 = gradA1.cols / blocksize + 1;
+	int x2 = gradA1.rows / blocksize + 1;
 
-	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+	dim3 dimGrid(x1, x2), dimBlock(blocksize, blocksize);
 
-	gpumat::GpuMat blocks(gradA1.rows * gradW.rows, gradA1.cols * gradW.cols, gradW.type);
+	int size_shared = gradW.size() * blocksize * blocksize;
+
+	assert(internal::Singleton::instance().shared_memory() > size_shared);
+
+	gpumat::GpuMat blocks(x2 * gradW.rows, x1 * gradW.cols, gradW.type);
 	gpumat::memset(blocks, 0);
 
 	switch (A0.type) {
 		case GPU_DOUBLE:{
-			internal::deriv_conv2d<double> <<<dimGrid, dimBlock, gradW.size() >>>(A0, gradA1, szA0, szA1,
+			internal::deriv_conv2d<double> <<<dimGrid, dimBlock, size_shared >>>(A0, gradA1, szA0, szA1,
 																   gradW, stride, blocks);
 			cuda_reduce_blocks<double>(blocks, gradW, 1./gradA1.rows);
 			double val = thrust::reduce(thrust::device, (double*)gradA1.data, (double*)gradA1.data + gradA1.total());
@@ -442,8 +526,9 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 			break;
 		}
 		case GPU_FLOAT:{
-			internal::deriv_conv2d<float> <<<dimGrid, dimBlock, gradW.size() >>>(A0, gradA1, szA0, szA1,
+			internal::deriv_conv2d<float> <<<dimGrid, dimBlock, size_shared >>>(A0, gradA1, szA0, szA1,
 																  gradW, stride, blocks);
+			std::cout << blocks.print() << std::endl;
 //			std::cout << blocks.print() << std::endl << A0.print() << std::endl << gradA1.print() << std::endl;
 			cuda_reduce_blocks<float>(blocks, gradW, 1./gradA1.rows);
 			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());

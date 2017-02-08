@@ -3,6 +3,8 @@
 
 #include "gpumat.h"
 
+#include <cuda_runtime.h>
+
 /**
   size of block for cuda gpu
 */
@@ -21,16 +23,16 @@ namespace gpumat{
 			int cols;
 			u_char* data;
 
-			Mtx(){
+			__host__ __device__ Mtx(){
 				rows = cols = 0;
 				data = 0;
 			}
-			Mtx(int rows, int cols, void* data){
+			__host__ __device__ Mtx(int rows, int cols, void* data){
 				this->rows = rows;
 				this->cols = cols;
 				this->data = (u_char*)data;
 			}
-			Mtx(const gpumat::GpuMat& mat){
+			__host__ __device__ Mtx(const gpumat::GpuMat& mat){
 				rows = mat.rows;
 				cols = mat.cols;
 				data = mat.data;
