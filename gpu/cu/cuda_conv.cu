@@ -234,10 +234,15 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 
 		DMtx HSub = getSubMatrix<T>(H, srow, scol, gW.rows, gW.cols);
 
-		for(int a = 0; a < gW.rows; ++a){
-			for(int b = 0; b < gW.cols; ++b){
-				setEl(HSub, a, b, 0);
+		if(srow == 0 && scol == 0){
+			for(int i = 0; i < H.rows * H.cols; ++i){
+				sW[i] = 0;
 			}
+//			for(int a = 0; a < gW.rows; ++a){
+//				for(int b = 0; b < gW.cols; ++b){
+//					setEl(HSub, a, b, 0);
+//				}
+//			}
 		}
 
 		__syncthreads();
