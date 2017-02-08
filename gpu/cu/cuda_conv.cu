@@ -238,15 +238,9 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 			for(int i = 0; i < H.rows * H.cols; ++i){
 				sW[i] = 0;
 			}
-//			for(int a = 0; a < gW.rows; ++a){
-//				for(int b = 0; b < gW.cols; ++b){
-//					setEl(HSub, a, b, 0);
-//				}
-//			}
 		}
 
 		__syncthreads();
-
 
 		int x0 = x * stride;
 		int y0 = y * stride;
@@ -284,12 +278,12 @@ __global__ void deriv_conv2d(Mtx A0, Mtx gA1, ct::Size szA0, ct::Size szA1, Mtx 
 				for(int b = 0; b < gW.cols; ++b){
 					T val = getEl<T>(BSub, a, b);
 
-					DMtx HSub = getSubMatrix<T>(H, 1, 3, gW.rows, gW.cols);
-					val = getEl<T>(HSub, a, b);
+//					DMtx HSub = getSubMatrix<T>(H, 1, 3, gW.rows, gW.cols);
+//					val = getEl<T>(HSub, a, b);
 					for(int y = 0; y < blkY; ++y){
-						if(y * blockDim.y + a < Blocks.rows){
+						if(y < szA0.height){
 							for(int x = 0; x < blkX; ++x){
-								if(x * blockDim.x + b < Blocks.cols){
+								if(x < szA0.width){
 									DMtx HSub = getSubMatrix<T>(H, y, x, gW.rows, gW.cols);
 									val += getEl<T>(HSub, a, b);
 								}
@@ -505,7 +499,7 @@ extern "C"
 void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
 				  int stride,
-				  GpuMat &gradW, float &gradB)
+				  GpuMat &gradW, float &gradB, GpuMat *pblocks)
 {
 	int blocksize = 8;
 	int x1 = gradA1.cols / blocksize + 1;
@@ -517,7 +511,10 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 
 	assert(internal::Singleton::instance().shared_memory() > size_shared);
 
-	gpumat::GpuMat blocks(x2 * gradW.rows, x1 * gradW.cols, gradW.type);
+	gpumat::GpuMat inner_mat;
+	gpumat::GpuMat &blocks = pblocks? *pblocks : inner_mat;
+
+	blocks.resize(x2 * gradW.rows, x1 * gradW.cols, gradW.type);
 	gpumat::memset(blocks, 0);
 
 	switch (A0.type) {

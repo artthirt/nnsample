@@ -147,7 +147,8 @@ void cuda_upsample(const GpuMat &A1, const ct::Size &szA1,
 extern "C"
 void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
-				  int stride, GpuMat &gradW, float &gradB);
+				  int stride, GpuMat &gradW, float &gradB,
+					   GpuMat* pblock);
 
 extern "C"
 void cuda_deriv_prev_conv2d(const std::vector<GpuMat> &deriv,
@@ -256,7 +257,7 @@ void upsample(const std::vector<GpuMat> &A1, ct::Size &szA1, const ct::Size &szA
 void deriv_conv2D(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
 				  const ct::Size &szW, int stride,
-				  GpuMat &gradW, float &gradB)
+				  GpuMat &gradW, float &gradB, GpuMat *pblock)
 {
 	if(A0.empty() || gradA1.empty() || !stride){
 		std::cout << "gpumat::deriv_conv2D wrong parameters\n";
@@ -267,7 +268,7 @@ void deriv_conv2D(const GpuMat &A0, const GpuMat &gradA1,
 
 	memset(gradW, 0);
 
-	cuda_deriv_conv2d(A0, gradA1, szA0, szA1, stride, gradW, gradB);
+	cuda_deriv_conv2d(A0, gradA1, szA0, szA1, stride, gradW, gradB, pblock);
 
 	// need reduce for B
 	// may be work in cuda_deriv_conv2d
@@ -280,7 +281,8 @@ void deriv_conv2D(const GpuMat &A0,
 				  const ct::Size &szA1,
 				  const ct::Size &szW,
 				  int stride,
-				  std::vector<GpuMat> &gradW, std::vector<float> &gradB)
+				  std::vector<GpuMat> &gradW, std::vector<float> &gradB,
+				  std::vector<GpuMat> *pblocks)
 {
 	if(A0.empty() || gradA1.empty())
 		throw new std::invalid_argument("gpumat::deriv_conv2D: invalid parameters");
@@ -289,7 +291,7 @@ void deriv_conv2D(const GpuMat &A0,
 	gradB.resize(gradA1.size());
 
 	for(size_t i = 0; i < gradA1.size(); ++i){
-		deriv_conv2D(A0, gradA1[i], szA0, szA1, szW, stride, gradW[i], gradB[i]);
+		deriv_conv2D(A0, gradA1[i], szA0, szA1, szW, stride, gradW[i], gradB[i], pblocks? &(*pblocks)[i] : nullptr);
 	}
 }
 

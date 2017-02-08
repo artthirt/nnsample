@@ -1,9 +1,13 @@
 #include "tests.h"
 
 #include <QDebug>
+#include <cmath>
 
+#include "common_types.h"
 #include "custom_types.h"
 #include "nn.h"
+
+#include "qt_work_mat.h"
 
 typedef std::vector< unsigned char > vchar;
 
@@ -30,7 +34,7 @@ typedef std::vector< unsigned char > vchar;
 	for(int i = 0; i < height; ++i){							\
 		QString s;												\
 		for(int j = 0; j < width; ++j){							\
-			s += QString::number(dcn[i * width + j], 'f', 2) + "\t";	\
+			s += QString::number(dcn[i * width + j], 'f', 5) + "\t";	\
 		}														\
 		qDebug("%s", s.toStdString().c_str());					\
 	}															\
@@ -216,9 +220,11 @@ void test_mat()
 	b.push_back(0);
 	b.push_back(0);
 
+	auto reLu = [](float val){return max(val, 0.f);};
+
 	ct::Size szA0(ww, hh);
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
-	ct::Size szO = nn::conv2D(A0, szA0, 1, vW, b, A1, [](float val){return std::max(val, 0.f);}), szAi;
+	ct::Size szO = nn::conv2D(A0, szA0, 1, vW, b, A1, reLu), szAi;
 
 	s1 = A1[0].print();
 	s2 = A1[1].print();
@@ -255,7 +261,7 @@ void test_mat()
 
 	nn::deriv_conv2D(A0, Ai2, szA0, szO, ws[0].size(), 1, ggW, ggB);
 
-	qDebug("DerivPrevLayer: B=%f", ggB);
+	qDebug("deriv_conv2D: B=%f", ggB);
 	ct::Size szW = ggW.size();
 	PRINT_IMAGE(ggW, szW.width, szW.height);
 
@@ -272,7 +278,7 @@ void test_mat()
 	ct::Matf Test(1, 16, test_data), Test2(1, 4, test_data2);
 
 	nn::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), ws[0].size(), 1, ggW, ggB);
-	qDebug("DerivPrevLayer: B=%f", ggB);
+	qDebug("deriv_conv2D: B=%f", ggB);
 	szW = ggW.size();
 	PRINT_IMAGE(ggW, szW.width, szW.height);
 
@@ -385,10 +391,30 @@ void internal_test_gpu()
 
 	gpumat::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), gWs[0].sz(), 1, ggW, ggB);
 	gpumat::convert_to_mat(ggW, tmp);
-	qDebug("DerivPrevLayer: B=%f", ggB);
+	qDebug("deriv_conv2D: B=%f", ggB);
 	szW = ggW.sz();
 	PRINT_IMAGE(tmp, szW.width, szW.height);
 
+	{
+		ct::Matf gradW, A0, A1, dA1;
+		gpumat::GpuMat gdW, gA0, gA1, gdA1, gdW_out, blocks;
+		float gradB;
+		qt_work_mat::q_load_mat("gradW.txt", gradW);
+		qt_work_mat::q_load_mat("A0.txt", A0);
+		qt_work_mat::q_load_mat("A1.txt", A1);
+		qt_work_mat::q_load_mat("dA1.txt", dA1);
+
+		gpumat::convert_to_gpu(A0, gA0);
+		gpumat::convert_to_gpu(A1, gA1);
+		gpumat::convert_to_gpu(dA1, gdA1);
+
+		gpumat::deriv_conv2D(gA0, gdA1, ct::Size(12, 12), ct::Size(8, 8), ct::Size(5, 5), 1,
+							 gdW_out, gradB, &blocks);
+
+		gpumat::convert_to_mat(gdW_out, tmp);
+		qDebug("deriv_conv2D: B=%f", gradB);
+		PRINT_IMAGE(tmp, 5, 5);
+	}
 	qDebug("END GPUMAT TEST");
 }
 

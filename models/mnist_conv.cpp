@@ -2,6 +2,8 @@
 
 #include "mnist_utils.h"
 
+#include "qt_work_mat.h"
+
 using namespace ct;
 
 const int imageWidth = 28;
@@ -613,6 +615,11 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 				cnv.backward< Matf (*)(const Matf& mat) >(dsi, derivRelu);
 				di.push_back(cnv.DltA0);
+
+//				qt_work_mat::q_save_mat(cnv.gradW[0], "gradW.txt");
+//				qt_work_mat::q_save_mat(cnv.dA1[0], "dA1.txt");
+//				qt_work_mat::q_save_mat(cnv.A1[0], "A1.txt");
+//				qt_work_mat::q_save_mat(cnv.A0, "A0.txt");
 //				for(int k = 0; k < cnv.W.size(); ++k){
 //					std::string sw = cnv.W[k];
 //					qDebug("W[%d:%d]:\n%s", j, k, sw.c_str());

@@ -144,7 +144,8 @@ void deriv_conv2D(const GpuMat& A0,
 				  const ct::Size &szW,
 				  int stride,
 				  GpuMat &gradW,
-				  float &gradB);
+				  float &gradB,
+				  GpuMat *pblock = nullptr);
 
 /**
  * @brief deriv_conv2D
@@ -164,7 +165,7 @@ void deriv_conv2D(const GpuMat & A0,
 				  const ct::Size &szW,
 				  int stride,
 				  std::vector< GpuMat > &gradW,
-				  std::vector< float > &gradB);
+				  std::vector< float > &gradB, std::vector<GpuMat> *pblocks = nullptr);
 
 /**
  * @brief deriv_prev_cnv

@@ -33,6 +33,10 @@ public:
 	int weight_size;
 	nn::AdamOptimizer<T> m_optim;
 
+	tvmat gradW;
+	std::vector< T > gradB;
+	std::vector< ct::Mat_<T> > dA2, dA1;
+
 	void setWeightSize(int ws){
 		weight_size = ws;
 		if(W.size())
@@ -111,13 +115,10 @@ public:
 	void backward(const std::vector< ct::Mat_<T> >& Delta, Func func){
 		if(!m_init)
 			throw new std::invalid_argument("convnn::backward: not initialized");
-		std::vector< ct::Mat_<T> > dA2, dA1, dA0;
 		nn::upsample(Delta, szA2, szA1, Masks, dA2);
 
 		back2conv(A1, dA2, dA1, func);
 
-		tvmat gradW;
-		std::vector< T > gradB;
 		ct::Size szW(weight_size, weight_size);
 
 		nn::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
