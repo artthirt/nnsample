@@ -736,14 +736,16 @@ void mnist_train::init_gpu(int seed)
 
 		Matf Wi = Matf(input, output);
 		Matf bi = Matf::ones(output, 1);
-		Wi.randn(0., n);
-		bi.randn(0, n);
+		Wi.randn(0., 0.1);
+		bi.randn(0, 0.1);
 
 		gpumat::convert_to_gpu(Wi, m_gW[i]);
 		gpumat::convert_to_gpu(bi, m_gb[i]);
 
 		input = output;
 	}
+
+	m_gpu_adam.init(m_gW, m_gb);
 }
 
 void mnist_train::pass_batch_gpu(int batch)
@@ -809,7 +811,7 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 		m_DropoutT.resize(m_dropout_count);
 	}
 
-	int max_layers = m_dropout_count;//std::min((int)(m_layers.size() - 2), m_dropout_count);
+	int max_layers = std::min((int)(m_layers.size() - 2), m_dropout_count);
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		if(i < (size_t)max_layers){

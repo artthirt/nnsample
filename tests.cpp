@@ -416,7 +416,7 @@ void internal_test_gpu()
 		PRINT_IMAGE(tmp, 5, 5);
 	}
 
-	if(1){
+	if(0){
 		std::vector< ct::Matf > dA1, gW, W;
 		std::vector< float> b;
 		ct::Matf A0, D;

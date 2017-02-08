@@ -133,27 +133,26 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	std::vector<int> layers2, layers3, cnv_layers, ws;
 //	layers2.push_back(600);
-//	layers2.push_back(500);
-	layers2.push_back(400);
-	layers2.push_back(100);
+	layers2.push_back(500);
+	layers2.push_back(200);
 	layers2.push_back(100);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
 	m_mnist_train.setMnist(&m_mnist);
-	m_mnist_train.init_weights();
+	m_mnist_train.init_weights(time(0));
 
 //	layers3.push_back(500);
 	layers3.push_back(400);
 	layers3.push_back(200);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(3);
-//	cnv_layers.push_back(2);
+	cnv_layers.push_back(10);
+	cnv_layers.push_back(4);
 //	cnv_layers.push_back(1);
 
 	ws.push_back(5);
-//	ws.push_back(5);
+	ws.push_back(5);
 //	ws.push_back(3);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
@@ -341,7 +340,8 @@ void MainWindow::pass_cnv()
 {
 //	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
-	m_mnist_cnv.pass_batch(100, ui->chb_use_gpu_cnv->isChecked());
+	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 400,
+						   ui->chb_use_gpu_cnv->isChecked());
 //	on_pb_update_cnv_clicked();
 
 	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());

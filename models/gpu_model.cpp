@@ -91,6 +91,8 @@ void gpu_model::init_gpu(const std::vector< int >& layers, int seed)
 		input = output;
 	}
 
+	m_gpu_adam.init(m_gW, m_gb);
+
 	m_init = true;
 }
 

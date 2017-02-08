@@ -801,7 +801,7 @@ __global__ void adamgrad(Mtx A, const Mtx mA, const Mtx vA, T alpha, T sb1, T sb
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
 
-	const T eps = 1e-8;
+	const T eps = 10e-8;
 
 	T* dA = (T*)A.data;
 	T* dmA = (T*)mA.data;

@@ -43,7 +43,7 @@ AdamOptimizer::AdamOptimizer()
 	m_alpha = 0.001;
 	m_betha1 = 0.9;
 	m_betha2 = 0.99;
-	m_iteration = 0;
+	m_iteration = 1;
 	m_init_matB = false;
 	m_init_singleB = false;
 }
@@ -89,6 +89,7 @@ bool AdamOptimizer::empty() const
 
 bool AdamOptimizer::init(const std::vector<GpuMat> &gradW, const std::vector<GpuMat> &gradB)
 {
+	qDebug("init...");
 	m_iteration = 0;
 
 	m_mW.resize(gradW.size());
@@ -244,6 +245,7 @@ void SimpleAutoencoder::init(GpuMat &_W, GpuMat &_b, int samples, int neurons, S
 	b[1].resize(samples, 1, _W.type);
 	b[1].zeros();
 
+	adam.init(W, b);
 	//		W[0].randn(0, 0.1, 1);
 	//		b[0].randn(0, 0.1, 1);
 	//		W[1].randn(0, 0.1, 1);

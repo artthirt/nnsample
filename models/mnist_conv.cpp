@@ -428,6 +428,8 @@ void mnist_conv::init(int seed)
 	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_len)){
 		std::cout << "optimizer not init\n";
 	}
+
+	m_gpu_model.init_gpu(m_layers, seed);
 }
 
 Matf mnist_conv::forward(const ct::Matf &X, bool use_gpu)
