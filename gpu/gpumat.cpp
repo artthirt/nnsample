@@ -19,6 +19,11 @@ GpuMat::GpuMat()
 
 GpuMat::GpuMat(int rows, int cols, int type)
 {
+	this->rows = 0;
+	this->cols = 0;
+	this->type = 0;
+	this->data = nullptr;
+
 	if(rows && cols){
 		this->rows = rows;
 		this->cols = cols;
@@ -33,6 +38,11 @@ GpuMat::GpuMat(int rows, int cols, int type)
 
 GpuMat::GpuMat(int rows, int cols, int type, void *data)
 {
+	this->rows = 0;
+	this->cols = 0;
+	this->type = 0;
+	this->data = nullptr;
+
 	if(rows && cols && data){
 		this->rows = rows;
 		this->cols = cols;
@@ -54,6 +64,7 @@ GpuMat::GpuMat(const GpuMat &mat)
 	rows = mat.rows;
 	cols = mat.cols;
 	type = mat.type;
+	data = nullptr;
 
 	if(mat.data){
 		cudaError_t err = cudaMalloc((void**)&data, mat.size());
@@ -187,7 +198,7 @@ void GpuMat::resize(const GpuMat &mat)
 	assert(err == cudaSuccess);
 }
 
-void GpuMat::copyTo(GpuMat &mat)
+void GpuMat::copyTo(GpuMat &mat) const
 {
 	if(empty())
 		return;
@@ -308,7 +319,7 @@ void GpuMat::save(const std::string filename) const
 void GpuMat::release()
 {
 	rows = cols = type = 0;
-	if(data){
+	if(data != nullptr){
 		cudaError_t err = cudaFree(data);
 		assert(err == cudaSuccess);
 		data = nullptr;

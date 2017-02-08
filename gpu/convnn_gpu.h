@@ -47,7 +47,7 @@ public:
 
 	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, etypefunction func);
 
-	void backward(const std::vector< gpumat::GpuMat >& Delta, gpumat::etypefunction func);
+	void backward(const std::vector< gpumat::GpuMat >& Delta, gpumat::etypefunction func, int first = -1, int last = -1);
 
 	void hconcat(const std::vector< convnn > &cnv, gpumat::GpuMat & _out);
 
@@ -55,6 +55,7 @@ public:
 private:
 	bool m_init;
 
+	GpuMat m_tmp1;
 	std::vector< gpumat::GpuMat  > dA2, dA1;
 	std::vector< gpumat::GpuMat  > slice;
 };
@@ -124,7 +125,8 @@ void upsample(const std::vector< GpuMat > &A1,
 			  ct::Size& szA1,
 			  const ct::Size& szA0,
 			  const std::vector< GpuMat > &Masks,
-			  std::vector< GpuMat >& A0);
+			  std::vector< GpuMat >& A0,
+			  int first = -1, int last = -1);
 
 /**
  * @brief deriv_conv2D

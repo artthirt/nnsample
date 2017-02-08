@@ -363,12 +363,9 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
-           <widget class="QPushButton" name="pb_update_weight">
+           <widget class="QCheckBox" name="chb_use_gpu_cnv">
             <property name="text">
-             <string>Random Update weights</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
+             <string>use gpu</string>
             </property>
            </widget>
           </item>
@@ -457,7 +454,7 @@
      <x>0</x>
      <y>0</y>
      <width>1104</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

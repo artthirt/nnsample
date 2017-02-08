@@ -17,6 +17,7 @@ mnist_conv::mnist_conv()
 	m_count_cnvW.push_back(3);
 //	m_count_cnvW.push_back(1);
 	m_conv_length = (int)m_count_cnvW.size();
+	m_seed = 1;
 
 	setConvLength(m_count_cnvW);
 }
@@ -53,65 +54,10 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW, std::vector<i
 		szA0 = m_cnv[i][0].szA2;
 		prev = m_count_cnvW[i] * prev;
 	}
-}
 
-void mnist_conv::random_update_weights()
-{
-	double l2, acc, l2n, accn;
-	getEstimate(200, l2, acc);
-	save_weights();
-
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		for(size_t j = 0; j < m_cnv[i].size(); ++j){
-			m_cnv[i][j].update_random();
-		}
-	}
-
-	for(size_t i = 0; i < m_W.size(); ++i){
-		m_W[i].randn(0, 0.1);
-		m_b[i].randn(0, 0.1);
-	}
-
-	getEstimate(200, l2n, accn);
-
-	if(accn < acc){
-		restore_weights();
-	}
-}
-
-void mnist_conv::save_weights()
-{
-
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		for(size_t j = 0; j < m_cnv[i].size(); ++j){
-			m_cnv[i][j].save_weight();
-		}
-	}
-
-	m_prevW.resize(m_W.size());
-	m_prevb.resize(m_b.size());
-
-	for(size_t i = 0; i < m_prevW.size(); ++i){
-		m_W[i].copyTo(m_prevW[i]);
-		m_b[i].copyTo(m_prevb[i]);
-	}
-}
-
-void mnist_conv::restore_weights()
-{
-	if(m_prevW.size() || m_prevb.size())
-		return;
-
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		for(size_t j = 0; j < m_cnv[i].size(); ++j){
-			m_cnv[i][j].restore_weights();
-		}
-	}
-
-	for(size_t i = 0; i < m_prevW.size(); ++i){
-		m_prevW[i].copyTo(m_W[i]);
-		m_prevb[i].copyTo(m_b[i]);
-	}
+#ifdef _USE_GPU
+	m_gpu_model.setConvLength(count_cnvW, weight_sizes);
+#endif
 }
 
 std::vector<std::vector<convnn::convnn<float> > > &mnist_conv::cnv()
@@ -135,17 +81,17 @@ std::vector<std::vector<Matf> > mnist_conv::cnvW()
 	return res;
 }
 
-Matf mnist_conv::forward(int index, int count)
+Matf mnist_conv::forward(int index, int count, bool use_gpu)
 {
 	if(m_W.empty() || m_b.empty() || m_layers.empty())
 		return Matf(0, 0);
 
 	Matf X = m_mnist->X().getRows(index, count);
 
-	return forward(X);
+	return forward(X, use_gpu);
 }
 
-Matf mnist_conv::forward_test(int index, int count)
+Matf mnist_conv::forward_test(int index, int count, bool use_gpu)
 {
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return Matf(0, 0);
@@ -164,7 +110,7 @@ Matf mnist_conv::forward_test(int index, int count)
 		}
 	}
 
-	return forward(X);
+	return forward(X, use_gpu);
 }
 
 void mnist_conv::setAlpha(double alpha)
@@ -176,19 +122,23 @@ void mnist_conv::setAlpha(double alpha)
 			m_cnv[i][j].setAlpha(alpha);
 		}
 	}
+
+	m_gpu_model.setAlpha(alpha);
 }
 
 void mnist_conv::setLayers(const std::vector<int> &layers)
 {
 	m_layers = layers;
+
+	m_gpu_model.setLayers(layers);
 }
 
 uint mnist_conv::iteration() const
 {
-	return m_iteration;
+	return m_use_gpu? m_gpu_model.iteration() : m_iteration;
 }
 
-void mnist_conv::getEstimate(int batch, double &l2, double &accuracy)
+void mnist_conv::getEstimate(int batch, double &l2, double &accuracy, bool use_gpu)
 {
 	if(m_mnist->X().empty() || m_mnist->y().empty())
 		return;
@@ -198,7 +148,7 @@ void mnist_conv::getEstimate(int batch, double &l2, double &accuracy)
 
 	getXy(X, yp, batch);
 
-	Matf y = forward(X);
+	Matf y = forward(X, use_gpu);
 
 	double m = X.rows;
 
@@ -221,7 +171,7 @@ void mnist_conv::getEstimate(int batch, double &l2, double &accuracy)
 	accuracy = (double)right / m;
 }
 
-void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
+void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu)
 {
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
@@ -229,7 +179,7 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 	Matf X, yp;
 	getXyTest(X, yp, batch);
 
-	Matf y = forward(X);
+	Matf y = forward(X, use_gpu);
 
 	float m = X.rows;
 
@@ -252,7 +202,7 @@ void mnist_conv::getEstimateTest(int batch, double &l2, double &accuracy)
 	accuracy = (double)right / m;
 }
 
-void mnist_conv::pass_batch(int batch)
+void mnist_conv::pass_batch(int batch, bool use_gpu)
 {
 	if(!batch || !m_mnist || !m_mnist->train().size() || m_mnist->train().size() < batch)
 		return;
@@ -276,7 +226,19 @@ void mnist_conv::pass_batch(int batch)
 		translate<float>(x, y, 28, 28, Xi);
 	}
 
-	pass_batch(X, y);
+	m_use_gpu = use_gpu;
+	if(!use_gpu){
+		pass_batch(X, y);
+	}else{
+		gpumat::convert_to_gpu(X, gX);
+		gpumat::convert_to_gpu(y, gY);
+
+		if(!m_gpu_model.isInit()){
+			m_gpu_model.init_gpu(m_layers, 1);
+		}
+
+		m_gpu_model.pass_batch_gpu(gX, gY);
+	}
 
 }
 
@@ -454,10 +416,17 @@ void mnist_conv::init(int seed)
 	}
 }
 
-Matf mnist_conv::forward(const ct::Matf &X)
+Matf mnist_conv::forward(const ct::Matf &X, bool use_gpu)
 {
 	if(m_W.empty() || m_b.empty() || m_layers.empty())
 		return Matf(0, 0);
+
+	m_use_gpu = use_gpu;
+	if(use_gpu){
+		if(!m_gpu_model.isInit())
+			m_gpu_model.init_gpu(m_layers, m_seed);
+		return m_gpu_model.forward_gpu(X);
+	}
 
 	Matf X_out;
 

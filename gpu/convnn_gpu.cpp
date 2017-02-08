@@ -61,7 +61,7 @@ void convnn::forward(const GpuMat &mat, etypefunction func)
 {
 	if(!m_init)
 		throw new std::invalid_argument("convnn::forward: not initialized");
-	A0 = mat;
+	mat.copyTo(A0);
 	gpumat::conv2D(A0, szA0, stride, W, B, A1, func);
 	ct::Size sztmp;
 	gpumat::subsample(A1, szA1, A2, Masks, sztmp);
@@ -86,11 +86,11 @@ void convnn::back2conv(const convnn::tvmat &A1, const convnn::tvmat &dA2, convnn
 	}
 }
 
-void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func)
+void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int first, int last)
 {
 	if(!m_init)
 		throw new std::invalid_argument("convnn::backward: not initialized");
-	gpumat::upsample(Delta, szA2, szA1, Masks, dA2);
+	gpumat::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
 
 	back2conv(A1, dA2, dA1, func);
 
@@ -110,10 +110,9 @@ void convnn::hconcat(const std::vector<convnn> &cnv, GpuMat &_out)
 	if(cnv.empty())
 		return;
 
+	slice.resize(cnv.size());
 	for(size_t i = 0; i < cnv.size(); ++i){
-		GpuMat res;
-		gpumat::hconcat(cnv[i].A2, res);
-		slice.push_back(res);
+		gpumat::hconcat(cnv[i].A2, slice[i]);
 	}
 	gpumat::hconcat(slice, _out);
 }
@@ -243,14 +242,21 @@ void upsample(const GpuMat &A1, const ct::Size &szA1,
 	cuda_upsample(A1, szA1, szA0, Mask, A0);
 }
 
-void upsample(const std::vector<GpuMat> &A1, ct::Size &szA1, const ct::Size &szA0, const std::vector<GpuMat> &Masks, std::vector<GpuMat> &A0)
+void upsample(const std::vector<GpuMat> &A1, ct::Size &szA1, const ct::Size &szA0, const std::vector<GpuMat> &Masks, std::vector<GpuMat> &A0, int first, int last)
 {
 	if(A1.empty() || Masks.empty())
 		throw new std::invalid_argument("gpumat::upsample: invalid parameters");
-	A0.resize(A1.size());
 
-	for(size_t i = 0; i < A1.size(); i++){
-		upsample(A1[i], szA1, szA0, Masks[i], A0[i]);
+	if(first >= 0 && last > first){
+		A0.resize(last - first);
+	}else{
+		A0.resize(A1.size());
+		first = 0;
+		last = A1.size();
+	}
+
+	for(size_t i = first, j = 0; i < last; ++i, ++j){
+		upsample(A1[i], szA1, szA0, Masks[j], A0[j]);
 	}
 }
 

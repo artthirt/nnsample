@@ -10,6 +10,7 @@ class gpu_model
 public:
 	gpu_model();
 
+	bool isInit() const;
 	/**
 	 * @brief setConvLength
 	 * @param count_cnvW
@@ -26,7 +27,7 @@ public:
 	 * @brief init_gpu
 	 * @param seed
 	 */
-	void init_gpu(std::vector<int> &layers, int seed);
+	void init_gpu(const std::vector<int> &layers, int seed);
 	/**
 	 * @brief pass_batch_gpu
 	 * @param X
@@ -35,12 +36,16 @@ public:
 	void pass_batch_gpu(const gpumat::GpuMat& X, const gpumat::GpuMat& y);
 
 	uint iteration() const;
+	void setAlpha(double val);
+
+	void setLayers(const std::vector<int> &layers);
 
 private:
 	std::vector< int > m_layers;
 	std::vector< std::vector< gpumat::convnn > > m_cnv;
 	gpumat::convnn m_adds;
 	std::vector< int > m_count_cnvW;
+	bool m_init;
 
 	int m_conv_length;
 	uint m_iteration;
@@ -61,7 +66,7 @@ private:
 	std::vector< gpumat::GpuMat > m_gb;
 	std::vector< gpumat::GpuMat > g_z, g_a;
 	std::vector< gpumat::GpuMat > g_dW, g_dB;
-	std::vector< gpumat::GpuMat > ds;
+	std::vector< std::vector< gpumat::GpuMat > > ds;
 
 	std::vector< gpumat::SimpleAutoencoder > enc_gpu;
 

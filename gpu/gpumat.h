@@ -57,7 +57,7 @@ public:
 	void resize(const ct::Size& sz, int type);
 	void resize(const GpuMat& mat);
 
-	void copyTo(GpuMat& mat);
+	void copyTo(GpuMat& mat) const;
 
 	void setData(void* data);
 	void getData(void *data) const;

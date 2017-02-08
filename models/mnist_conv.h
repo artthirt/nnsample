@@ -9,6 +9,8 @@
 
 #include <random>
 
+#include "gpu_model.h"
+
 class mnist_conv
 {
 public:
@@ -18,7 +20,7 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward(const ct::Matf& X);
+	ct::Matf forward(const ct::Matf& X, bool use_gpu);
 	/**
 	 * @brief forward
 	 * @param index
@@ -26,7 +28,7 @@ public:
 	 * @param use_gpu
 	 * @return
 	 */
-	ct::Matf forward(int index, int count);
+	ct::Matf forward(int index, int count, bool use_gpu = false);
 	/**
 	 * @brief forward_test
 	 * @param index
@@ -34,7 +36,7 @@ public:
 	 * @param use_gpu
 	 * @return
 	 */
-	ct::Matf forward_test(int index, int count);
+	ct::Matf forward_test(int index, int count, bool use_gpu = false);
 	/**
 	 * @brief setAlpha
 	 * @param alpha
@@ -57,7 +59,7 @@ public:
 	 * @param accuracy
 	 * @param use_gpu
 	 */
-	void getEstimate(int batch, double &l2, double &accuracy);
+	void getEstimate(int batch, double &l2, double &accuracy, bool use_gpu = false);
 	/**
 	 * @brief getEstimateTest
 	 * @param batch
@@ -65,7 +67,7 @@ public:
 	 * @param accuracy
 	 * @param use_gpu
 	 */
-	void getEstimateTest(int batch, double &l2, double &accuracy);
+	void getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu = false);
 	/**
 	 * @brief init
 	 * @param seed
@@ -75,15 +77,13 @@ public:
 	 * @brief pass_batch
 	 * @param batch
 	 */
-	void pass_batch(int batch);
+	void pass_batch(int batch, bool use_gpu = false);
 	/**
 	 * @brief setMnist
 	 * @param mnist
 	 */
 	void setMnist(mnist_reader* mnist);
 	void setConvLength(const std::vector< int > &count_cnvW, std::vector< int >* weight_sizes = 0);
-
-	void random_update_weights();
 
 	std::vector< std::vector< convnn::convnn<float> > > &cnv();
 
@@ -101,6 +101,11 @@ private:
 	std::mt19937 m_generator;
 	uint m_iteration;
 	int m_conv_length;
+	bool m_use_gpu;
+	int m_seed;
+
+	gpu_model m_gpu_model;
+	gpumat::GpuMat gX, gY;
 
 	ct::Size m_cnv_out_size;
 	int m_cnv_out_len;
@@ -116,10 +121,6 @@ private:
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 
 	void conv(const ct::Matf &X, ct::Matf &X_out, bool saved = true);
-
-	void save_weights();
-	void restore_weights();
-
 };
 
 #endif // MIST_CONV_H

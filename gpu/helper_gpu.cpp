@@ -233,6 +233,9 @@ void AdamOptimizer::init_single(int count, int type, const ct::Size &szW)
 		m_mW[i].resize(szW, type);
 		m_vW[i].resize(szW, type);
 	}
+	sW.resize(count);
+	sB.resize(count);
+
 	m_init = true;
 }
 

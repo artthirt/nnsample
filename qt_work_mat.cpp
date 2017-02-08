@@ -3,6 +3,8 @@
 #include <QFile>
 #include <QString>
 
+#include "helper_gpu.h"
+
 void qt_work_mat::q_save_mat(const ct::Matf &mat, const QString &filename)
 {
 	if(filename.isEmpty() || mat.empty())
@@ -88,4 +90,14 @@ void qt_work_mat::q_load_mat(const QString &filename, ct::Matf &mat)
 
 
 	fs.close();
+}
+
+void qt_work_mat::q_save_mat(const gpumat::GpuMat &mat, const QString &filename)
+{
+	if(mat.type != gpumat::GPU_FLOAT || mat.empty())
+		return;
+
+	ct::Matf lmat;
+	gpumat::convert_to_mat(mat, lmat);
+	q_save_mat(lmat, filename);
 }
