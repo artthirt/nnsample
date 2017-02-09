@@ -291,6 +291,13 @@ void test_mat()
 #include "helper_gpu.h"
 #include "convnn_gpu.h"
 
+std::string fromDouble(double val)
+{
+	std::stringstream ss;
+	ss << val;
+	return ss.str();
+}
+
 void internal_test_gpu()
 {
 	ct::Matf A, W1, W2, tmp;
@@ -444,6 +451,21 @@ void internal_test_gpu()
 
 		nn::deriv_prev_cnv(dA1, W, ct::Size(24, 24), ct::Size(28, 28), D);
 		qt_work_mat::q_save_mat(D, "TestD.txt");
+	}
+
+	if(1){
+		double res = 0;
+		gpumat::GpuMat A0;
+		qt_work_mat::q_load_mat("A0.txt", A0);
+
+		gpumat::reduce(gWs[0], res);
+		qDebug("REDUCE_MAT\n%s", gWs[0].print().c_str());
+		qDebug("REDUCE = %f", res);
+
+		if(!A0.empty()){
+			CALC_MAT(gpumat::reduce(gA, res), fromDouble(res), "REDUCE", 10000);
+		}
+
 	}
 
 	qDebug("END GPUMAT TEST");

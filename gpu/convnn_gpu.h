@@ -198,6 +198,13 @@ void hsplit(const GpuMat& res, int cols, std::vector< GpuMat >& list);
  */
 void hconcat(const std::vector< GpuMat >& list, GpuMat& res);
 
+/**
+ * @brief reduce
+ * @param mat
+ * @param res
+ */
+void reduce(const GpuMat& mat, double& res);
+
 }/* @end gpumat */
 
 #endif // CONVNN_GPU_H

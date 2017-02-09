@@ -37,6 +37,10 @@ namespace gpumat{
 				cols = mat.cols;
 				data = mat.data;
 			}
+
+			__host__ __device__ int total() const{
+				return rows * cols;
+			}
 		};
 
 		struct SmallMtxArray{

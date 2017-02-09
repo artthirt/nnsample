@@ -179,6 +179,9 @@ void cuda_hsplit(const GpuMat &res, std::vector<GpuMat> &list);
 extern "C"
 void cuda_hconcat(const std::vector<GpuMat> &list, GpuMat &res);
 
+extern "C"
+void cuda_reduce_all(const GpuMat& A, double &res);
+
 /////////////////////////////
 
 namespace gpumat{
@@ -372,7 +375,15 @@ void hconcat(const std::vector<GpuMat> &list, GpuMat &res)
 //				dR[i * cols + j * loc_cols + k] = dL[i * loc_cols + k];
 //			}
 //		}
-//	}
+	//	}
+}
+
+void reduce(const GpuMat &mat, double &res)
+{
+	if(mat.empty())
+		throw new std::invalid_argument("reduce: mat is empty");
+
+	cuda_reduce_all(mat, res);
 }
 
 

@@ -399,6 +399,21 @@ __global__ void hconcat(SmallMtxArray List, Mtx Res)
 	}
 }
 
+template< typename T >
+__global__ void reduce_all(T* dIn, int sizeIn, T* dOut, int sizeOut, int block)
+{
+	int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if(col < sizeOut){
+		int id1 = block * col;
+		dOut[col] = 0;
+		int cnt = min(block, sizeIn - id1);
+		for(int i = id1; i < id1 + cnt; ++i){
+			dOut[col] += dIn[i];
+		}
+	}
+}
+
 }/*@internal end*/
 
 }/*@gpumat end*/
@@ -491,6 +506,70 @@ void cuda_reduce_blocks(const GpuMat& Blocks, GpuMat& W, T val)
 	internal::reduce_blocks<T> <<< dimGrid, dimBlock >>>(Blocks, W, val);
 }
 
+template< typename T >
+void cuda_reduce(const GpuMat& mat, T& res)
+{
+#if 1
+	T *res1, *res2;
+
+	int block = 16;
+
+	int size2 = (mat.total() / block + 1);
+	int size2_bytes = size2 * sizeof(T);
+
+	assert(cudaMalloc(&res1, mat.size()) == cudaSuccess);
+	assert(cudaMalloc(&res2, size2_bytes) == cudaSuccess);
+	assert(cudaMemcpy(res1, mat.data, mat.size(), cudaMemcpyDeviceToDevice) == cudaSuccess);
+
+//	std::vector< T > vec;
+//	vec.resize(size2);
+
+	int size1 = mat.total();
+	T *d1 = res1, *d2 = res2;
+	int cnt = mat.total();
+//	if((cnt % 2) == 1)cnt += 1;
+	for(int s = 1; s < cnt; s *= block){
+
+		int x1 = size2 / BLOCKSIZE + 1;
+
+		internal::reduce_all<T> <<< x1, BLOCKSIZE >>>(d1, size1, d2, size2, block);
+
+//		cudaMemcpy(&vec[0], d2, sizeof(T) * size2, cudaMemcpyDeviceToHost);
+
+		std::swap(d1, d2);
+		size1 = size2;
+		size2 = size2 / block + 1;
+
+	}
+
+	cudaMemcpy(&res, d1, sizeof(T), cudaMemcpyDeviceToHost);
+
+	cudaFree(res1);
+	cudaFree(res2);
+#else
+	res = thrust::reduce(thrust::device, (T*)mat.data, (T*)mat.data + mat.total());
+#endif
+}
+
+extern "C"
+void cuda_reduce_all(const GpuMat& A, double &res)
+{
+	if(A.empty())
+		return;
+
+	float resF;
+	switch (A.type) {
+		case gpumat::GPU_DOUBLE:
+			cuda_reduce<double>(A, res);
+			break;
+		case gpumat::GPU_FLOAT:
+			cuda_reduce<float>(A, resF);
+			res = resF;
+			break;
+	}
+
+}
+
 extern "C"
 void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
@@ -518,7 +597,9 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 			internal::deriv_conv2d<double> <<<dimGrid, dimBlock, size_shared >>>(A0, gradA1, szA0, szA1,
 																   gradW, stride, blocks);
 			cuda_reduce_blocks<double>(blocks, gradW, 1./gradA1.rows);
-			double val = thrust::reduce(thrust::device, (double*)gradA1.data, (double*)gradA1.data + gradA1.total());
+			//double val = thrust::reduce(thrust::device, (double*)gradA1.data, (double*)gradA1.data + gradA1.total());
+			double val;
+			cuda_reduce<double>(gradA1, val);
 			val /= gradA1.total();
 			gradB = val;
 			break;
@@ -529,7 +610,9 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 //			std::cout << blocks.print() << std::endl;
 //			std::cout << blocks.print() << std::endl << A0.print() << std::endl << gradA1.print() << std::endl;
 			cuda_reduce_blocks<float>(blocks, gradW, 1.f/gradA1.rows);
-			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());
+//			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());
+			float val;
+			cuda_reduce<float>(gradA1, val);
 			val /= gradA1.total();
 			gradB = val;
 			break;
