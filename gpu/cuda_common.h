@@ -47,7 +47,7 @@ namespace gpumat{
 //			enum {maxcount = 64};
 			SmallMtxArray(){
 				count = 0;
-				mtx = nullptr;
+				mtx = 0;
 			}
 			~SmallMtxArray(){
 				if(mtx){
@@ -68,7 +68,7 @@ namespace gpumat{
 				std::vector< Mtx > tmp;
 				tmp.resize(count);
 
-				for(int i = 0; i < count; ++i){
+				for(size_t i = 0; i < count; ++i){
 					tmp[i] = gmat[i];
 				}
 				cudaMemcpy(mtx, &tmp[0], sz, cudaMemcpyHostToDevice);
