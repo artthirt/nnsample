@@ -216,7 +216,7 @@ private:
 	std::vector< T > m_mbn;
 	std::vector< T > m_vbn;
 
-	void init_simple(int len, const ct::Size& sz){
+	void init_simple(size_t len, const ct::Size& sz){
 		m_mW.resize(len);
 		m_vW.resize(len);
 		m_mbn.resize(len);
@@ -744,12 +744,12 @@ void hconcat(const std::vector< ct::Mat_<T> >& list, ct::Mat_<T>& res)
  * @param list
  */
 template< typename T >
-void hsplit(const ct::Mat_<T>& res, int cols, std::vector< ct::Mat_<T> >& list)
+void hsplit(const ct::Mat_<T>& res, size_t cols, std::vector< ct::Mat_<T> >& list)
 {
 	if(res.empty() || (res.cols % cols) != 0)
 		throw new std::invalid_argument("hsplit: wrong parameters");
 
-	int len = res.cols / cols;
+	size_t len = res.cols / cols;
 
 	list.resize(cols);
 

@@ -59,8 +59,8 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 	_W *= (1./(m1 - m2));
 	_W *= 255.;
 
-	float *dW1 = W.ptr();
-	float *dW2 = prevW.ptr();
+//	float *dW1 = W.ptr();
+//	float *dW2 = prevW.ptr();
 
 	QPen pen;
 	pen.setWidth(2);
@@ -73,8 +73,8 @@ void draw_W(QPainter& painter, const ct::Matf& W, const ct::Matf& prevW, int _x,
 			painter.setBrush(QColor(c, c, c));
 			painter.drawRect(rt);
 
-			float v1 = dW1[y * W.cols + x];
-			float v2 = dW2[y * W.cols + x];
+//			float v1 = dW1[y * W.cols + x];
+//			float v2 = dW2[y * W.cols + x];
 
 //			if(is_prev && std::abs(v2 - v1) > 1e-9){
 //				float val = 100 + 2000 * std::abs((v2 - v1)/(m1 - m2));

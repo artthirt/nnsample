@@ -38,7 +38,7 @@ public:
 		return m_prop;
 	}
 
-	int shared_memory() const{
+	size_t shared_memory() const{
 		return m_prop.sharedMemPerBlock;
 	}
 

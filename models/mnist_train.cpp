@@ -478,7 +478,7 @@ void mnist_train::init_weights(int seed)
 {
 	init(seed);
 #ifdef _USE_GPU
-	init_gpu(seed);
+	init_gpu();
 
 	if(g_z.size() != m_layers.size()){
 		g_z.resize(m_layers.size());
@@ -718,7 +718,7 @@ Matf mnist_train::forward_gpu(const Matf &X)
 	return a;
 }
 
-void mnist_train::init_gpu(int seed)
+void mnist_train::init_gpu()
 {
 	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size())
 		return;
@@ -732,7 +732,7 @@ void mnist_train::init_gpu(int seed)
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
-		double n = 1./sqrt(input);
+//		double n = 1./sqrt(input);
 
 		Matf Wi = Matf(input, output);
 		Matf bi = Matf::ones(output, 1);

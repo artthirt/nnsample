@@ -43,7 +43,7 @@ public:
 			init(W.size(), szA0);
 	}
 
-	void init(int count_weight, const ct::Size& _szA0){
+	void init(size_t count_weight, const ct::Size& _szA0){
 		W.resize(count_weight);
 		B.resize(count_weight);
 

@@ -248,7 +248,7 @@ void mnist_conv::pass_batch(int batch, bool use_gpu)
 		gpumat::convert_to_gpu(y, gY);
 
 		if(!m_gpu_model.isInit()){
-			m_gpu_model.init_gpu(m_layers, m_seed);
+			m_gpu_model.init_gpu(m_layers);
 		}
 
 		m_gpu_model.pass_batch_gpu(gX, gY);
@@ -429,7 +429,7 @@ void mnist_conv::init(int seed)
 		std::cout << "optimizer not init\n";
 	}
 
-	m_gpu_model.init_gpu(m_layers, seed);
+	m_gpu_model.init_gpu(m_layers);
 }
 
 Matf mnist_conv::forward(const ct::Matf &X, bool use_gpu)
@@ -440,7 +440,7 @@ Matf mnist_conv::forward(const ct::Matf &X, bool use_gpu)
 	m_use_gpu = use_gpu;
 	if(use_gpu){
 		if(!m_gpu_model.isInit())
-			m_gpu_model.init_gpu(m_layers, m_seed);
+			m_gpu_model.init_gpu(m_layers);
 		return m_gpu_model.forward_gpu(X);
 	}
 
@@ -475,10 +475,10 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 			m0.forward(X, reLu);
 		}else{
 			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
-				int off1 = j * m_count_cnvW[i - 1];
+				size_t off1 = j * m_count_cnvW[i - 1];
 				convnn::convnn< float >& m0 = m_cnv[i - 1][j];
 				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
-					int col = off1 + k;
+					size_t col = off1 + k;
 					convnn::convnn< float >& mi = ls[col];
 					mi.forward(m0.A2[k], reLu);
 				}

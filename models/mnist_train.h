@@ -134,7 +134,7 @@ public:
 	 * @brief init_gpu
 	 * @param seed
 	 */
-	void init_gpu(int seed);
+	void init_gpu();
 	/**
 	 * @brief pass_batch_gpu
 	 * @param batch

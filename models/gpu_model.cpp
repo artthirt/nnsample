@@ -57,7 +57,7 @@ ct::Matf gpu_model::forward_gpu(const ct::Matf &X)
 	return a;
 }
 
-void gpu_model::init_gpu(const std::vector< int >& layers, int seed)
+void gpu_model::init_gpu(const std::vector< int >& layers)
 {
 	if(!layers.size())
 		return;
@@ -82,8 +82,8 @@ void gpu_model::init_gpu(const std::vector< int >& layers, int seed)
 
 		Matf Wi = Matf(input, output);
 		Matf bi = Matf::ones(output, 1);
-		Wi.randn(0., n, seed);
-		bi.randn(0, n, seed);
+		Wi.randn(0., n);
+		bi.randn(0, n);
 
 		gpumat::convert_to_gpu(Wi, m_gW[i]);
 		gpumat::convert_to_gpu(bi, m_gb[i]);
@@ -192,13 +192,13 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 			if(i > 0)
 				ds[i - 1].resize(lrs.size());
 
-			int kidx = 0;
-			int nidx = 0;
+			size_t kidx = 0;
+			size_t nidx = 0;
 
 			for(size_t j = 0; j < lrs.size(); ++j){
 				gpumat::convnn &cnv = lrs[j];
 
-				int kfirst = kidx;
+				size_t kfirst = kidx;
 //				for(size_t k = 0; k < cnv.W.size(); ++k){
 //					ds[i][kidx++] = ds[i + 1][j * cnv.W.size() + k];
 //					//dsi.push_back(ds[j * cnv.W.size() + k]);
@@ -241,7 +241,7 @@ void gpu_model::setAlpha(double val)
 
 void gpu_model::setLayers(const std::vector<int> &layers)
 {
-	init_gpu(layers, 1);
+	init_gpu(layers);
 }
 
 std::vector<std::vector<gpumat::convnn> > &gpu_model::cnv()
@@ -262,10 +262,10 @@ void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
 			m0.forward(X, gpumat::RELU);
 		}else{
 			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
-				int off1 = j * m_count_cnvW[i - 1];
+				size_t off1 = j * m_count_cnvW[i - 1];
 				gpumat::convnn& m0 = m_cnv[i - 1][j];
-				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
-					int col = off1 + k;
+				for(size_t k = 0; k < m_count_cnvW[i - 1]; ++k){
+					size_t col = off1 + k;
 					gpumat::convnn& mi = ls[col];
 					mi.forward(m0.A2[k], gpumat::RELU);
 				}

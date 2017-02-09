@@ -27,7 +27,7 @@ public:
 	 * @brief init_gpu
 	 * @param seed
 	 */
-	void init_gpu(const std::vector<int> &layers, int seed);
+	void init_gpu(const std::vector<int> &layers);
 	/**
 	 * @brief pass_batch_gpu
 	 * @param X

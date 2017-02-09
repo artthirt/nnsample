@@ -108,7 +108,7 @@ private:
 	gpumat::GpuMat gX, gY;
 
 	ct::Size m_cnv_out_size;
-	int m_cnv_out_len;
+	size_t m_cnv_out_len;
 
 	nn::AdamOptimizer<float> m_AdamOptimizer;
 

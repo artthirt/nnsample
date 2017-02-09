@@ -61,7 +61,7 @@ namespace gpumat{
 
 				count = gmat.size();
 
-				int sz = sizeof(Mtx) * count;
+				size_t sz = sizeof(Mtx) * count;
 
 				cudaMalloc(&mtx, sz);
 
