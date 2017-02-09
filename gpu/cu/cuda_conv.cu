@@ -151,26 +151,24 @@ __global__ void subsample(Mtx A0, Mtx A1, Mtx Mask, ct::Size szA0, ct::Size szA1
 		T *dMi = &dM[row * Mask.cols];
 		T *dA1i = &dA1[row * A1.cols];
 
-		T maximum = -99999999;
-		int xm = -1, ym = -1;
+		T maximum = dA0i[(y) * szA0.width + (x)];
+		int xm = x, ym = y;
 		for(int a = 0; a < kLen; ++a){
 			if(y + a < szA0.height){
 				for(int b = 0; b < kLen; ++b){
 					if(x + b < szA0.width){
-						dMi[(y + a) * szA0.width + (x + b)] = 0;
+//						dMi[(y + a) * szA0.width + (x + b)] = 0;
 						T val = dA0i[(y + a) * szA0.width + (x + b)];
 						if(val > maximum){
-							xm = x + b; ym = y + b;
+							xm = x + b; ym = y + a;
 							maximum = val;
 						}
 					}
 				}
 			}
 		}
-		if(xm >= 0 && ym >= 0){
-			dMi[ym * szA0.width + xm] = 1;
-			dA1i[yr * szA1.width + xr] = maximum;
-		}
+		dMi[ym * szA0.width + xm] = 1;
+		dA1i[yr * szA1.width + xr] = maximum;
 	}
 }
 
@@ -461,6 +459,8 @@ void cuda_subsample(const GpuMat &A0,
 	int x2 = A1.rows / BLOCKSIZE + 1;
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
+
+	gpumat::memset(Mask, 0);
 
 	switch (A0.type) {
 	case GPU_DOUBLE:

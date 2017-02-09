@@ -97,7 +97,16 @@ void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int 
 		throw new std::invalid_argument("convnn::backward: not initialized");
 	gpumat::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
 
+//	for(int i = first; i < last; ++i){
+//		qt_work_mat::q_save_mat(Delta[i], QString("_Delta_%1.txt").arg(i));
+//	}
+
 	back2conv(A1, dA2, dA1, func);
+
+//	for(int i = 0; i < dA2.size(); ++i){
+//		qt_work_mat::q_save_mat(Masks[i], QString("_Masks_%1.txt").arg(i));
+//		qt_work_mat::q_save_mat(dA2[i], QString("_dA2_%1.txt").arg(i));
+//	}
 
 	tvmat gradW;
 	std::vector< GpuMat > gradB;
