@@ -44,22 +44,38 @@ namespace gpumat{
 		};
 
 		struct SmallMtxArray{
-			enum {maxcount = 64};
+//			enum {maxcount = 64};
 			SmallMtxArray(){
 				count = 0;
+				mtx = nullptr;
 			}
-			SmallMtxArray(const std::vector< GpuMat >& gmat){
-				if(maxcount < gmat.size())
-					throw new std::invalid_argument("not enough size of array for store matrices");
-
-				count = gmat.size();
-				for(int i = 0; i < count; ++i){
-					mtx[i] = gmat[i];
+			~SmallMtxArray(){
+				if(mtx){
+					cudaFree(mtx);
 				}
 			}
 
-			int count;
-			internal::Mtx mtx[maxcount];
+			SmallMtxArray(const std::vector< GpuMat >& gmat){
+//				if(maxcount < gmat.size())
+//					throw new std::invalid_argument("not enough size of array for store matrices");
+
+				count = gmat.size();
+
+				int sz = sizeof(Mtx) * count;
+
+				cudaMalloc(&mtx, sz);
+
+				std::vector< Mtx > tmp;
+				tmp.resize(count);
+
+				for(int i = 0; i < count; ++i){
+					tmp[i] = gmat[i];
+				}
+				cudaMemcpy(mtx, &tmp[0], sz, cudaMemcpyHostToDevice);
+			}
+
+			size_t count;
+			internal::Mtx *mtx;
 		};
 		template< typename T>
 		struct SmallSingleArray{
@@ -88,7 +104,7 @@ namespace gpumat{
 				}
 			}
 
-			int count;
+			size_t count;
 			T values[maxcount];
 		};
 

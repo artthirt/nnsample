@@ -304,13 +304,18 @@ void internal_test_gpu()
 	conv_mat(A, W1, W2);
 	gpumat::GpuMat gA, gAi, gMi, gAi2, gD;
 	std::vector< gpumat::GpuMat > gWs, gA1;
-	std::vector< float > bs;
+	std::vector< gpumat::GpuMat > bs;
 	gWs.resize(2);
-	bs.resize(2, 0);
+	bs.resize(2);
 	gpumat::convert_to_gpu(A, gA);
 	gpumat::convert_to_gpu(W1, gWs[0]);
 	gpumat::convert_to_gpu(W2, gWs[1]);
 	ct::Size szA0(ww, hh);
+
+	bs[0].resize(1, 1, gpumat::GPU_FLOAT);
+	bs[0].zeros();
+	bs[1].resize(1, 1, gpumat::GPU_FLOAT);
+	bs[1].zeros();
 
 	ct::Size szO = gpumat::conv2D(gA, szA0, 1, gWs, bs, gA1), szAi;
 
@@ -343,7 +348,7 @@ void internal_test_gpu()
 
 	std::vector< gpumat::GpuMat > derivs, ws;
 	gpumat::GpuMat ggW;
-	float ggB;
+	gpumat::GpuMat ggB;
 	derivs.push_back(gAi2);
 	ws.push_back(gWs[0]);
 
@@ -404,8 +409,8 @@ void internal_test_gpu()
 
 	if(0){
 		ct::Matf gradW, A0, A1, dA1;
-		gpumat::GpuMat gdW, gA0, gA1, gdA1, gdW_out, blocks;
-		float gradB;
+		gpumat::GpuMat gA0, gA1, gdA1, gdW_out, blocks;
+		gpumat::GpuMat gradB;
 		qt_work_mat::q_load_mat("gradW.txt", gradW);
 		qt_work_mat::q_load_mat("A0.txt", A0);
 		qt_work_mat::q_load_mat("A1.txt", A1);
@@ -454,16 +459,18 @@ void internal_test_gpu()
 	}
 
 	if(1){
-		double res = 0;
+		gpumat::GpuMat res;
 		gpumat::GpuMat A0;
+		float tmp;
 		qt_work_mat::q_load_mat("A0.txt", A0);
 
 		gpumat::reduce(gWs[0], res);
+		res.getData(&tmp);
 		qDebug("REDUCE_MAT\n%s", gWs[0].print().c_str());
-		qDebug("REDUCE = %f", res);
+		qDebug("REDUCE = %f", tmp);
 
 		if(!A0.empty()){
-			CALC_MAT(gpumat::reduce(gA, res), fromDouble(res), "REDUCE", 10000);
+			CALC_MAT(gpumat::reduce(gA, res), res.print(), "REDUCE", 10000);
 		}
 
 	}

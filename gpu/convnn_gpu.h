@@ -21,8 +21,7 @@ public:
 	tvmat A1;
 	tvmat A2;
 	tvmat W;
-	tvmat prevW;
-	std::vector< float > B;
+	tvmat B;
 	tvmat Masks;
 	ct::Size szA0;
 	ct::Size szA1;
@@ -64,7 +63,7 @@ ct::Size conv2D(const GpuMat& A0,
 			const ct::Size& szI,
 			int stride,
 			const std::vector< GpuMat >& W,
-			const std::vector<float> B,
+			const std::vector< GpuMat > B,
 			std::vector< GpuMat > &A1,
 			etypefunction func = RELU);
 
@@ -146,7 +145,7 @@ void deriv_conv2D(const GpuMat& A0,
 				  const ct::Size &szW,
 				  int stride,
 				  GpuMat &gradW,
-				  float &gradB,
+				  GpuMat &gradB,
 				  GpuMat *pblock = nullptr);
 
 /**
@@ -167,7 +166,7 @@ void deriv_conv2D(const GpuMat & A0,
 				  const ct::Size &szW,
 				  int stride,
 				  std::vector< GpuMat > &gradW,
-				  std::vector< float > &gradB, std::vector<GpuMat> *pblocks = nullptr);
+				  std::vector<GpuMat> &gradB, std::vector<GpuMat> *pblocks = nullptr);
 
 /**
  * @brief deriv_prev_cnv
@@ -203,7 +202,7 @@ void hconcat(const std::vector< GpuMat >& list, GpuMat& res);
  * @param mat
  * @param res
  */
-void reduce(const GpuMat& mat, double& res);
+void reduce(const GpuMat& mat, GpuMat &res);
 
 }/* @end gpumat */
 

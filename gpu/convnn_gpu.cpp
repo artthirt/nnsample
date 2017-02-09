@@ -33,7 +33,7 @@ void convnn::init(int count_weight, const ct::Size &_szA0)
 
 	update_random();
 
-	m_optim.init_single(W);
+	m_optim.init(W, B);
 
 	m_init = true;
 }
@@ -41,10 +41,11 @@ void convnn::init(int count_weight, const ct::Size &_szA0)
 void convnn::update_random()
 {
 	for(size_t i = 0; i < W.size(); ++i){
-		ct::Matf Wi(weight_size, weight_size);
+		ct::Matf Wi(weight_size, weight_size), Bi(1, 1);
 		Wi.randn(0, 0.1);
 		gpumat::convert_to_gpu(Wi, W[i]);
-		B[i] = 0.1;
+		Bi.randn(0, 0.1);
+		gpumat::convert_to_gpu(Bi, B[i]);
 	}
 }
 
@@ -99,7 +100,7 @@ void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int 
 	back2conv(A1, dA2, dA1, func);
 
 	tvmat gradW;
-	std::vector< float > gradB;
+	std::vector< GpuMat > gradB;
 	ct::Size szW(weight_size, weight_size);
 
 	gpumat::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
@@ -145,7 +146,7 @@ void cuda_conv2d(const GpuMat &A0,
 				 const ct::Size &szO,
 				 int stride,
 				 const std::vector<GpuMat> &W,
-				 const std::vector<float> B,
+				 const std::vector<GpuMat> B,
 				 std::vector<GpuMat> &A1,
 				 etypefunction func);
 
@@ -164,7 +165,7 @@ void cuda_upsample(const GpuMat &A1, const ct::Size &szA1,
 extern "C"
 void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
-				  int stride, GpuMat &gradW, float &gradB,
+				  int stride, GpuMat &gradW, GpuMat &gradB,
 					   GpuMat* pblock);
 
 extern "C"
@@ -180,7 +181,7 @@ extern "C"
 void cuda_hconcat(const std::vector<GpuMat> &list, GpuMat &res);
 
 extern "C"
-void cuda_reduce_all(const GpuMat& A, double &res);
+void cuda_reduce_all(const GpuMat& A, GpuMat &res);
 
 /////////////////////////////
 
@@ -190,7 +191,7 @@ ct::Size conv2D(const GpuMat &A0,
 			const ct::Size &szI,
 			int stride,
 			const std::vector<GpuMat> &W,
-			const std::vector<float> B,
+			const std::vector<GpuMat> B,
 			std::vector<GpuMat> &A1,
 			etypefunction func)
 {
@@ -284,14 +285,14 @@ void upsample(const std::vector<GpuMat> &A1, ct::Size &szA1, const ct::Size &szA
 void deriv_conv2D(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
 				  const ct::Size &szW, int stride,
-				  GpuMat &gradW, float &gradB, GpuMat *pblock)
+				  GpuMat &gradW, GpuMat &gradB, GpuMat *pblock)
 {
 	if(A0.empty() || gradA1.empty() || !stride){
 		std::cout << "gpumat::deriv_conv2D wrong parameters\n";
 	}
 
 	gradW.resize(szW.height, szW.width, A0.type);
-	gradB = 0;
+	gradB.resize(1, 1, A0.type);
 
 	memset(gradW, 0);
 
@@ -308,7 +309,7 @@ void deriv_conv2D(const GpuMat &A0,
 				  const ct::Size &szA1,
 				  const ct::Size &szW,
 				  int stride,
-				  std::vector<GpuMat> &gradW, std::vector<float> &gradB,
+				  std::vector<GpuMat> &gradW, std::vector<GpuMat> &gradB,
 				  std::vector<GpuMat> *pblocks)
 {
 	if(A0.empty() || gradA1.empty())
@@ -378,10 +379,12 @@ void hconcat(const std::vector<GpuMat> &list, GpuMat &res)
 	//	}
 }
 
-void reduce(const GpuMat &mat, double &res)
+void reduce(const GpuMat &mat, GpuMat &res)
 {
 	if(mat.empty())
 		throw new std::invalid_argument("reduce: mat is empty");
+
+	res.resize(1, 1, mat.type);
 
 	cuda_reduce_all(mat, res);
 }

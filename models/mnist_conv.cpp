@@ -248,7 +248,7 @@ void mnist_conv::pass_batch(int batch, bool use_gpu)
 		gpumat::convert_to_gpu(y, gY);
 
 		if(!m_gpu_model.isInit()){
-			m_gpu_model.init_gpu(m_layers, 1);
+			m_gpu_model.init_gpu(m_layers, m_seed);
 		}
 
 		m_gpu_model.pass_batch_gpu(gX, gY);

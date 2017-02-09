@@ -78,7 +78,7 @@ inline __device__ T deriv_reLu(T val)
 template< typename T >
 __global__ void conv2d(Mtx A0, SmallMtxArray W, SmallMtxArray A1,
 					   ct::Size szI, ct::Size szO, int stride,
-					   SmallSingleArray<T> B, etypefunction func)
+					   SmallMtxArray B, etypefunction func)
 {
 	int row = threadIdx.y + blockIdx.y * blockDim.y;
 	int col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -107,6 +107,7 @@ __global__ void conv2d(Mtx A0, SmallMtxArray W, SmallMtxArray A1,
 			Mtx A1I = A1.mtx[w];
 			T *dA1 = (T*)A1I.data;
 			T *dA1i = &dA1[row * A1I.cols];
+			T *dBi = (T*)B.mtx[w].data;
 
 			T *dW = (T*)Wi.data;
 			T sum = 0;
@@ -120,7 +121,7 @@ __global__ void conv2d(Mtx A0, SmallMtxArray W, SmallMtxArray A1,
 				}
 			}
 
-			sum += B.values[w];
+			sum += dBi[0];
 			sum = _func(sum);
 			dA1i[col] = sum;
 		}
@@ -425,7 +426,7 @@ void cuda_conv2d(const GpuMat &A0,
 				 const ct::Size &szI, const ct::Size &szO,
 				 int stride,
 				 const std::vector<GpuMat> &W,
-				 const std::vector<float> B,
+				 const std::vector<GpuMat> B,
 				 std::vector<GpuMat> &A1,
 				 etypefunction func)
 {
@@ -434,16 +435,14 @@ void cuda_conv2d(const GpuMat &A0,
 
 	dim3 dimGrid(x1, x2), dimBlock(BLOCKSIZE, BLOCKSIZE);
 
-	internal::SmallMtxArray sW(W), sA1(A1);
+	internal::SmallMtxArray sW(W), sA1(A1), sB(B);
 
 	switch (A0.type) {
 		case GPU_DOUBLE:{
-			internal::SmallSingleArray<double> sB(B);
 			internal::conv2d<double> <<<dimGrid, dimBlock>>>(A0, sW, sA1, szI, szO, stride, sB, func);
 			break;
 		}
 		case GPU_FLOAT:{
-			internal::SmallSingleArray<float> sB(B);
 			internal::conv2d<float> <<<dimGrid, dimBlock>>>(A0, sW, sA1, szI, szO, stride, sB, func);
 			break;
 		}
@@ -507,7 +506,7 @@ void cuda_reduce_blocks(const GpuMat& Blocks, GpuMat& W, T val)
 }
 
 template< typename T >
-void cuda_reduce(const GpuMat& mat, T& res)
+void cuda_reduce(const GpuMat& mat, GpuMat& res)
 {
 #if 1
 	T *res1, *res2;
@@ -544,7 +543,8 @@ void cuda_reduce(const GpuMat& mat, T& res)
 
 	}
 
-	cudaMemcpy(&res, d1, sizeof(T), cudaMemcpyDeviceToHost);
+	cudaMemcpy(res.data, d1, sizeof(T), cudaMemcpyDeviceToDevice);
+//	cudaMemcpy(&vec[0], d1, sizeof(T), cudaMemcpyDeviceToHost);
 
 	cudaFree(res1);
 	cudaFree(res2);
@@ -554,19 +554,17 @@ void cuda_reduce(const GpuMat& mat, T& res)
 }
 
 extern "C"
-void cuda_reduce_all(const GpuMat& A, double &res)
+void cuda_reduce_all(const GpuMat& A, GpuMat &res)
 {
 	if(A.empty())
 		return;
 
-	float resF;
 	switch (A.type) {
 		case gpumat::GPU_DOUBLE:
 			cuda_reduce<double>(A, res);
 			break;
 		case gpumat::GPU_FLOAT:
-			cuda_reduce<float>(A, resF);
-			res = resF;
+			cuda_reduce<float>(A, res);
 			break;
 	}
 
@@ -576,7 +574,7 @@ extern "C"
 void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 				  const ct::Size &szA0, const ct::Size &szA1,
 				  int stride,
-				  GpuMat &gradW, float &gradB, GpuMat *pblocks)
+				  GpuMat &gradW, GpuMat &gradB, GpuMat *pblocks)
 {
 	int blocksize = 8;
 	int x1 = gradA1.cols / blocksize + 1;
@@ -600,10 +598,7 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 																   gradW, stride, blocks);
 			cuda_reduce_blocks<double>(blocks, gradW, 1./gradA1.rows);
 			//double val = thrust::reduce(thrust::device, (double*)gradA1.data, (double*)gradA1.data + gradA1.total());
-			double val;
-			cuda_reduce<double>(gradA1, val);
-			val /= gradA1.total();
-			gradB = val;
+			cuda_reduce<double>(gradA1, gradB);
 			break;
 		}
 		case GPU_FLOAT:{
@@ -613,14 +608,11 @@ void cuda_deriv_conv2d(const GpuMat &A0, const GpuMat &gradA1,
 //			std::cout << blocks.print() << std::endl << A0.print() << std::endl << gradA1.print() << std::endl;
 			cuda_reduce_blocks<float>(blocks, gradW, 1.f/gradA1.rows);
 //			float val = thrust::reduce(thrust::device, (float*)gradA1.data, (float*)gradA1.data + gradA1.total());
-			float val;
-			cuda_reduce<float>(gradA1, val);
-			val /= gradA1.total();
-			gradB = val;
+			cuda_reduce<float>(gradA1, gradB);
 			break;
 		}
 	}
-//	gpumat::mulval(gradW, (double)1./gradA1.rows);
+	gpumat::mulval(gradB, (double)1./gradA1.total());
 
 }
 

@@ -77,7 +77,7 @@ public:
 		for(int i = 0; i < W.size(); ++i){
 			W[i].setSize(weight_size, weight_size);
 			W[i].randn(0, 0.1);
-			B[i] = 0.1;
+			B[i] = (T)0.1;
 		}
 	}
 
