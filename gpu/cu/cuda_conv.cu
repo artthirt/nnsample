@@ -512,20 +512,20 @@ void cuda_reduce(const GpuMat& mat, T& res)
 #if 1
 	T *res1, *res2;
 
-	int block = 16;
+	int block = 32;
 
 	int size2 = (mat.total() / block + 1);
 	int size2_bytes = size2 * sizeof(T);
 
-	assert(cudaMalloc(&res1, mat.size()) == cudaSuccess);
+	assert(cudaMalloc(&res1, size2_bytes) == cudaSuccess);
 	assert(cudaMalloc(&res2, size2_bytes) == cudaSuccess);
-	assert(cudaMemcpy(res1, mat.data, mat.size(), cudaMemcpyDeviceToDevice) == cudaSuccess);
+//	assert(cudaMemcpy(res1, mat.data, mat.size(), cudaMemcpyDeviceToDevice) == cudaSuccess);
 
 //	std::vector< T > vec;
 //	vec.resize(size2);
 
 	int size1 = mat.total();
-	T *d1 = res1, *d2 = res2;
+	T *d1 = (T*)mat.data, *d2 = res2;
 	int cnt = mat.total();
 //	if((cnt % 2) == 1)cnt += 1;
 	for(int s = 1; s < cnt; s *= block){
@@ -535,6 +535,8 @@ void cuda_reduce(const GpuMat& mat, T& res)
 		internal::reduce_all<T> <<< x1, BLOCKSIZE >>>(d1, size1, d2, size2, block);
 
 //		cudaMemcpy(&vec[0], d2, sizeof(T) * size2, cudaMemcpyDeviceToHost);
+		if(d1 == (T*)mat.data)
+			d1 = res1;
 
 		std::swap(d1, d2);
 		size1 = size2;
