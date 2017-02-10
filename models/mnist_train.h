@@ -29,7 +29,7 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward(const ct::Matf& X, bool use_dropout = false);
+	ct::Matf forward(const ct::Matf& X, bool use_dropout = false, bool use_gpu = false);
 	/**
 	 * @brief forward
 	 * @param index
@@ -76,7 +76,7 @@ public:
 	 * @param accuracy
 	 * @param use_gpu
 	 */
-	void getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu = false);
+	void getEstimateTest(double &l2, double &accuracy, bool use_gpu = false);
 	/**
 	 * @brief init
 	 * @param seed
@@ -172,7 +172,7 @@ private:
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 
 	void getX(ct::Matf& X, int batch);
-	void getXyTest(ct::Matf &X, ct::Matf &yp, int batch);
+	void getXyTest(ct::Matf &X, ct::Matf &yp, int batch, bool use_rand = true, int beg = -1);
 	void getXy(ct::Matf& X, ct::Matf& y, int batch);
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 	void randX(ct::Matf& X);

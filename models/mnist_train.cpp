@@ -37,11 +37,7 @@ Matf mnist_train::forward(int index, int count, bool use_gpu)
 
 	Matf X = m_mnist->X().getRows(index, count);
 
-#ifdef _USE_GPU
-	if(use_gpu)
-		return forward_gpu(X);
-#endif
-	return forward(X);
+	return forward(X, false, use_gpu);
 }
 
 Matf mnist_train::forward_test(int index, int count, bool use_gpu)
@@ -63,11 +59,7 @@ Matf mnist_train::forward_test(int index, int count, bool use_gpu)
 		}
 	}
 
-#ifdef _USE_GPU
-	if(use_gpu)
-		return forward_gpu(X);
-#endif
-	return forward(X);
+	return forward(X, false, use_gpu);
 }
 
 void mnist_train::setAlpha(double alpha)
@@ -98,17 +90,8 @@ void mnist_train::getEstimate(int batch, double &l2, double &accuracy, bool use_
 
 	getXy(X, yp, batch);
 
-#ifdef _USE_GPU
-	Matf y;
+	Matf y = forward(X, false, use_gpu);
 
-	if(use_gpu){
-		y = forward_gpu(X);
-	}else{
-		y = forward(X);
-	}
-#else
-	Matf y = forward(X);
-#endif
 	double m = X.rows;
 
 	Matf d = yp - y;
@@ -130,45 +113,49 @@ void mnist_train::getEstimate(int batch, double &l2, double &accuracy, bool use_
 	accuracy = (double)right / m;
 }
 
-void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu)
+void mnist_train::getEstimateTest(double &l2, double &accuracy, bool use_gpu)
 {
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
 
-	Matf X, yp;
-	getXyTest(X, yp, batch);
+	size_t batch_count = 10;
+	size_t test_size = m_mnist->test().size();
 
-#ifdef _USE_GPU
-	Matf y;
+	size_t batch_size = test_size / batch_count;
 
-	if(use_gpu){
-		y = forward_gpu(X);
-	}else{
-		y = forward(X);
-	}
-#else
-	Matf y = forward(X);
-#endif
-
-	float m = X.rows;
-
-	Matf d = yp - y;
-
-	elemwiseMult(d, d);
-	d = sumRows(d);
-	d *= 1.f/m;
-
-	//////////// l2
-	l2 = d.sum();
-
+	l2 = 0;
 	int right = 0;
-	for(int i = 0; i < m; i++){
-		int k1 = y.argmax(i, 1);
-		int k2 = yp.argmax(i, 1);
-		right += (int)(k1 == k2);
+
+	for(size_t i = 0; i < batch_count; ++i){
+
+		Matf X, yp;
+		getXyTest(X, yp, batch_size, false, i * batch_size);
+
+		Matf y = forward(X, false, use_gpu);
+
+		Matf d = yp - y;
+
+		int m = X.rows;
+
+		elemwiseMult(d, d);
+		d = sumRows(d);
+		d *= 1.f/m;
+
+		//////////// l2
+		l2 += d.sum();
+
+		for(int i = 0; i < m; i++){
+			int k1 = y.argmax(i, 1);
+			int k2 = yp.argmax(i, 1);
+			right += (int)(k1 == k2);
+		}
+
 	}
+
+	l2 /= (double)batch_count;
+
 	///////////// accuracy
-	accuracy = (double)right / m;
+	accuracy = (double)right / test_size;
 }
 
 void mnist_train::init(int seed)
@@ -479,27 +466,47 @@ void mnist_train::getX(Matf &X, int batch)
 	X = m_mnist->X().getRows(indexes);
 }
 
-void mnist_train::getXyTest(Matf &X, Matf &yp, int batch)
+void mnist_train::getXyTest(Matf &X, Matf &yp, int batch, bool use_rand, int beg)
 {
 	if(batch < 0)
 		batch = m_mnist->test().size();
 
-	std::vector<int> indexes;
+	if(use_rand){
 
-	getBatchIds(indexes, batch);
+		std::vector<int> indexes;
 
-	X = Matf::zeros(batch, m_mnist->X().cols);
-	yp = Matf::zeros(batch, m_mnist->y().cols);
+		getBatchIds(indexes, batch);
 
-	for(int i = 0; i < batch; i++){
-		int id = indexes[i];
-		QByteArray& data = m_mnist->test()[id];
-		uint lb = m_mnist->lb_test()[id];
+		X = Matf::zeros(batch, m_mnist->X().cols);
+		yp = Matf::zeros(batch, m_mnist->y().cols);
 
-		for(int j = 0; j < data.size(); j++){
-			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		for(int i = 0; i < batch; i++){
+			int id = indexes[i];
+			QByteArray& data = m_mnist->test()[id];
+			uint lb = m_mnist->lb_test()[id];
+
+			for(int j = 0; j < data.size(); j++){
+				X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+			}
+			yp.at(i, lb) = 1.;
 		}
-		yp.at(i, lb) = 1.;
+	}else{
+		int cnt_batch = std::min(m_mnist->test().size() - beg, batch);
+
+		X = Matf::zeros(cnt_batch, m_mnist->X().cols);
+		yp = Matf::zeros(cnt_batch, m_mnist->y().cols);
+
+		int id = beg;
+		for(int i = 0; i < cnt_batch; i++, id++){
+			QByteArray& data = m_mnist->test()[id];
+			uint lb = m_mnist->lb_test()[id];
+
+			for(int j = 0; j < data.size(); j++){
+				X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+			}
+			yp.at(i, lb) = 1.;
+		}
+
 	}
 }
 
@@ -586,10 +593,18 @@ void mnist_train::getBatchIds(std::vector<int> &indexes, int batch)
 
 ///*************************
 
-Matf mnist_train::forward(const ct::Matf &X, bool use_dropout)
+Matf mnist_train::forward(const ct::Matf &X, bool use_dropout, bool use_gpu)
 {
 	if(m_mlp.empty() || m_layers.empty())
 		return Matf(0, 0);
+
+#ifdef _USE_GPU
+	if(use_gpu)
+		return forward_gpu(X);
+#endif
+
+	/////////////////
+
 	m_X = X;
 
 //	qDebug("---CPU---");
