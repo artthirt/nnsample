@@ -149,7 +149,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	layers3.push_back(10);
 
 	cnv_layers.push_back(3);
-	cnv_layers.push_back(1);
+	cnv_layers.push_back(5);
 //	cnv_layers.push_back(3);
 
 	ws.push_back(5);
