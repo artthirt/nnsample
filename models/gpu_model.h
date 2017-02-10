@@ -68,7 +68,7 @@ private:
 	std::vector< gpumat::GpuMat > m_gb;
 	std::vector< gpumat::GpuMat > g_z, g_a;
 	std::vector< gpumat::GpuMat > g_dW, g_dB;
-	std::vector< std::vector< gpumat::GpuMat > > ds;
+	std::vector< gpumat::GpuMat > ds;
 
 	std::vector< gpumat::SimpleAutoencoder > enc_gpu;
 

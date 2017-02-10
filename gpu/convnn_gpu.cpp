@@ -12,7 +12,7 @@ convnn::convnn()
 	stride = 1;
 	weight_size = 3;
 	m_init = false;
-
+	pA0 = nullptr;
 }
 
 void convnn::setWeightSize(int ws)
@@ -56,18 +56,19 @@ void convnn::setAlpha(double alpha)
 
 void convnn::clear()
 {
-	A0.free();
+	pA0 = nullptr;
+//	A0.free();
 	A1.clear();
 	A1.clear();
 	Masks.clear();
 }
 
-void convnn::forward(const GpuMat &mat, etypefunction func)
+void convnn::forward(const GpuMat *mat, etypefunction func)
 {
-	if(!m_init)
-		throw new std::invalid_argument("convnn::forward: not initialized");
-	mat.copyTo(A0);
-	gpumat::conv2D(A0, szA0, stride, W, B, A1, func);
+	if(!m_init || !mat)
+		throw new std::invalid_argument("convnn::forward: not initialized. wrong parameters");
+	pA0 = (GpuMat*)mat;//mat.copyTo(A0);
+	gpumat::conv2D(*pA0, szA0, stride, W, B, A1, func);
 	ct::Size sztmp;
 	gpumat::subsample(A1, szA1, A2, Masks, sztmp);
 }
@@ -91,9 +92,9 @@ void convnn::back2conv(const convnn::tvmat &A1, const convnn::tvmat &dA2, convnn
 	}
 }
 
-void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int first, int last)
+void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int first, int last, bool last_layer)
 {
-	if(!m_init)
+	if(!m_init || !pA0)
 		throw new std::invalid_argument("convnn::backward: not initialized");
 	gpumat::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
 
@@ -108,13 +109,12 @@ void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int 
 //		qt_work_mat::q_save_mat(dA2[i], QString("_dA2_%1.txt").arg(i));
 //	}
 
-	tvmat gradW;
-	std::vector< GpuMat > gradB;
 	ct::Size szW(weight_size, weight_size);
 
-	gpumat::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+	gpumat::deriv_conv2D(*pA0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
-	gpumat::deriv_prev_cnv(dA1, W, szA1, szA0, stride, DltA0);
+	if(!last_layer)
+		gpumat::deriv_prev_cnv(dA1, W, szA1, szA0, stride, DltA0);
 
 //	for(int i = 0; i < gradW.size(); ++i){
 //		std::stringstream ss;
@@ -133,6 +133,22 @@ void convnn::backward(const std::vector<GpuMat> &Delta, etypefunction func, int 
 	m_optim.pass(gradW, gradB, W, B);
 }
 
+void convnn::backward(const std::vector<convnn> &Delta, etypefunction func, int first, int last, bool last_layer)
+{
+	if(!m_init || !pA0)
+		throw new std::invalid_argument("convnn::backward: not initialized");
+	convnn::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
+	back2conv(A1, dA2, dA1, func);
+
+	ct::Size szW(weight_size, weight_size);
+
+	gpumat::deriv_conv2D(*pA0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+
+	if(!last_layer)
+		gpumat::deriv_prev_cnv(dA1, W, szA1, szA0, stride, DltA0);
+	m_optim.pass(gradW, gradB, W, B);
+}
+
 void convnn::hconcat(const std::vector<convnn> &cnv, GpuMat &_out)
 {
 	if(cnv.empty())
@@ -143,6 +159,24 @@ void convnn::hconcat(const std::vector<convnn> &cnv, GpuMat &_out)
 		gpumat::hconcat(cnv[i].A2, slice[i]);
 	}
 	gpumat::hconcat(slice, _out);
+}
+
+void convnn::upsample(const std::vector<convnn> &A1, ct::Size &szA1, const ct::Size &szA0, const std::vector<GpuMat> &Masks, std::vector<GpuMat> &A0, int first, int last)
+{
+	if(A1.empty() || Masks.empty())
+		throw new std::invalid_argument("gpumat::upsample: invalid parameters");
+
+	if(first >= 0 && last > first){
+		A0.resize(last - first);
+	}else{
+		A0.resize(A1.size());
+		first = 0;
+		last = A1.size();
+	}
+
+	for(size_t i = first, j = 0; i < last; ++i, ++j){
+		gpumat::upsample(A1[i].DltA0, szA1, szA0, Masks[j], A0[j]);
+	}
 }
 
 /////////////////////////////////////////

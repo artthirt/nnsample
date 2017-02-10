@@ -178,7 +178,7 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 	{
 		ds.resize(m_cnv.size());
 
-		gpumat::hsplit(g_d[0], m_cnv.back().size() * m_cnv.back()[0].W.size(), ds.back());
+		gpumat::hsplit(g_d[0], m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
 
 //		for(int i = 0; i < ds.back().size(); ++i){
 //			qt_work_mat::q_save_mat(ds.back()[i], QString("ds_%1.txt").arg(i));
@@ -189,11 +189,11 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 
 //			qDebug("LR[%d]-----", i);
 
-			if(i > 0)
-				ds[i - 1].resize(lrs.size());
+//			if(i > 0)
+//				ds[i - 1].resize(lrs.size());
 
 			size_t kidx = 0;
-			size_t nidx = 0;
+//			size_t nidx = 0;
 
 			for(size_t j = 0; j < lrs.size(); ++j){
 				gpumat::convnn &cnv = lrs[j];
@@ -209,9 +209,12 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 //					qt_work_mat::q_save_mat(ds[i + 1][l], QString::number(l) + "_dsi.txt");
 //				}
 
-				cnv.backward(ds[i], gpumat::RELU, kfirst, kidx);
-				if(i > 0)
-					ds[i - 1][nidx++] = cnv.DltA0;
+				if(i == m_cnv.size() - 1)
+					cnv.backward(ds, gpumat::RELU, kfirst, kidx, i == 0);
+				else
+					cnv.backward(m_cnv[i + 1], gpumat::RELU, kfirst, kidx, i == 0);
+//				if(i > 0)
+//					ds[i - 1][nidx++] = cnv.DltA0;
 			}
 		}
 	}
@@ -259,7 +262,7 @@ void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
 
 		if(i == 0){
 			gpumat::convnn& m0 = ls[0];
-			m0.forward(X, gpumat::RELU);
+			m0.forward(&X, gpumat::RELU);
 		}else{
 			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
 				size_t off1 = j * m_count_cnvW[i - 1];
@@ -267,7 +270,7 @@ void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
 				for(size_t k = 0; k < m_count_cnvW[i - 1]; ++k){
 					size_t col = off1 + k;
 					gpumat::convnn& mi = ls[col];
-					mi.forward(m0.A2[k], gpumat::RELU);
+					mi.forward(&m0.A2[k], gpumat::RELU);
 				}
 			}
 		}

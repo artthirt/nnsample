@@ -16,7 +16,7 @@ public:
 
 	convnn();
 
-	gpumat::GpuMat A0;
+	gpumat::GpuMat *pA0;
 	gpumat::GpuMat DltA0;
 	tvmat A1;
 	tvmat A2;
@@ -40,21 +40,33 @@ public:
 
 	void clear();
 
-	void forward(const gpumat::GpuMat & mat, gpumat::etypefunction func);
+	void forward(const GpuMat *mat, gpumat::etypefunction func);
 
 	void apply_func(const GpuMat& A, GpuMat& B, etypefunction func);
 
 	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, etypefunction func);
 
-	void backward(const std::vector< gpumat::GpuMat >& Delta, gpumat::etypefunction func, int first = -1, int last = -1);
+	void backward(const std::vector< gpumat::GpuMat >& Delta, gpumat::etypefunction func,
+				  int first = -1, int last = -1, bool last_layer = false);
+	void backward(const std::vector< convnn >& Delta, gpumat::etypefunction func,
+				  int first = -1, int last = -1, bool last_layer = false);
 
 	void hconcat(const std::vector< convnn > &cnv, gpumat::GpuMat & _out);
 
+	void upsample(const std::vector< convnn > &A1,
+				  ct::Size& szA1,
+				  const ct::Size& szA0,
+				  const std::vector< GpuMat > &Masks,
+				  std::vector< GpuMat >& pA0,
+				  int first = -1, int last = -1);
 
 private:
 	bool m_init;
 
 	GpuMat m_tmp1;
+	tvmat gradW;
+	tvmat gradB;
+
 	std::vector< gpumat::GpuMat  > dA2, dA1;
 	std::vector< gpumat::GpuMat  > slice;
 };
