@@ -133,9 +133,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	std::vector<int> layers2, layers3, cnv_layers, ws;
 //	layers2.push_back(600);
-	layers2.push_back(500);
-	layers2.push_back(200);
-	layers2.push_back(100);
+	layers2.push_back(170);
+	layers2.push_back(140);
+	layers2.push_back(120);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -148,8 +148,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	layers3.push_back(300);
 	layers3.push_back(10);
 
+	cnv_layers.push_back(10);
 	cnv_layers.push_back(3);
-	cnv_layers.push_back(5);
 //	cnv_layers.push_back(3);
 
 	ws.push_back(5);

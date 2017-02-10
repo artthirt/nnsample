@@ -6,6 +6,7 @@
 #include "nn.h"
 #include "custom_types.h"
 #include "mnist_reader.h"
+#include "mlp.h"
 
 #ifdef _USE_GPU
 #include "gpumat.h"
@@ -28,7 +29,7 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward(const ct::Matf& X) const;
+	ct::Matf forward(const ct::Matf& X, bool use_dropout = false);
 	/**
 	 * @brief forward
 	 * @param index
@@ -156,13 +157,13 @@ public:
 
 private:
 	std::vector< int > m_layers;
-	std::vector< ct::Matf > m_W;
-	std::vector< ct::Matf > m_b;
+	std::vector< ct::mlp<float> > m_mlp;
+	ct::Matf m_X;
 	mnist_reader* m_mnist;
 	float m_lambda;
 	uint m_iteration;
 
-	nn::AdamOptimizer<float> m_AdamOptimizer;
+	ct::AdamMlp<float> m_optim;
 
 	std::vector< nn::SimpleAutoencoder<float> > enc;
 
@@ -175,6 +176,9 @@ private:
 	void getXy(ct::Matf& X, ct::Matf& y, int batch);
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 	void randX(ct::Matf& X);
+
+	void setDropout(size_t count, float prob);
+	void clearDropout();
 
 #ifdef _USE_GPU
 	int m_dropout_count;

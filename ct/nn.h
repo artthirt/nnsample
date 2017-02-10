@@ -1,7 +1,8 @@
 #ifndef NN_H
 #define NN_H
 
-#include <custom_types.h>
+#include "custom_types.h"
+
 #include <vector>
 #include <exception>
 
@@ -59,33 +60,31 @@ public:
 		return m_iteration;
 	}
 
-	bool init(const std::vector< int >& layers, int samples){
-		if(!samples || layers.empty())
+	bool init(const std::vector< ct::Mat_<T> >& W, const std::vector< ct::Mat_<T> >& B){
+		if(W.empty() || B.empty())
 			return false;
 
 		using namespace ct;
 
 		m_iteration = 0;
 
-		int input = samples;
-		int output = layers[0];
+		m_mW.resize(W.size());
+		m_mb.resize(W.size());
 
-		m_mW.resize(layers.size());
-		m_mb.resize(layers.size());
+		m_vW.resize(W.size());
+		m_vb.resize(W.size());
 
-		m_vW.resize(layers.size());
-		m_vb.resize(layers.size());
+		for(size_t i = 0; i < W.size(); i++){
 
-		for(size_t i = 0; i < layers.size(); i++){
-			output = layers[i];
+			m_mW[i].setSize(W[i].size());
+			m_vW[i].setSize(W[i].size());
+			m_mW[i].fill(0);
+			m_vW[i].fill(0);
 
-			m_mW[i] = Mat_<T>::zeros(input, output);
-			m_vW[i] = Mat_<T>::zeros(input, output);
-
-			m_mb[i] = Mat_<T>::zeros(output, 1);
-			m_vb[i] = Mat_<T>::zeros(output, 1);
-
-			input = output;
+			m_mb[i].setSize(B[i].size());
+			m_vb[i].setSize(B[i].size());
+			m_mb[i].fill(0);
+			m_vb[i].fill(0);
 		}
 		m_init = true;
 		return true;
@@ -306,8 +305,9 @@ public:
 	T m_alpha;
 	int m_neurons;
 
-	ct::Mat_<T> W[2];
-	ct::Mat_<T> b[2];
+	std::vector< ct::Mat_<T> > W;
+	std::vector< ct::Mat_<T> > b;
+	std::vector< ct::Mat_<T> > dW, db;
 
 	tfunc func;
 	tfunc deriv;
@@ -322,7 +322,12 @@ public:
 		std::vector< int > layers;
 		layers.push_back(neurons);
 		layers.push_back(samples);
-		adam.init(layers, samples);
+
+		W.resize(2);
+		b.resize(2);
+
+		dW.resize(2);
+		db.resize(2);
 
 		W[0] = _W;
 		b[0] = _b;
@@ -330,6 +335,7 @@ public:
 		W[1] = _W.t();
 		b[1] = Mat_<T>::zeros(samples, 1);
 
+		adam.init(W, b);
 //		W[0].randn(0, 0.1, 1);
 //		b[0].randn(0, 0.1, 1);
 //		W[1].randn(0, 0.1, 1);
@@ -342,7 +348,7 @@ public:
 		using namespace ct;
 
 		Mat_<T> a[3];
-		Mat_<T> z[2], dW[2], db[2], d, di, sz;
+		Mat_<T> z[2], d, di, sz;
 		a[0] = X;
 		for(int i = 0; i < 2; i++){
 			z[i] = a[i] * W[i];
@@ -374,7 +380,7 @@ public:
 		dW[1] = dW[0].t();
 		db[1] = Mat_<T>::zeros(db[1].size());
 
-		adam.pass(dW, db, W, b, 2);
+		adam.pass(dW, db, W, b);
 	}
 	T l2(const ct::Mat_<T>& X) const{
 		using namespace ct;

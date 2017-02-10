@@ -3,6 +3,13 @@
 
 namespace ct{
 
+enum etypefunction{
+	RELU,
+	SOFTMAX,
+	SIGMOID,
+	TANH
+};
+
 struct Size{
 	Size(){
 		width = height = 0;

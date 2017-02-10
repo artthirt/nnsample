@@ -256,7 +256,7 @@ void nnmodel::init_model(int seed)
 		input = output;
 	}
 
-	if(!m_AdamOptimizer.init(m_layers, m_X.cols)){
+	if(!m_AdamOptimizer.init(m_W, m_b)){
 		std::cout << "optimizer not init\n";
 	}
 }

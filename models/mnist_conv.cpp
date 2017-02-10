@@ -461,15 +461,15 @@ void mnist_conv::init(int seed)
 
 		double n = 1./sqrt(input);
 
-		m_W[i] = Matf(input, output);
+		m_W[i].setSize(input, output);
 		m_W[i].randn(0., n, seed);
-		m_b[i] = Matf::ones(output, 1);
+		m_b[i].setSize(output, 1);
 		m_b[i].randn(0, n, seed);
 
 		input = output;
 	}
 
-	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_len)){
+	if(!m_AdamOptimizer.init(m_W, m_b)){
 		std::cout << "optimizer not init\n";
 	}
 
