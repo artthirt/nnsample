@@ -690,14 +690,20 @@ bool upsample(const std::vector< ct::Mat_<T> > &A1,
 			  ct::Size& szA1,
 			  const ct::Size& szA0,
 			  const std::vector< ct::Mat_<T> > &Masks,
-			  std::vector< ct::Mat_<T> >& A0)
+			  std::vector< ct::Mat_<T> >& A0, int first = -1, int last = -1)
 {
 	if(A1.empty() || Masks.empty())
 		return false;
-	A0.resize(A1.size());
+	if(first >= 0 && last > first){
+		A0.resize(last - first);
+	}else{
+		A0.resize(A1.size());
+		first = 0;
+		last = A1.size();
+	}
 
-	for(size_t i = 0; i < A1.size(); i++){
-		if(!upsample(A1[i], szA1, szA0, Masks[i], A0[i]))
+	for(size_t i = first, j = 0; i < last; ++i, ++j){
+		if(!upsample(A1[i], szA1, szA0, Masks[j], A0[j]))
 			return false;
 	}
 	return true;

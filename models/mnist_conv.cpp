@@ -95,6 +95,16 @@ std::vector<std::vector<Matf> > mnist_conv::cnvW()
 	return res;
 }
 
+std::vector<ct::Matf> mnist_conv::getA() const
+{
+	return m_a;
+}
+
+void mnist_conv::setA(const std::vector<ct::Matf> &value)
+{
+	m_a = value;
+}
+
 Matf mnist_conv::forward(int index, int count, bool use_gpu)
 {
 	if(m_W.empty() || m_b.empty() || m_layers.empty())
@@ -506,7 +516,7 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 
 		if(i == 0){
 			convnn::convnn< float >& m0 = ls[0];
-			m0.forward(X, reLu);
+			m0.forward(&X, reLu);
 		}else{
 			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
 				size_t off1 = j * m_count_cnvW[i - 1];
@@ -514,7 +524,7 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
 					size_t col = off1 + k;
 					convnn::convnn< float >& mi = ls[col];
-					mi.forward(m0.A2[k], reLu);
+					mi.forward(&m0.A2[k], reLu);
 				}
 			}
 		}
@@ -543,17 +553,14 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 
 	//// CONV
 
-	Matf cnv_a;
-	conv(X, cnv_a);
+	conv(X, m_cnv_a);
 
 	//// MLP
 
-	std::vector< Matf > z, a;
+	m_z.resize(m_layers.size());
+	m_a.resize(m_layers.size() + 1);
 
-	z.resize(m_layers.size());
-	a.resize(m_layers.size() + 1);
-
-	a[0] = cnv_a;
+	m_a[0] = m_cnv_a;
 
 	std::vector< Matf > D;
 	Matf Wi;
@@ -563,24 +570,23 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		if(i < D.size()){
 			dropout(m_W[i].rows, m_W[i].cols, 0.9f, D[i]);
 			elemwiseMult(m_W[i], D[i], Wi);
-			z[i] = a[i] * Wi;
+			m_z[i] = m_a[i] * Wi;
 		}else{
-			z[i] = a[i] * m_W[i];
+			m_z[i] = m_a[i] * m_W[i];
 		}
-		z[i].biasPlus(m_b[i]);
+		m_z[i].biasPlus(m_b[i]);
 
 		if(i < m_layers.size() - 1){
-			a[i + 1] = relu(z[i]);
+			m_a[i + 1] = relu(m_z[i]);
 		}else
-			a[i + 1] = softmax(z[i], 1);
+			m_a[i + 1] = softmax(m_z[i], 1);
 	}
 
-	std::vector< Matf > dW, dB;
-	dW.resize(m_layers.size());
-	dB.resize(m_layers.size());
+	m_dW.resize(m_layers.size());
+	m_dB.resize(m_layers.size());
 
 	float m = X.rows;
-	Matf d = a.back() - y;
+	m_d = m_a.back() - y;
 
 	//// Backward
 
@@ -590,50 +596,47 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		Matf di, sz;
 
 		{
-			sz = derivRelu(a[i]);
+			sz = derivRelu(m_a[i]);
 
 			//Matf di = d * m_W[i].t();
-			matmulT2(d, m_W[i], di);
+			matmulT2(m_d, m_W[i], di);
 			elemwiseMult(di, sz);
 		}
 		//dW[i] = a[i].t() * d;
-		matmulT1(a[i], d, dW[i]);
+		matmulT1(m_a[i], m_d, m_dW[i]);
 
-		dW[i] *= 1./m;
+		m_dW[i] *= 1./m;
 		//dW[i] += (m_lambda/m * m_W[i]);
 
 		if(i < (int)D.size()){
-			elemwiseMult(dW[i], D[i]);
+			elemwiseMult(m_dW[i], D[i]);
 		}
 
-		dB[i] = (sumRows(d) * (1.f/m)).t();
+		m_dB[i] = (sumRows(m_d) * (1.f/m)).t();
 
-		d = di;
+		m_d = di;
 	}
 
 	/// convolution
 	{
-		std::vector< Matf > ds;
-
-		nn::hsplit(d, m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
+		nn::hsplit(m_d, m_cnv.back().size() * m_cnv.back()[0].W.size(), m_ds);
 
 		for(int i = m_cnv.size() - 1; i > -1; i--){
 			std::vector< convnn::convnn<float > >& lrs = m_cnv[i];
-			std::vector< Matf > di;
 
 //			qDebug("LR[%d]-----", i);
+			size_t kidx = 0;
 
 			for(size_t j = 0; j < lrs.size(); ++j){
 				convnn::convnn<float > &cnv = lrs[j];
 
-				std::vector< Matf >dsi;
+				size_t kfirst = kidx;
+				kidx += (cnv.W.size());
 
-				for(size_t k = 0; k < cnv.W.size(); ++k){
-					dsi.push_back(ds[j * cnv.W.size() + k]);
-				}
-
-				cnv.backward< Matf (*)(const Matf& mat) >(dsi, derivRelu);
-				di.push_back(cnv.DltA0);
+				if(i == m_cnv.size() - 1)
+					cnv.backward< Matf (*)(const Matf& mat) >(m_ds, derivRelu, kfirst, kidx, i == 0);
+				else
+					cnv.backward< Matf (*)(const Matf& mat) >(m_cnv[i + 1], derivRelu, kfirst, kidx, i == 0);
 
 //				qt_work_mat::q_save_mat(cnv.gradW[0], "gradW.txt");
 //				qt_work_mat::q_save_mat(cnv.dA1[0], "dA1.txt");
@@ -644,12 +647,10 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 //					qDebug("W[%d:%d]:\n%s", j, k, sw.c_str());
 //				}
 			}
-			ds = di;
-
 //			qDebug("----");
 		}
 	}
 
-	m_AdamOptimizer.pass(dW, dB, m_W, m_b);
+	m_AdamOptimizer.pass(m_dW, m_dB, m_W, m_b);
 	m_iteration = m_AdamOptimizer.iteration();
 }

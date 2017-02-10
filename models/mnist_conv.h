@@ -89,6 +89,9 @@ public:
 
 	std::vector<std::vector<ct::Matf> > cnvW();
 
+	std::vector<ct::Matf> getA() const;
+	void setA(const std::vector<ct::Matf> &value);
+
 private:
 	std::vector< int > m_layers;
 	std::vector< std::vector< convnn::convnn<float> > > m_cnv;
@@ -103,6 +106,15 @@ private:
 	int m_conv_length;
 	bool m_use_gpu;
 	int m_seed;
+
+	///*********
+	std::vector< ct::Matf > m_dW, m_dB;
+	ct::Matf m_d;
+	std::vector< ct::Matf > m_ds;
+	std::vector< ct::Matf > m_z;
+	std::vector< ct::Matf > m_a;
+	ct::Matf m_cnv_a;
+	///*********
 
 	gpu_model m_gpu_model;
 	gpumat::GpuMat gX, gY;

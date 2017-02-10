@@ -15,9 +15,10 @@ public:
 		stride = 1;
 		weight_size = 3;
 		m_init = false;
+		A0 = nullptr;
 	}
 
-	ct::Mat_<T> A0;
+	ct::Mat_<T> *A0;
 	ct::Mat_<T> DltA0;
 	tvmat A1;
 	tvmat A2;
@@ -86,18 +87,18 @@ public:
 	}
 
 	void clear(){
-		A0.clear();
+		A0 = nullptr;
 		A1.clear();
 		A1.clear();
 		Masks.clear();
 	}
 
 	template< typename Func >
-	bool forward(const ct::Mat_<T>& mat, Func func){
-		if(!m_init)
+	bool forward(const ct::Mat_<T>* mat, Func func){
+		if(!m_init || !mat)
 			throw new std::invalid_argument("convnn::forward: not initialized");
-		A0 = mat;
-		nn::conv2D(A0, szA0, stride, W, B, A1, func);
+		A0 = (ct::Mat_<T>*)mat;
+		nn::conv2D(*A0, szA0, stride, W, B, A1, func);
 		ct::Size sztmp;
 		bool res = nn::subsample(A1, szA1, A2, Masks, sztmp);
 		return res;
@@ -112,18 +113,37 @@ public:
 	}
 
 	template< typename Func >
-	void backward(const std::vector< ct::Mat_<T> >& Delta, Func func){
-		if(!m_init)
+	void backward(const std::vector< ct::Mat_<T> >& Delta, Func func, int first = -1, int last = -1, bool last_layer = false){
+		if(!m_init || !A0)
 			throw new std::invalid_argument("convnn::backward: not initialized");
-		nn::upsample(Delta, szA2, szA1, Masks, dA2);
+		nn::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
 
 		back2conv(A1, dA2, dA1, func);
 
 		ct::Size szW(weight_size, weight_size);
 
-		nn::deriv_conv2D(A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+		nn::deriv_conv2D(*A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
-		nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
+		if(!last_layer)
+			nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
+
+		m_optim.pass(gradW, gradB, W, B);
+	}
+
+	template< typename Func >
+	void backward(const std::vector< convnn >& Delta, Func func, int first = -1, int last = -1, bool last_layer = false){
+		if(!m_init || !A0)
+			throw new std::invalid_argument("convnn::backward: not initialized");
+		convnn::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
+
+		back2conv(A1, dA2, dA1, func);
+
+		ct::Size szW(weight_size, weight_size);
+
+		nn::deriv_conv2D(*A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+
+		if(!last_layer)
+			nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
 
 		m_optim.pass(gradW, gradB, W, B);
 	}
@@ -143,6 +163,31 @@ public:
 
 private:
 	bool m_init;
+
+	template< typename T >
+	bool upsample(const std::vector< convnn > &A1,
+				  ct::Size& szA1,
+				  const ct::Size& szA0,
+				  const std::vector< ct::Mat_<T> > &Masks,
+				  std::vector< ct::Mat_<T> >& A0, int first = -1, int last = -1)
+	{
+		if(A1.empty() || Masks.empty())
+			return false;
+		if(first >= 0 && last > first){
+			A0.resize(last - first);
+		}else{
+			A0.resize(A1.size());
+			first = 0;
+			last = A1.size();
+		}
+
+		for(size_t i = first, j = 0; i < last; ++i, ++j){
+			if(!nn::upsample(A1[i].DltA0, szA1, szA0, Masks[i], A0[i]))
+				return false;
+		}
+		return true;
+	}
+
 };
 
 }

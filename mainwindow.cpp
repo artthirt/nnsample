@@ -145,15 +145,16 @@ MainWindow::MainWindow(QWidget *parent) :
 //	layers3.push_back(500);
 	layers3.push_back(400);
 	layers3.push_back(300);
+	layers3.push_back(300);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(10);
 	cnv_layers.push_back(3);
-	cnv_layers.push_back(3);
+	cnv_layers.push_back(1);
+//	cnv_layers.push_back(3);
 
 	ws.push_back(5);
-	ws.push_back(3);
-	ws.push_back(3);
+	ws.push_back(5);
+//	ws.push_back(3);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
