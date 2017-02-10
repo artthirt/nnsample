@@ -394,7 +394,7 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 			a = X;
 
 			Matf* pA = &a;
-			for(int j = 0; j < m_mlp.size(); ++j){
+			for(int j = 0; j < i; ++j){
 				m_mlp[j].forward(pA, ct::RELU, false);
 				pA = &m_mlp[j].A1;
 			}
