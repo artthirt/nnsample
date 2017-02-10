@@ -164,7 +164,6 @@ public:
 private:
 	bool m_init;
 
-	template< typename T >
 	bool upsample(const std::vector< convnn > &A1,
 				  ct::Size& szA1,
 				  const ct::Size& szA0,
