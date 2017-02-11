@@ -24,9 +24,9 @@ public:
 	Singleton(){
 		std::fill((char*)&m_prop, (char*)&m_prop + sizeof(cudaDeviceProp), '\0');
 		cudaError_t err = cudaGetDevice(& m_device);
-		if(err == CUDA_SUCCESS){
+		if(err == cudaSuccess){
 			err = cudaGetDeviceProperties(&m_prop, m_device);
-			if(err == CUDA_SUCCESS){
+			if(err == cudaSuccess){
 				std::cout << "Gpu work. Shared memory: " << m_prop.sharedMemPerBlock << std::endl;
 			}else{
 				std::cout << "gpu not work\n";

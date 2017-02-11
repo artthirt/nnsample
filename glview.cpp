@@ -95,11 +95,8 @@ GLView::GLView(QWidget *parent) :
   , m_color_space(ct::Vec3d::ones())
   , m_tracking(false)
   , m_tracking_angle(0)
-  , m_show_route(false)
   , m_prev_e_track(0)
   , m_prev_u(0)
-  , m_timer_goal(0)
-  , m_is_draw_track(false)
   , m_show_graphics(false)
   , m_bind_rotation(true)
 {

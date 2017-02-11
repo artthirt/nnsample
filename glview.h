@@ -72,8 +72,6 @@ private:
 	bool m_tracking;
 	double m_tracking_angle;
 
-	bool m_show_route;
-
 	bool m_bind_rotation;
 
 	QTimer m_timer;
@@ -91,10 +89,6 @@ private:
 	ct::Vec3d m_angles;
 
 	ct::Vec3d m_color_space;
-
-	double m_timer_goal;
-
-	bool m_is_draw_track;
 
 	void init();
 	void draw_net();

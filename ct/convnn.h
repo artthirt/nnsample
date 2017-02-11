@@ -75,7 +75,7 @@ public:
 	}
 
 	void update_random(){
-		for(int i = 0; i < W.size(); ++i){
+		for(size_t i = 0; i < W.size(); ++i){
 			W[i].setSize(weight_size, weight_size);
 			W[i].randn(0, 0.1);
 			B[i] = (T)0.1;

@@ -220,7 +220,7 @@ private:
 		m_vW.resize(len);
 		m_mbn.resize(len);
 		m_vbn.resize(len);
-		for(int i = 0; i < len; ++i){
+		for(size_t i = 0; i < len; ++i){
 			m_mW[i].setSize(sz.height, sz.width);
 			m_mW[i].fill(0);
 			m_vW[i].setSize(sz.height, sz.width);
@@ -765,13 +765,13 @@ void hsplit(const ct::Mat_<T>& res, size_t cols, std::vector< ct::Mat_<T> >& lis
 
 	list.resize(cols);
 
-	for(int i = 0; i < cols; ++i){
+	for(size_t i = 0; i < cols; ++i){
 		list[i].setSize(res.rows, len);
 	}
 
 	T *dR = res.ptr();
 #pragma omp parallel for
-	for(int i = 0; i < cols; ++i){
+	for(size_t i = 0; i < cols; ++i){
 		T *dLi = list[i].ptr();
 #ifdef __GNUC__
 #pragma omp simd
@@ -779,7 +779,7 @@ void hsplit(const ct::Mat_<T>& res, size_t cols, std::vector< ct::Mat_<T> >& lis
 #pragma omp parallel for
 #endif
 		for(int j = 0; j < res.rows; ++j){
-			for(int k = 0; k < len; ++k){
+			for(size_t k = 0; k < len; ++k){
 				dLi[j * len + k] = dR[j * res.cols + i * len + k];
 			}
 		}

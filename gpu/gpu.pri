@@ -51,7 +51,7 @@ CONFIG(debug, debug|release) {
     #-D_DEBUG
 
     cuda_d.commands = $$CUDA_DIR/bin/nvcc -D_DEBUG $$NVCC_OPTIONS $$CUDA_INC \
-                    $$NVCC_LIBS --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH \
+                    $$NVCC_LIBS --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH -ccbin gcc-5\
                     -c -o ${QMAKE_FILE_OUT} ${QMAKE_FILE_NAME}
 
     win32{
@@ -70,7 +70,7 @@ else {
     cuda.input = CUDA_SOURCES
     cuda.output = $$CUDA_OBJECTS_DIR/${QMAKE_FILE_BASE}_cuda.o
     cuda.commands = $$CUDA_DIR/bin/nvcc $$NVCC_OPTIONS $$CUDA_INC $$NVCC_LIBS \
-                    --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH \
+                    --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH -ccbin gcc-5\
                     -c -o ${QMAKE_FILE_OUT} ${QMAKE_FILE_NAME}
 
     win32{
