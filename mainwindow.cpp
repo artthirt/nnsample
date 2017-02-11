@@ -133,8 +133,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	std::vector<int> layers2, layers3, cnv_layers, ws;
 //	layers2.push_back(600);
-	layers2.push_back(370);
-	layers2.push_back(340);
+	layers2.push_back(600);
+	layers2.push_back(540);
 	layers2.push_back(320);
 	layers2.push_back(10);
 
@@ -142,19 +142,18 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights(time(0));
 
-//	layers3.push_back(500);
 	layers3.push_back(400);
-	layers3.push_back(300);
+	layers3.push_back(500);
 	layers3.push_back(300);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(10);
+	cnv_layers.push_back(15);
 	cnv_layers.push_back(3);
-//	cnv_layers.push_back(3);
+//	cnv_layers.push_back(6);
 
 	ws.push_back(5);
 	ws.push_back(5);
-//	ws.push_back(3);
+//	ws.push_back(5);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
@@ -210,7 +209,7 @@ void MainWindow::onTimeoutMnist()
 	if(ui->pb_pass->isChecked()){
 #ifdef _USE_GPU
 		if(m_use_gpu){
-			m_mnist_train.pass_batch_gpu(2000);
+			m_mnist_train.pass_batch_gpu(400);
 		}else{
 			m_mnist_train.pass_batch(100);
 		}
@@ -341,7 +340,7 @@ void MainWindow::pass_cnv()
 {
 //	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
-	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 1,
+	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 100,
 						   ui->chb_use_gpu_cnv->isChecked());
 //	on_pb_update_cnv_clicked();
 	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));

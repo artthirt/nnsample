@@ -366,8 +366,8 @@ void mnist_conv::getXy(Matf &X, Matf &y, int batch)
 void mnist_conv::randX(Matf &X)
 {
 #if 1
-	std::uniform_int_distribution<int> udtr(-5, 5);
-	std::uniform_real_distribution<float> uar(-5, 5);
+	std::uniform_int_distribution<int> udtr(-3, 3);
+	std::uniform_real_distribution<float> uar(-3, 3);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
