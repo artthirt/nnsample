@@ -586,6 +586,38 @@ extern "C"
 void cuda_derivReLu(const GpuMat& A, GpuMat& C);
 
 /**
+ * @brief cuda_sigmoid
+ * @param A
+ * @param C = sigmoid(A)
+ */
+extern "C"
+void cuda_sigmoid(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_deriv_sigmoid
+ * @param A
+ * @param C = deriv_sigmoid(A)
+ */
+extern "C"
+void cuda_deriv_sigmoid(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_tanh
+ * @param A
+ * @param C = tanh(A)
+ */
+extern "C"
+void cuda_tanh(const GpuMat& A, GpuMat& C);
+
+/**
+ * @brief cuda_deriv_tanh
+ * @param A
+ * @param C = deriv_tanh(A)
+ */
+extern "C"
+void cuda_deriv_tanh(const GpuMat& A, GpuMat& C);
+
+/**
  * @brief cuda_softmax
  * @param A
  * @param axis -> 0 - in row, 1 - in col
@@ -909,6 +941,54 @@ void deriv_reLu(const GpuMat &A, GpuMat &C)
 		C.resize(A);
 
 	cuda_derivReLu(A, C);
+}
+
+void sigmoid(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty()){
+		throw new std::invalid_argument("sigmoid");
+	}
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_sigmoid(A, C);
+}
+
+void deriv_sigmoid(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty()){
+		throw new std::invalid_argument("deriv_sigmoid");
+	}
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_deriv_sigmoid(A, C);
+}
+
+void tanh(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty()){
+		throw new std::invalid_argument("tanh");
+	}
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_tanh(A, C);
+}
+
+void deriv_tanh(const GpuMat &A, GpuMat &C)
+{
+	if(A.empty()){
+		throw new std::invalid_argument("deriv_tanh");
+	}
+
+	if(C.rows != A.rows || C.cols != A.cols || C.type != A.type)
+		C.resize(A);
+
+	cuda_deriv_tanh(A, C);
 }
 
 void softmax(const GpuMat &A, int axis, GpuMat &C, GpuMat &partZ)

@@ -293,6 +293,34 @@ void reLu(const GpuMat& A, GpuMat& C);
  */
 void deriv_reLu(const GpuMat& A, GpuMat& C);
 /**
+ * @brief sigmoid
+ * @param A
+ * @param B
+ * @param C - out C = sigmoid(A)
+ */
+void sigmoid(const GpuMat& A, GpuMat& C);
+/**
+ * @brief deriv_sigmoid
+ * @param A
+ * @param B
+ * @param C - out C = deriv_sigmoid(A)
+ */
+void deriv_sigmoid(const GpuMat& A, GpuMat& C);
+/**
+ * @brief tanh
+ * @param A
+ * @param B
+ * @param C - out C = tanh(A)
+ */
+void tanh(const GpuMat& A, GpuMat& C);
+/**
+ * @brief deriv_tanh
+ * @param A
+ * @param B
+ * @param C - out C = deriv_tanh(A)
+ */
+void deriv_tanh(const GpuMat& A, GpuMat& C);
+/**
  * @brief softmax
  * @param A
  * @param axis -> 0 - in row, 1 - in col

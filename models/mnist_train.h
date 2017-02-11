@@ -10,6 +10,7 @@
 
 #ifdef _USE_GPU
 #include "gpumat.h"
+#include "gpu_mlp.h"
 #include "helper_gpu.h"
 #endif
 
@@ -123,7 +124,13 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward_gpu(const ct::Matf& X);
+	ct::Matf forward_gpu(const ct::Matf& X, bool use_dropout = false, bool converToMatf = true);
+	/**
+	 * @brief forward_gpu
+	 * @param X
+	 * @return
+	 */
+	ct::Matf forward_gpu(const gpumat::GpuMat& X, bool use_dropout = false, bool converToMatf = true);
 	/**
 	 * @brief forward_test_gpu
 	 * @param index
@@ -184,19 +191,23 @@ private:
 	int m_dropout_count;
 	gpumat::GpuMat m_gX;
 	gpumat::GpuMat m_gy;
-	gpumat::GpuMat partZ;
-	std::vector< gpumat::GpuMat > g_d;
-	std::vector< gpumat::GpuMat > g_sz, g_tmp;
-	std::vector< gpumat::GpuMat > m_gW;
-	std::vector< gpumat::GpuMat > m_Dropout;
-	std::vector< gpumat::GpuMat > m_DropoutT;
-	std::vector< gpumat::GpuMat > m_gb;
-	std::vector< gpumat::GpuMat > g_z, g_a;
-	std::vector< gpumat::GpuMat > g_dW, g_dB;
+//	gpumat::GpuMat partZ;
+	gpumat::GpuMat g_d;
+//	std::vector< gpumat::GpuMat > g_sz, g_tmp;
+//	std::vector< gpumat::GpuMat > m_gW;
+//	std::vector< gpumat::GpuMat > m_Dropout;
+//	std::vector< gpumat::GpuMat > m_DropoutT;
+//	std::vector< gpumat::GpuMat > m_gb;
+//	std::vector< gpumat::GpuMat > g_z, g_a;
+//	std::vector< gpumat::GpuMat > g_dW, g_dB;
+	std::vector< gpumat::mlp > m_gpu_mlp;
 
 	std::vector< gpumat::SimpleAutoencoder > enc_gpu;
 
-	gpumat::AdamOptimizer m_gpu_adam;
+	gpumat::MlpOptim m_gpu_adam;
+
+	void setGpuDropout(size_t count, float prob);
+	void clearGpuDropout();
 #endif
 };
 

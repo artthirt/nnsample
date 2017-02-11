@@ -66,7 +66,7 @@ public:
 	bool pass(const std::vector< gpumat::GpuMat >& gradW, const std::vector< float >& gradB,
 			  std::vector< gpumat::GpuMat >& W, std::vector< float >& b);
 
-private:
+protected:
 	uint32_t m_iteration;
 	double m_betha1;
 	double m_betha2;

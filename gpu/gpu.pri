@@ -7,12 +7,14 @@ HEADERS += \
     $$PWD/helper_gpu.h \
     $$PWD/cuda_common.h \
     $$PWD/convnn_gpu.h \
-    $$PWD/cu/common_devices.h
+    $$PWD/cu/common_devices.h \
+    $$PWD/gpu_mlp.h
 
 SOURCES += \
     $$PWD/gpumat.cpp \
     $$PWD/helper_gpu.cpp \
-    $$PWD/convnn_gpu.cpp
+    $$PWD/convnn_gpu.cpp \
+    $$PWD/gpu_mlp.cpp
 
 CUDA_SOURCES += $$PWD/cu/cuda_arithm.cu \
                 $$PWD/cu/cuda_conv.cu
