@@ -13,7 +13,7 @@ class mlp;
 template< typename T >
 class MlpOptim: public AdamOptimizer<T>{
 public:
-#define AO AdamOptimizer<T>::
+#define AO this->
 
 	bool init(std::vector< ct::mlp<T> >& Mlp){
 		if(Mlp.empty())

@@ -144,10 +144,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	layers3.push_back(500);
 	layers3.push_back(400);
+	layers3.push_back(300);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(15);
-	cnv_layers.push_back(3);
+	cnv_layers.push_back(25);
+	cnv_layers.push_back(1);
 //	cnv_layers.push_back(6);
 
 	ws.push_back(5);
@@ -339,7 +340,7 @@ void MainWindow::pass_cnv()
 {
 //	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
-	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 100,
+	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 1,
 						   ui->chb_use_gpu_cnv->isChecked());
 //	on_pb_update_cnv_clicked();
 	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));
