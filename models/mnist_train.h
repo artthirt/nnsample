@@ -170,9 +170,9 @@ private:
 	float m_lambda;
 	uint m_iteration;
 
-	ct::AdamMlp<float> m_optim;
+	ct::MlpOptim<float> m_optim;
 
-	std::vector< nn::SimpleAutoencoder<float> > enc;
+	std::vector< ct::SimpleAutoencoder<float> > enc;
 
 	std::mt19937 m_generator;
 
@@ -191,15 +191,8 @@ private:
 	int m_dropout_count;
 	gpumat::GpuMat m_gX;
 	gpumat::GpuMat m_gy;
-//	gpumat::GpuMat partZ;
 	gpumat::GpuMat g_d;
-//	std::vector< gpumat::GpuMat > g_sz, g_tmp;
-//	std::vector< gpumat::GpuMat > m_gW;
-//	std::vector< gpumat::GpuMat > m_Dropout;
-//	std::vector< gpumat::GpuMat > m_DropoutT;
-//	std::vector< gpumat::GpuMat > m_gb;
-//	std::vector< gpumat::GpuMat > g_z, g_a;
-//	std::vector< gpumat::GpuMat > g_dW, g_dB;
+
 	std::vector< gpumat::mlp > m_gpu_mlp;
 
 	std::vector< gpumat::SimpleAutoencoder > enc_gpu;

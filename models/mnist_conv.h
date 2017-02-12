@@ -6,10 +6,16 @@
 #include "nn.h"
 
 #include "convnn.h"
+#include "mlp.h"
 
 #include <random>
 
+#ifdef _USE_GPU
+
 #include "gpu_model.h"
+#include "gpu_mlp.h"
+
+#endif
 
 class mnist_conv
 {
@@ -20,7 +26,10 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward(const ct::Matf& X, bool use_gpu);
+	ct::Matf forward(const ct::Matf& X,
+					 bool use_dropout = false,
+					 bool use_gpu = false,
+					 bool saved = false);
 	/**
 	 * @brief forward
 	 * @param index
@@ -89,17 +98,11 @@ public:
 
 	std::vector<std::vector<ct::Matf> > cnvW();
 
-	std::vector<ct::Matf> getA() const;
-	void setA(const std::vector<ct::Matf> &value);
-
 private:
 	std::vector< int > m_layers;
 	std::vector< std::vector< convnn::convnn<float> > > m_cnv;
 	std::vector< int > m_count_cnvW;
-	std::vector< ct::Matf > m_W;
-	std::vector< ct::Matf > m_b;
-	std::vector< ct::Matf > m_prevW;
-	std::vector< ct::Matf > m_prevb;
+	std::vector< ct::mlp<float> > m_mlp;
 	mnist_reader *m_mnist;
 	std::mt19937 m_generator;
 	uint m_iteration;
@@ -108,21 +111,23 @@ private:
 	int m_seed;
 
 	///*********
-	std::vector< ct::Matf > m_dW, m_dB;
 	ct::Matf m_d;
+	ct::Matf m_Xout;
 	std::vector< ct::Matf > m_ds;
-	std::vector< ct::Matf > m_z;
-	std::vector< ct::Matf > m_a;
-	ct::Matf m_cnv_a;
 	///*********
 
+#ifdef _USE_GPU
 	gpu_model m_gpu_model;
 	gpumat::GpuMat gX, gY;
+#endif
 
 	ct::Size m_cnv_out_size;
 	size_t m_cnv_out_len;
 
-	nn::AdamOptimizer<float> m_AdamOptimizer;
+	void setDropout(size_t count, float prob);
+	void clearDropout();
+
+	ct::MlpOptim<float> m_optim;
 
 	void pass_batch(const ct::Matf& X, const ct::Matf& y);
 

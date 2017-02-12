@@ -29,32 +29,37 @@ bool gpu_model::isInit() const
 	return m_init;
 }
 
-ct::Matf gpu_model::forward_gpu(const ct::Matf &X)
+ct::Matf gpu_model::forward_gpu(const gpumat::GpuMat &X, bool use_dropout, bool converToMatf)
 {
 	if(m_layers.empty() || X.empty())
 		return Matf(0, 0);
 
-	init_arrays();
+	gpumat::etypefunction func = gpumat::RELU;
 
-	Matf a;
+	conv(X, g_Xout);
 
-	gpumat::convert_to_gpu(X, m_gX);
+	if(!use_dropout)
+		clearGpuDropout();
 
-	conv(m_gX, g_a[0]);
+	gpumat::GpuMat *pA = (gpumat::GpuMat*)&g_Xout;
 
 	for(size_t i = 0; i < m_layers.size(); i++){
-		gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-		gpumat::biasPlus(g_z[i], m_gb[i]);
-		if(i < m_layers.size() - 1){
-			gpumat::reLu(g_z[i], g_a[i + 1]);
-		}else{
-			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
-		}
+		if(i == m_layers.size() - 1)
+			func = gpumat::SOFTMAX;
+
+		_mlp.forward(pA, func);
+		pA = &_mlp.A1;
 	}
-	gpumat::convert_to_mat(g_a.back(), a);
 
-	return a;
+	if(converToMatf){
+		Matf a;
+		gpumat::convert_to_mat(m_gpu_mlp.back().A1, a);
+		return a;
+	}
+
+	return Matf(0, 0);
 }
 
 void gpu_model::init_gpu(const std::vector< int >& layers)
@@ -72,154 +77,73 @@ void gpu_model::init_gpu(const std::vector< int >& layers)
 	int input = m_cnv_out_len;
 	int output = m_layers[0];
 
-	m_gW.resize(m_layers.size());
-	m_gb.resize(m_layers.size());
+	m_gpu_mlp.resize(m_layers.size());
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
-		double n = 1./sqrt(input);
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-		Matf Wi = Matf(input, output);
-		Matf bi = Matf::ones(output, 1);
-		Wi.randn(0., n);
-		bi.randn(0, n);
-
-		gpumat::convert_to_gpu(Wi, m_gW[i]);
-		gpumat::convert_to_gpu(bi, m_gb[i]);
+		_mlp.init(input, output, gpumat::GPU_FLOAT);
 
 		input = output;
 	}
 
-	m_gpu_adam.init(m_gW, m_gb);
+	m_gpu_adam.init(m_gpu_mlp);
 
 	m_init = true;
 }
 
 void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 {
-	if(m_gW.empty() || m_gb.empty() || m_layers.empty() ||
+	if(m_gpu_mlp.empty() || m_layers.empty() ||
 			m_layers.back() != y.cols){
 		std::cout << "wrong parameters of model\n";
 		return;
 	}
 
 	/// forward
-	init_arrays();
+	setGpuDropout(2, 0.95f);
 
-	//// CONV
+	forward_gpu(X, true, false);
 
-	conv(X, g_a[0]);
-
-	//// MLP
-
-	//g_a[0] = m_cnvA;
-
-	if(m_DropoutT.empty()){
-		m_Dropout.resize(m_dropout_count);
-		m_DropoutT.resize(m_dropout_count);
-	}
-
-	int max_layers = m_dropout_count;//std::min((int)(m_layers.size() - 2), m_dropout_count);
-
-	for(size_t i = 0; i < m_layers.size(); i++){
-		if(i < (size_t)max_layers){
-			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.92f, d);
-			gpumat::convert_to_gpu(d, m_Dropout[i]);
-			m_DropoutT[i] = m_Dropout[i];
-
-			gpumat::elemwiseMult(m_Dropout[i], m_gW[i]);
-			gpumat::matmul_shared(g_a[i], m_Dropout[i], g_z[i]);
-		}else{
-			gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
-		}
-		gpumat::biasPlus(g_z[i], m_gb[i]);
-		if(i < m_layers.size() - 1){
-			gpumat::reLu(g_z[i], g_a[i + 1]);
-		}else{
-			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
-		}
-	}
-
-	if(g_dW.empty()){
-		g_dW.resize(m_layers.size());
-		g_dB.resize(m_layers.size());
-	}
-
-	float m = X.rows;
-
-	gpumat::sub(g_a.back(), y, g_d.back());
+	gpumat::sub(m_gpu_mlp.back().A1, y, g_d);
 
 	/// backward
 
+	gpumat::GpuMat* pD = &g_d;
+
 	for(int i = (int)m_layers.size() - 1; i > -1; --i){
-		{
-			gpumat::deriv_reLu(g_a[i], g_sz[i]);
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-			gpumat::matmulT2_shared(g_d[i + 1], m_gW[i], g_d[i]);
-			gpumat::elemwiseMult(g_d[i], g_sz[i]);
-		}
-		gpumat::matmulT1_shared(g_a[i], g_d[i + 1], g_dW[i]);
-		gpumat::mulval(g_dW[i], 1./m);
-
-		if(i < max_layers){
-			gpumat::elemwiseMult(g_dW[i], m_DropoutT[i]);
-		}
-
-		g_dB[i].swap_dims();
-
-		gpumat::sumRows_shared(g_d[i + 1], g_dB[i], (1./m));
-
-		g_dB[i].swap_dims();
+		_mlp.backward(*pD);
+		pD = &_mlp.DltA0;
 	}
 
 	/// convolution
 	{
-		ds.resize(m_cnv.size());
-
-		gpumat::hsplit(g_d[0], m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
-
-//		for(int i = 0; i < ds.back().size(); ++i){
-//			qt_work_mat::q_save_mat(ds.back()[i], QString("ds_%1.txt").arg(i));
-//		}
+		gpumat::hsplit(m_gpu_mlp.front().DltA0, m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
 
 		for(int i = m_cnv.size() - 1; i > -1; i--){
 			std::vector< gpumat::convnn >& lrs = m_cnv[i];
 
-//			qDebug("LR[%d]-----", i);
-
-//			if(i > 0)
-//				ds[i - 1].resize(lrs.size());
-
 			size_t kidx = 0;
-//			size_t nidx = 0;
 
 			for(size_t j = 0; j < lrs.size(); ++j){
 				gpumat::convnn &cnv = lrs[j];
 
 				size_t kfirst = kidx;
-//				for(size_t k = 0; k < cnv.W.size(); ++k){
-//					ds[i][kidx++] = ds[i + 1][j * cnv.W.size() + k];
-//					//dsi.push_back(ds[j * cnv.W.size() + k]);
-//				}
 				kidx += (cnv.W.size());
-
-//				for(int l = kfirst; l < kidx; ++l){
-//					qt_work_mat::q_save_mat(ds[i + 1][l], QString::number(l) + "_dsi.txt");
-//				}
 
 				if(i == m_cnv.size() - 1)
 					cnv.backward(ds, gpumat::RELU, kfirst, kidx, i == 0);
 				else
 					cnv.backward(m_cnv[i + 1], gpumat::RELU, kfirst, kidx, i == 0);
-//				if(i > 0)
-//					ds[i - 1][nidx++] = cnv.DltA0;
 			}
 		}
 	}
 
-	m_gpu_adam.pass(g_dW, g_dB, m_gW, m_gb);
+	m_gpu_adam.pass(m_gpu_mlp);
 
 	m_iteration = m_gpu_adam.iteration();
 
@@ -287,16 +211,6 @@ void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
 	//	}
 }
 
-void gpu_model::init_arrays()
-{
-	if(g_z.size() != m_layers.size()){
-		g_z.resize(m_layers.size());
-		g_a.resize(m_layers.size() + 1);
-		g_d.resize(m_layers.size() + 1);
-		g_sz.resize(m_layers.size());
-	}
-}
-
 void gpu_model::setConvLength(const std::vector<int> &count_cnvW, std::vector<int> *weight_sizes)
 {
 	if(!count_cnvW.size())
@@ -323,5 +237,19 @@ void gpu_model::setConvLength(const std::vector<int> &count_cnvW, std::vector<in
 		}
 		szA0 = m_cnv[i][0].szA2;
 		prev = m_count_cnvW[i] * prev;
+	}
+}
+
+void gpu_model::setGpuDropout(size_t count, float prob)
+{
+	for(size_t i = 0; i < std::min(count, m_gpu_mlp.size() - 1); ++i){
+		m_gpu_mlp[i].setDropout(true, prob);
+	}
+}
+
+void gpu_model::clearGpuDropout()
+{
+	for(size_t i = 0; i < m_gpu_mlp.size(); ++i){
+		m_gpu_mlp[i].setDropout(false);
 	}
 }

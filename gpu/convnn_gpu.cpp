@@ -29,7 +29,7 @@ void convnn::init(int count_weight, const ct::Size &_szA0)
 
 	szA0 = _szA0;
 
-	nn::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
+	ct::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
 
 	update_random();
 

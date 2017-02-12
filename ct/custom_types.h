@@ -1563,7 +1563,7 @@ inline void v_relu(Mat_<T>& m)
 }
 
 /**
- * @brief v_derivRelu
+ * @brief derivRelu
  * @param m
  * @return
  */
@@ -1583,6 +1583,58 @@ inline Mat_<T> derivRelu(const Mat_<T>& m)
 #endif
 	for(int i = 0; i < m.total(); i++){
 		res_val[i] = m_val[i] > T(0) ? T(1) : T(0);
+	}
+	return res;
+}
+
+/**
+ * @brief derivSigmoid
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> derivSigmoid(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
+	for(int i = 0; i < m.total(); i++){
+		T val = m_val[i];
+		res_val[i] = val * (1 - val);
+	}
+	return res;
+}
+
+/**
+ * @brief derivTanh
+ * @param m
+ * @return
+ */
+template< typename T >
+inline Mat_<T> derivTanh(const Mat_<T>& m)
+{
+	Mat_<T> res(m.rows, m.cols);
+
+	T* res_val = &(*res.val)[0];
+	T* m_val = &(*m.val)[0];
+
+	//#pragma omp parallel for
+#ifdef __GNUC__
+#pragma omp simd
+#else
+#pragma omp parallel for
+#endif
+	for(int i = 0; i < m.total(); i++){
+		T val = m_val[i];
+		res_val[i] = (1 - val * val);
 	}
 	return res;
 }

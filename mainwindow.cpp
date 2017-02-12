@@ -142,9 +142,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.setMnist(&m_mnist);
 	m_mnist_train.init_weights(time(0));
 
-	layers3.push_back(400);
 	layers3.push_back(500);
-	layers3.push_back(300);
+	layers3.push_back(400);
 	layers3.push_back(10);
 
 	cnv_layers.push_back(15);

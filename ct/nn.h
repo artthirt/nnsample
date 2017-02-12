@@ -10,7 +10,7 @@
 typedef unsigned int uint;
 #endif
 
-namespace nn{
+namespace ct{
 
 template< typename T >
 inline T sqr(T val)
@@ -124,40 +124,6 @@ public:
 		}
 		return true;
 	}
-	bool pass(const ct::Mat_< T > *gradW, const ct::Mat_< T >* gradB,
-			  ct::Mat_<T> *W, ct::Mat_<T> *b, int count){
-		if(!count || ! gradW || !gradB || !W || !b)
-			return false;
-
-		using namespace ct;
-
-		m_iteration++;
-		T sb1 = (T)(1. / (1. - pow(m_betha1, m_iteration)));
-		T sb2 = (T)(1. / (1. - pow(m_betha2, m_iteration)));
-		T eps = (T)(10e-8);
-
-		for(int i = 0; i < count; ++i){
-			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
-			m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
-
-			m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
-			m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
-
-			Mat_<T> mWs = m_mW[i] * sb1;
-			Mat_<T> mBs = m_mb[i] * sb1;
-			Mat_<T> vWs = m_vW[i] * sb2;
-			Mat_<T> vBs = m_vb[i] * sb2;
-
-			vWs.sqrt(); vBs.sqrt();
-			vWs += eps; vBs += eps;
-			mWs = elemwiseDiv(mWs, vWs);
-			mBs = elemwiseDiv(mBs, vBs);
-
-			W[i] -= m_alpha * mWs;
-			b[i] -= m_alpha * mBs;
-		}
-		return true;
-	}
 	bool pass(const std::vector< ct::Mat_< T > >& gradW, const std::vector< T >& gradB,
 			  std::vector< ct::Mat_<T> >& W, std::vector< T >& b){
 		if(!gradW.size() || gradW.size() != gradB.size() || gradW.size() != W.size())
@@ -201,7 +167,7 @@ public:
 	}
 
 
-private:
+protected:
 	uint32_t m_iteration;
 	T m_betha1;
 	T m_betha2;
@@ -426,6 +392,26 @@ inline T linear_func(T val)
 	return val;
 }
 
+template< typename T >
+inline T apply_func(T val, ct::etypefunction func)
+{
+	switch (func) {
+		case ct::LINEAR:
+			return val;
+		case ct::RELU:
+			return std::max(val, T(0));
+		case ct::SIGMOID:
+			return 1. / (1. + std::exp(-val));
+		case ct::TANH:{
+			T e = std::exp(2 * val);
+			return (e - 1.)/(e + 1.);
+		}
+		default:
+			throw new std::invalid_argument("this function not applied");
+			break;
+	}
+}
+
 /**
  * @brief conv2D
  * @param A0
@@ -437,14 +423,14 @@ inline T linear_func(T val)
  * @param func
  * @return
  */
-template< typename T, typename Func >
+template< typename T >
 ct::Size conv2D(const ct::Mat_<T>& A0,
 				const ct::Size& szI,
 				int stride,
 				const std::vector< ct::Mat_<T> >& W,
 				const std::vector< T > B,
 				std::vector< ct::Mat_<T> > &A1,
-				Func func)
+				ct::etypefunction func)
 {
 	if(A0.empty() || W.empty()){
 		std::cout << "conv2D wrong parameters\n";
@@ -499,7 +485,7 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 						}
 					}
 					sum += B[w];
-					dA1i[y_res * szO.width + x_res] = func(sum);
+					dA1i[y_res * szO.width + x_res] = apply_func(sum, func);
 				}
 			}
 		}

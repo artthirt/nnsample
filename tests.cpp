@@ -220,11 +220,9 @@ void test_mat()
 	b.push_back(0);
 	b.push_back(0);
 
-	auto reLu = [](float val){return max(val, 0.f);};
-
 	ct::Size szA0(ww, hh);
 	//ct::Size sz = nn::conv2DW3x3(ims, 35, 21, 1, vW, vcn);
-	ct::Size szO = nn::conv2D(A0, szA0, 1, vW, b, A1, reLu), szAi;
+	ct::Size szO = ct::conv2D(A0, szA0, 1, vW, b, A1, ct::RELU), szAi;
 
 	s1 = A1[0].print();
 	s2 = A1[1].print();
@@ -236,14 +234,14 @@ void test_mat()
 	qDebug("Conv2d[1]");
 	PRINT_IMAGE(A1[1], szO.width, szO.height);
 
-	nn::subsample(A1[0], szO, Ai, Mi, szAi);
+	ct::subsample(A1[0], szO, Ai, Mi, szAi);
 	qDebug("Subsample");
 	PRINT_IMAGE(Ai, szAi.width, szAi.height);
 
 	qDebug("Mask");
 	PRINT_IMAGE(Mi, szO.width, szO.height);
 
-	nn::upsample(Ai, szAi, szO, Mi, Ai2);
+	ct::upsample(Ai, szAi, szO, Mi, Ai2);
 
 	qDebug("Upsample");
 	PRINT_IMAGE(Ai2, szO.width, szO.height);
@@ -254,12 +252,12 @@ void test_mat()
 	derivs.push_back(Ai2);
 	ws.push_back(vW[0]);
 
-	nn::deriv_prev_cnv(derivs, ws, szO, szA0, D);
+	ct::deriv_prev_cnv(derivs, ws, szO, szA0, D);
 
 	qDebug("DerivPrevLayer");
 	PRINT_IMAGE(D, szA0.width, szA0.height);
 
-	nn::deriv_conv2D(A0, Ai2, szA0, szO, ws[0].size(), 1, ggW, ggB);
+	ct::deriv_conv2D(A0, Ai2, szA0, szO, ws[0].size(), 1, ggW, ggB);
 
 	qDebug("deriv_conv2D: B=%f", ggB);
 	ct::Size szW = ggW.size();
@@ -277,7 +275,7 @@ void test_mat()
 	};
 	ct::Matf Test(1, 16, test_data), Test2(1, 4, test_data2);
 
-	nn::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), ws[0].size(), 1, ggW, ggB);
+	ct::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), ws[0].size(), 1, ggW, ggB);
 	qDebug("deriv_conv2D: B=%f", ggB);
 	szW = ggW.size();
 	PRINT_IMAGE(ggW, szW.width, szW.height);
@@ -447,14 +445,14 @@ void internal_test_gpu()
 			ss << "_W_" << i << ".txt";
 			qt_work_mat::q_load_mat(ss.str().c_str(), W[i]);
 		}
-		nn::deriv_conv2D(A0, dA1, ct::Size(28, 28), ct::Size(24, 24), ct::Size(5, 5),
+		ct::deriv_conv2D(A0, dA1, ct::Size(28, 28), ct::Size(24, 24), ct::Size(5, 5),
 							 1, gW, b);
 		qDebug("deriv_conv2D: B=%f, %f", b[0], b[1]);
 		for(size_t i = 0; i < gW.size(); ++i){
 			PRINT_IMAGE(gW[i], 5, 5);
 		}
 
-		nn::deriv_prev_cnv(dA1, W, ct::Size(24, 24), ct::Size(28, 28), D);
+		ct::deriv_prev_cnv(dA1, W, ct::Size(24, 24), ct::Size(28, 28), D);
 		qt_work_mat::q_save_mat(D, "TestD.txt");
 	}
 
