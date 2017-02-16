@@ -1,6 +1,6 @@
 #include "nn.h"
 
-namespace nn{
+namespace ct{
 
 void get_cnv_sizes(const ct::Size sizeIn, const ct::Size szW, int stride, ct::Size &szA1, ct::Size &szA2)
 {

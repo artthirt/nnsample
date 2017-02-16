@@ -202,7 +202,7 @@ void AdamOptimizer::init_single(const std::vector<GpuMat> &gradW)
 	m_vW.resize(gradW.size());
 	m_mb_single.resize(gradW.size(), 0);
 	m_vb_single.resize(gradW.size(), 0);
-	for(int i = 0; i < gradW.size(); ++i){
+	for(size_t i = 0; i < gradW.size(); ++i){
 		m_mW[i].resize(gradW[i]);
 		m_vW[i].resize(gradW[i]);
 

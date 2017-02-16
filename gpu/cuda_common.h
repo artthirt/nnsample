@@ -14,6 +14,9 @@ namespace gpumat{
 
 	enum etypefunction{
 		RELU = 1,
+		SIGMOID,
+		SOFTMAX,
+		TANH
 	};
 
 	namespace internal{

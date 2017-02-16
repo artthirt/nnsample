@@ -95,24 +95,14 @@ std::vector<std::vector<Matf> > mnist_conv::cnvW()
 	return res;
 }
 
-std::vector<ct::Matf> mnist_conv::getA() const
-{
-	return m_a;
-}
-
-void mnist_conv::setA(const std::vector<ct::Matf> &value)
-{
-	m_a = value;
-}
-
 Matf mnist_conv::forward(int index, int count, bool use_gpu)
 {
-	if(m_W.empty() || m_b.empty() || m_layers.empty())
+	if(m_layers.empty())
 		return Matf(0, 0);
 
 	Matf X = m_mnist->X().getRows(index, count);
 
-	return forward(X, use_gpu);
+	return forward(X, false, use_gpu);
 }
 
 Matf mnist_conv::forward_test(int index, int count, bool use_gpu)
@@ -134,12 +124,12 @@ Matf mnist_conv::forward_test(int index, int count, bool use_gpu)
 		}
 	}
 
-	return forward(X, use_gpu);
+	return forward(X, false, use_gpu);
 }
 
 void mnist_conv::setAlpha(double alpha)
 {
-	m_AdamOptimizer.setAlpha(alpha);
+	m_optim.setAlpha(alpha);
 
 	for(size_t i = 0; i < m_cnv.size(); ++i){
 		for(size_t j = 0; j < m_cnv[i].size(); ++j){
@@ -172,7 +162,7 @@ void mnist_conv::getEstimate(int batch, double &l2, double &accuracy, bool use_g
 
 	getXy(X, yp, batch);
 
-	Matf y = forward(X, use_gpu);
+	Matf y = forward(X, false, use_gpu);
 
 	double m = X.rows;
 
@@ -213,7 +203,7 @@ void mnist_conv::getEstimateTest(double &l2, double &accuracy, bool use_gpu)
 		Matf X, yp;
 		getXyTest(X, yp, batch_size, false, i * batch_size);
 
-		Matf y = forward(X, use_gpu);
+		Matf y = forward(X, false, use_gpu);
 
 		Matf d = yp - y;
 
@@ -264,10 +254,15 @@ void mnist_conv::pass_batch(int batch, bool use_gpu)
 		translate<float>(x, y, 28, 28, Xi);
 	}
 
+#ifndef _USE_GPU
+	use_gpu = false;
+#endif
+
 	m_use_gpu = use_gpu;
 	if(!use_gpu){
 		pass_batch(X, y);
 	}else{
+#ifdef _USE_GPU
 		gpumat::convert_to_gpu(X, gX);
 		gpumat::convert_to_gpu(y, gY);
 
@@ -276,6 +271,7 @@ void mnist_conv::pass_batch(int batch, bool use_gpu)
 		}
 
 		m_gpu_model.pass_batch_gpu(gX, gY);
+#endif
 	}
 
 }
@@ -366,8 +362,8 @@ void mnist_conv::getXy(Matf &X, Matf &y, int batch)
 void mnist_conv::randX(Matf &X)
 {
 #if 1
-	std::uniform_int_distribution<int> udtr(-5, 5);
-	std::uniform_real_distribution<float> uar(-5, 5);
+	std::uniform_int_distribution<int> udtr(-10, 10);
+	std::uniform_real_distribution<float> uar(-3, 3);
 
 #pragma omp parallel for
 	for(int i = 0; i < X.rows; i++){
@@ -440,6 +436,20 @@ inline ct::Mat_<T>derivSigmoid(const ct::Mat_<T>& sigm)
 
 ///*************
 
+void mnist_conv::setDropout(size_t count, float prob)
+{
+	for(size_t i = 0; i < std::min(count, m_mlp.size() - 1); ++i){
+		m_mlp[i].setDropout(true, prob);
+	}
+}
+
+void mnist_conv::clearDropout()
+{
+	for(size_t i = 0; i < m_mlp.size(); ++i){
+		m_mlp[i].setDropout(false);
+	}
+}
+
 void mnist_conv::init(int seed)
 {
 	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size() || m_cnv.empty())
@@ -453,57 +463,57 @@ void mnist_conv::init(int seed)
 	int input = m_cnv_out_len;
 	int output = m_layers[0];
 
-	m_W.resize(m_layers.size());
-	m_b.resize(m_layers.size());
+	m_mlp.resize(m_layers.size());
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
-		double n = 1./sqrt(input);
+		mlp<float>& _mlp = m_mlp[i];
 
-		m_W[i] = Matf(input, output);
-		m_W[i].randn(0., n, seed);
-		m_b[i] = Matf::ones(output, 1);
-		m_b[i].randn(0, n, seed);
+		_mlp.init(input, output);
 
 		input = output;
 	}
 
-	if(!m_AdamOptimizer.init(m_layers, m_cnv_out_len)){
+	if(!m_optim.init(m_mlp)){
 		std::cout << "optimizer not init\n";
 	}
 
 	m_gpu_model.init_gpu(m_layers);
 }
 
-Matf mnist_conv::forward(const ct::Matf &X, bool use_gpu)
+Matf mnist_conv::forward(const ct::Matf &X, bool use_dropout, bool use_gpu, bool saved)
 {
-	if(m_W.empty() || m_b.empty() || m_layers.empty())
+	if(m_mlp.empty() || m_layers.empty() || X.empty())
 		return Matf(0, 0);
 
 	m_use_gpu = use_gpu;
 	if(use_gpu){
 		if(!m_gpu_model.isInit())
 			m_gpu_model.init_gpu(m_layers);
-		return m_gpu_model.forward_gpu(X);
+		gpumat::convert_to_gpu(X, gX);
+		return m_gpu_model.forward_gpu(gX);
 	}
 
-	Matf X_out;
+	conv(X, m_Xout, saved);
 
-	conv(X, X_out, false);
+	ct::etypefunction func = ct::RELU;
 
-	Matf x = X_out, z, a;
+	Matf *pA = &m_Xout;
+
+	if(!use_dropout)
+		clearDropout();
 
 	for(size_t i = 0; i < m_layers.size(); i++){
-		z = x * m_W[i];
-		z.biasPlus(m_b[i]);
-		if(i < m_layers.size() - 1){
-			a = relu(z);
-			x = a;
-		}else
-			a = softmax(z, 1);
+		mlp<float>& _mlp = m_mlp[i];
+
+		if(i == m_layers.size() - 1)
+			func = ct::SOFTMAX;
+
+		_mlp.forward(pA, func);
+		pA = &_mlp.A1;
 	}
-	return a;
+	return m_mlp.back().A1;
 }
 
 void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
@@ -516,7 +526,7 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 
 		if(i == 0){
 			convnn::convnn< float >& m0 = ls[0];
-			m0.forward(&X, reLu);
+			m0.forward(&X, ct::RELU);
 		}else{
 			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
 				size_t off1 = j * m_count_cnvW[i - 1];
@@ -524,7 +534,7 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
 					size_t col = off1 + k;
 					convnn::convnn< float >& mi = ls[col];
-					mi.forward(&m0.A2[k], reLu);
+					mi.forward(&m0.A2[k], ct::RELU);
 				}
 			}
 		}
@@ -543,83 +553,32 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 
 void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 {
-	if(m_W.empty() || m_b.empty() || m_layers.empty() ||
+	if(m_mlp.empty() || m_layers.empty() ||
 			m_layers.back() != y.cols){
 		std::cout << "wrong parameters of model\n";
 		return;
 	}
 
 	/// forward
+	setDropout(2, 0.95f);
 
-	//// CONV
+	forward(X, true, false, true);
 
-	conv(X, m_cnv_a);
+	Matf d = m_mlp.back().A1 - y;
 
-	//// MLP
+	/// backward
 
-	m_z.resize(m_layers.size());
-	m_a.resize(m_layers.size() + 1);
-
-	m_a[0] = m_cnv_a;
-
-	std::vector< Matf > D;
-	Matf Wi;
-	D.resize(3);
-
-	for(size_t i = 0; i < m_layers.size(); i++){
-		if(i < D.size()){
-			dropout(m_W[i].rows, m_W[i].cols, 0.9f, D[i]);
-			elemwiseMult(m_W[i], D[i], Wi);
-			m_z[i] = m_a[i] * Wi;
-		}else{
-			m_z[i] = m_a[i] * m_W[i];
-		}
-		m_z[i].biasPlus(m_b[i]);
-
-		if(i < m_layers.size() - 1){
-			m_a[i + 1] = relu(m_z[i]);
-		}else
-			m_a[i + 1] = softmax(m_z[i], 1);
-	}
-
-	m_dW.resize(m_layers.size());
-	m_dB.resize(m_layers.size());
-
-	float m = X.rows;
-	m_d = m_a.back() - y;
-
-	//// Backward
+	Matf* pD = &d;
 
 	for(int i = (int)m_layers.size() - 1; i > -1; --i){
-//		Matf sz = elemwiseMult(a[i], a[i]);
-//		sz = 1. - sz;
-		Matf di, sz;
+		mlp<float>& _mlp = m_mlp[i];
 
-		{
-			sz = derivRelu(m_a[i]);
-
-			//Matf di = d * m_W[i].t();
-			matmulT2(m_d, m_W[i], di);
-			elemwiseMult(di, sz);
-		}
-		//dW[i] = a[i].t() * d;
-		matmulT1(m_a[i], m_d, m_dW[i]);
-
-		m_dW[i] *= 1./m;
-		//dW[i] += (m_lambda/m * m_W[i]);
-
-		if(i < (int)D.size()){
-			elemwiseMult(m_dW[i], D[i]);
-		}
-
-		m_dB[i] = (sumRows(m_d) * (1.f/m)).t();
-
-		m_d = di;
+		_mlp.backward(*pD);
+		pD = &_mlp.DltA0;
 	}
 
-	/// convolution
 	{
-		nn::hsplit(m_d, m_cnv.back().size() * m_cnv.back()[0].W.size(), m_ds);
+		ct::hsplit(m_mlp.front().DltA0, m_cnv.back().size() * m_cnv.back()[0].W.size(), m_ds);
 
 		for(int i = m_cnv.size() - 1; i > -1; i--){
 			std::vector< convnn::convnn<float > >& lrs = m_cnv[i];
@@ -634,23 +593,14 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 				kidx += (cnv.W.size());
 
 				if(i == m_cnv.size() - 1)
-					cnv.backward< Matf (*)(const Matf& mat) >(m_ds, derivRelu, kfirst, kidx, i == 0);
+					cnv.backward(m_ds, kfirst, kidx, i == 0);
 				else
-					cnv.backward< Matf (*)(const Matf& mat) >(m_cnv[i + 1], derivRelu, kfirst, kidx, i == 0);
-
-//				qt_work_mat::q_save_mat(cnv.gradW[0], "gradW.txt");
-//				qt_work_mat::q_save_mat(cnv.dA1[0], "dA1.txt");
-//				qt_work_mat::q_save_mat(cnv.A1[0], "A1.txt");
-//				qt_work_mat::q_save_mat(cnv.A0, "A0.txt");
-//				for(int k = 0; k < cnv.W.size(); ++k){
-//					std::string sw = cnv.W[k];
-//					qDebug("W[%d:%d]:\n%s", j, k, sw.c_str());
-//				}
+					cnv.backward(m_cnv[i + 1], kfirst, kidx, i == 0);
 			}
 //			qDebug("----");
 		}
 	}
 
-	m_AdamOptimizer.pass(m_dW, m_dB, m_W, m_b);
-	m_iteration = m_AdamOptimizer.iteration();
+	m_optim.pass(m_mlp);
+	m_iteration = m_optim.iteration();
 }

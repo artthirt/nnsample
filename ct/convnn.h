@@ -32,7 +32,7 @@ public:
 	ct::Size szA2;
 	int stride;
 	int weight_size;
-	nn::AdamOptimizer<T> m_optim;
+	ct::AdamOptimizer<T> m_optim;
 
 	tvmat gradW;
 	std::vector< T > gradB;
@@ -50,7 +50,7 @@ public:
 
 		szA0 = _szA0;
 
-		nn::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
+		ct::get_cnv_sizes(szA0, ct::Size(weight_size, weight_size), stride, szA1, szA2);
 
 		update_random();
 
@@ -75,7 +75,7 @@ public:
 	}
 
 	void update_random(){
-		for(int i = 0; i < W.size(); ++i){
+		for(size_t i = 0; i < W.size(); ++i){
 			W[i].setSize(weight_size, weight_size);
 			W[i].randn(0, 0.1);
 			B[i] = (T)0.1;
@@ -93,57 +93,71 @@ public:
 		Masks.clear();
 	}
 
-	template< typename Func >
-	bool forward(const ct::Mat_<T>* mat, Func func){
+	bool forward(const ct::Mat_<T>* mat, ct::etypefunction func){
 		if(!m_init || !mat)
 			throw new std::invalid_argument("convnn::forward: not initialized");
 		A0 = (ct::Mat_<T>*)mat;
-		nn::conv2D(*A0, szA0, stride, W, B, A1, func);
+		m_func = func;
+		ct::conv2D(*A0, szA0, stride, W, B, A1, func);
 		ct::Size sztmp;
-		bool res = nn::subsample(A1, szA1, A2, Masks, sztmp);
+		bool res = ct::subsample(A1, szA1, A2, Masks, sztmp);
 		return res;
 	}
 
-	template< typename Func >
-	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, Func func){
+	void back2conv(const tvmat& A1, const tvmat& dA2, tvmat& dA1, ct::etypefunction func){
 		dA1.resize(A1.size());
 		for(size_t i = 0; i < A1.size(); i++){
-			ct::elemwiseMult(dA2[i], func(A1[i]), dA1[i]);
+
+			switch (func) {
+				case ct::LINEAR:
+					ct::elemwiseMult(dA2[i], ct::derivRelu(A1[i]), dA1[i]);
+					break;
+				default:
+				case ct::RELU:
+					ct::elemwiseMult(dA2[i], ct::derivRelu(A1[i]), dA1[i]);
+					break;
+				case ct::SIGMOID:
+					ct::elemwiseMult(dA2[i], ct::derivSigmoid(A1[i]), dA1[i]);
+					break;
+				case ct::TANH:
+					ct::elemwiseMult(dA2[i], ct::derivTanh(A1[i]), dA1[i]);
+					break;
+					break;
+			}
+
 		}
 	}
 
-	template< typename Func >
-	void backward(const std::vector< ct::Mat_<T> >& Delta, Func func, int first = -1, int last = -1, bool last_layer = false){
+	void backward(const std::vector< ct::Mat_<T> >& Delta, int first = -1, int last = -1, bool last_layer = false){
 		if(!m_init || !A0)
 			throw new std::invalid_argument("convnn::backward: not initialized");
-		nn::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
+		ct::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
 
-		back2conv(A1, dA2, dA1, func);
+		back2conv(A1, dA2, dA1, m_func);
 
 		ct::Size szW(weight_size, weight_size);
 
-		nn::deriv_conv2D(*A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+		ct::deriv_conv2D(*A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
 		if(!last_layer)
-			nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
+			ct::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
 
 		m_optim.pass(gradW, gradB, W, B);
 	}
 
-	template< typename Func >
-	void backward(const std::vector< convnn >& Delta, Func func, int first = -1, int last = -1, bool last_layer = false){
+	void backward(const std::vector< convnn >& Delta, int first = -1, int last = -1, bool last_layer = false){
 		if(!m_init || !A0)
 			throw new std::invalid_argument("convnn::backward: not initialized");
 		convnn::upsample(Delta, szA2, szA1, Masks, dA2, first, last);
 
-		back2conv(A1, dA2, dA1, func);
+		back2conv(A1, dA2, dA1, m_func);
 
 		ct::Size szW(weight_size, weight_size);
 
-		nn::deriv_conv2D(*A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
+		ct::deriv_conv2D(*A0, dA1, szA0, szA1, szW, stride, gradW, gradB);
 
 		if(!last_layer)
-			nn::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
+			ct::deriv_prev_cnv(dA1, W, szA1, szA0, DltA0);
 
 		m_optim.pass(gradW, gradB, W, B);
 	}
@@ -155,16 +169,16 @@ public:
 
 		for(size_t i = 0; i < cnv.size(); ++i){
 			ct::Mat_< T > res;
-			nn::hconcat(cnv[i].A2, res);
+			ct::hconcat(cnv[i].A2, res);
 			slice.push_back(res);
 		}
-		nn::hconcat(slice, _out);
+		ct::hconcat(slice, _out);
 	}
 
 private:
 	bool m_init;
+	ct::etypefunction m_func;
 
-	template< typename T >
 	bool upsample(const std::vector< convnn > &A1,
 				  ct::Size& szA1,
 				  const ct::Size& szA0,
@@ -182,7 +196,7 @@ private:
 		}
 
 		for(size_t i = first, j = 0; i < last; ++i, ++j){
-			if(!nn::upsample(A1[i].DltA0, szA1, szA0, Masks[i], A0[i]))
+			if(!ct::upsample(A1[i].DltA0, szA1, szA0, Masks[j], A0[j]))
 				return false;
 		}
 		return true;

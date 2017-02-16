@@ -1,7 +1,8 @@
 #ifndef NN_H
 #define NN_H
 
-#include <custom_types.h>
+#include "custom_types.h"
+
 #include <vector>
 #include <exception>
 
@@ -9,7 +10,7 @@
 typedef unsigned int uint;
 #endif
 
-namespace nn{
+namespace ct{
 
 template< typename T >
 inline T sqr(T val)
@@ -59,33 +60,31 @@ public:
 		return m_iteration;
 	}
 
-	bool init(const std::vector< int >& layers, int samples){
-		if(!samples || layers.empty())
+	bool init(const std::vector< ct::Mat_<T> >& W, const std::vector< ct::Mat_<T> >& B){
+		if(W.empty() || B.empty())
 			return false;
 
 		using namespace ct;
 
 		m_iteration = 0;
 
-		int input = samples;
-		int output = layers[0];
+		m_mW.resize(W.size());
+		m_mb.resize(W.size());
 
-		m_mW.resize(layers.size());
-		m_mb.resize(layers.size());
+		m_vW.resize(W.size());
+		m_vb.resize(W.size());
 
-		m_vW.resize(layers.size());
-		m_vb.resize(layers.size());
+		for(size_t i = 0; i < W.size(); i++){
 
-		for(size_t i = 0; i < layers.size(); i++){
-			output = layers[i];
+			m_mW[i].setSize(W[i].size());
+			m_vW[i].setSize(W[i].size());
+			m_mW[i].fill(0);
+			m_vW[i].fill(0);
 
-			m_mW[i] = Mat_<T>::zeros(input, output);
-			m_vW[i] = Mat_<T>::zeros(input, output);
-
-			m_mb[i] = Mat_<T>::zeros(output, 1);
-			m_vb[i] = Mat_<T>::zeros(output, 1);
-
-			input = output;
+			m_mb[i].setSize(B[i].size());
+			m_vb[i].setSize(B[i].size());
+			m_mb[i].fill(0);
+			m_vb[i].fill(0);
 		}
 		m_init = true;
 		return true;
@@ -104,40 +103,6 @@ public:
 		T eps = (T)(10e-8);
 
 		for(size_t i = 0; i < gradW.size(); ++i){
-			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
-			m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
-
-			m_vW[i] = m_betha2 * m_vW[i] + (T)(1. - m_betha2) * elemwiseSqr(gradW[i]);
-			m_vb[i] = m_betha2 * m_vb[i] + (T)(1. - m_betha2) * elemwiseSqr(gradB[i]);
-
-			Mat_<T> mWs = m_mW[i] * sb1;
-			Mat_<T> mBs = m_mb[i] * sb1;
-			Mat_<T> vWs = m_vW[i] * sb2;
-			Mat_<T> vBs = m_vb[i] * sb2;
-
-			vWs.sqrt(); vBs.sqrt();
-			vWs += eps; vBs += eps;
-			mWs = elemwiseDiv(mWs, vWs);
-			mBs = elemwiseDiv(mBs, vBs);
-
-			W[i] -= m_alpha * mWs;
-			b[i] -= m_alpha * mBs;
-		}
-		return true;
-	}
-	bool pass(const ct::Mat_< T > *gradW, const ct::Mat_< T >* gradB,
-			  ct::Mat_<T> *W, ct::Mat_<T> *b, int count){
-		if(!count || ! gradW || !gradB || !W || !b)
-			return false;
-
-		using namespace ct;
-
-		m_iteration++;
-		T sb1 = (T)(1. / (1. - pow(m_betha1, m_iteration)));
-		T sb2 = (T)(1. / (1. - pow(m_betha2, m_iteration)));
-		T eps = (T)(10e-8);
-
-		for(int i = 0; i < count; ++i){
 			m_mW[i] = m_betha1 * m_mW[i] + (T)(1. - m_betha1) * gradW[i];
 			m_mb[i] = m_betha1 * m_mb[i] + (T)(1. - m_betha1) * gradB[i];
 
@@ -202,7 +167,7 @@ public:
 	}
 
 
-private:
+protected:
 	uint32_t m_iteration;
 	T m_betha1;
 	T m_betha2;
@@ -221,7 +186,7 @@ private:
 		m_vW.resize(len);
 		m_mbn.resize(len);
 		m_vbn.resize(len);
-		for(int i = 0; i < len; ++i){
+		for(size_t i = 0; i < len; ++i){
 			m_mW[i].setSize(sz.height, sz.width);
 			m_mW[i].fill(0);
 			m_vW[i].setSize(sz.height, sz.width);
@@ -306,8 +271,9 @@ public:
 	T m_alpha;
 	int m_neurons;
 
-	ct::Mat_<T> W[2];
-	ct::Mat_<T> b[2];
+	std::vector< ct::Mat_<T> > W;
+	std::vector< ct::Mat_<T> > b;
+	std::vector< ct::Mat_<T> > dW, db;
 
 	tfunc func;
 	tfunc deriv;
@@ -322,7 +288,12 @@ public:
 		std::vector< int > layers;
 		layers.push_back(neurons);
 		layers.push_back(samples);
-		adam.init(layers, samples);
+
+		W.resize(2);
+		b.resize(2);
+
+		dW.resize(2);
+		db.resize(2);
 
 		W[0] = _W;
 		b[0] = _b;
@@ -330,6 +301,7 @@ public:
 		W[1] = _W.t();
 		b[1] = Mat_<T>::zeros(samples, 1);
 
+		adam.init(W, b);
 //		W[0].randn(0, 0.1, 1);
 //		b[0].randn(0, 0.1, 1);
 //		W[1].randn(0, 0.1, 1);
@@ -342,7 +314,7 @@ public:
 		using namespace ct;
 
 		Mat_<T> a[3];
-		Mat_<T> z[2], dW[2], db[2], d, di, sz;
+		Mat_<T> z[2], d, di, sz;
 		a[0] = X;
 		for(int i = 0; i < 2; i++){
 			z[i] = a[i] * W[i];
@@ -374,7 +346,7 @@ public:
 		dW[1] = dW[0].t();
 		db[1] = Mat_<T>::zeros(db[1].size());
 
-		adam.pass(dW, db, W, b, 2);
+		adam.pass(dW, db, W, b);
 	}
 	T l2(const ct::Mat_<T>& X) const{
 		using namespace ct;
@@ -420,6 +392,26 @@ inline T linear_func(T val)
 	return val;
 }
 
+template< typename T >
+inline T apply_func(T val, ct::etypefunction func)
+{
+	switch (func) {
+		case ct::LINEAR:
+			return val;
+		case ct::RELU:
+			return std::max(val, T(0));
+		case ct::SIGMOID:
+			return 1. / (1. + std::exp(-val));
+		case ct::TANH:{
+			T e = std::exp(2 * val);
+			return (e - 1.)/(e + 1.);
+		}
+		default:
+			throw new std::invalid_argument("this function not applied");
+			break;
+	}
+}
+
 /**
  * @brief conv2D
  * @param A0
@@ -431,14 +423,14 @@ inline T linear_func(T val)
  * @param func
  * @return
  */
-template< typename T, typename Func >
+template< typename T >
 ct::Size conv2D(const ct::Mat_<T>& A0,
 				const ct::Size& szI,
 				int stride,
 				const std::vector< ct::Mat_<T> >& W,
 				const std::vector< T > B,
 				std::vector< ct::Mat_<T> > &A1,
-				Func func)
+				ct::etypefunction func)
 {
 	if(A0.empty() || W.empty()){
 		std::cout << "conv2D wrong parameters\n";
@@ -493,7 +485,7 @@ ct::Size conv2D(const ct::Mat_<T>& A0,
 						}
 					}
 					sum += B[w];
-					dA1i[y_res * szO.width + x_res] = func(sum);
+					dA1i[y_res * szO.width + x_res] = apply_func(sum, func);
 				}
 			}
 		}
@@ -759,13 +751,13 @@ void hsplit(const ct::Mat_<T>& res, size_t cols, std::vector< ct::Mat_<T> >& lis
 
 	list.resize(cols);
 
-	for(int i = 0; i < cols; ++i){
+	for(size_t i = 0; i < cols; ++i){
 		list[i].setSize(res.rows, len);
 	}
 
 	T *dR = res.ptr();
 #pragma omp parallel for
-	for(int i = 0; i < cols; ++i){
+	for(size_t i = 0; i < cols; ++i){
 		T *dLi = list[i].ptr();
 #ifdef __GNUC__
 #pragma omp simd
@@ -773,7 +765,7 @@ void hsplit(const ct::Mat_<T>& res, size_t cols, std::vector< ct::Mat_<T> >& lis
 #pragma omp parallel for
 #endif
 		for(int j = 0; j < res.rows; ++j){
-			for(int k = 0; k < len; ++k){
+			for(size_t k = 0; k < len; ++k){
 				dLi[j * len + k] = dR[j * res.cols + i * len + k];
 			}
 		}

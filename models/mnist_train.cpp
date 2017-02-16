@@ -13,8 +13,8 @@ mnist_train::mnist_train()
 	m_mnist = 0;
 	m_lambda = 0.00001f;
 	m_iteration = 0;
-	m_AdamOptimizer.setAlpha(0.01f);
-	m_AdamOptimizer.setBetha2(0.999f);
+	m_optim.setAlpha(0.01f);
+	m_optim.setBetha2(0.999f);
 #ifdef _USE_GPU
 	m_dropout_count = 5;
 #endif
@@ -30,47 +30,14 @@ void mnist_train::setMnist(mnist_reader *mnist)
 	m_mnist = mnist;
 }
 
-Matf mnist_train::forward(const ct::Matf &X) const
-{
-	if(m_W.empty() || m_b.empty() || m_layers.empty())
-		return Matf(0, 0);
-	Matf x = X, z, a;
-
-//	qDebug("---CPU---");
-	for(size_t i = 0; i < m_layers.size(); i++){
-		z = x * m_W[i];
-
-//		save_mat10(z, QString("z%1").arg(i).toStdString());
-
-		z.biasPlus(m_b[i]);
-
-//		save_mat10(m_b[i], QString("b%1").arg(i).toStdString());
-//		save_mat10(z, QString("z%1_b").arg(i).toStdString());
-
-		if(i < m_layers.size() - 1){
-			a = relu(z);
-			x = a;
-		}else
-			a = softmax(z, 1);
-
-//		save_mat10(a, QString("a%1").arg(i).toStdString());
-	}
-//	qDebug("---END CPU---");
-	return a;
-}
-
 Matf mnist_train::forward(int index, int count, bool use_gpu)
 {
-	if(m_W.empty() || m_b.empty() || m_layers.empty())
+	if(m_mlp.empty() || m_layers.empty())
 		return Matf(0, 0);
 
 	Matf X = m_mnist->X().getRows(index, count);
 
-#ifdef _USE_GPU
-	if(use_gpu)
-		return forward_gpu(X);
-#endif
-	return forward(X);
+	return forward(X, false, use_gpu);
 }
 
 Matf mnist_train::forward_test(int index, int count, bool use_gpu)
@@ -92,16 +59,12 @@ Matf mnist_train::forward_test(int index, int count, bool use_gpu)
 		}
 	}
 
-#ifdef _USE_GPU
-	if(use_gpu)
-		return forward_gpu(X);
-#endif
-	return forward(X);
+	return forward(X, false, use_gpu);
 }
 
 void mnist_train::setAlpha(double alpha)
 {
-	m_AdamOptimizer.setAlpha(alpha);
+	m_optim.setAlpha(alpha);
 #ifdef _USE_GPU
 	m_gpu_adam.setAlpha(alpha);
 #endif
@@ -127,17 +90,8 @@ void mnist_train::getEstimate(int batch, double &l2, double &accuracy, bool use_
 
 	getXy(X, yp, batch);
 
-#ifdef _USE_GPU
-	Matf y;
+	Matf y = forward(X, false, use_gpu);
 
-	if(use_gpu){
-		y = forward_gpu(X);
-	}else{
-		y = forward(X);
-	}
-#else
-	Matf y = forward(X);
-#endif
 	double m = X.rows;
 
 	Matf d = yp - y;
@@ -159,45 +113,49 @@ void mnist_train::getEstimate(int batch, double &l2, double &accuracy, bool use_
 	accuracy = (double)right / m;
 }
 
-void mnist_train::getEstimateTest(int batch, double &l2, double &accuracy, bool use_gpu)
+void mnist_train::getEstimateTest(double &l2, double &accuracy, bool use_gpu)
 {
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
 
-	Matf X, yp;
-	getXyTest(X, yp, batch);
+	size_t batch_count = 10;
+	size_t test_size = m_mnist->test().size();
 
-#ifdef _USE_GPU
-	Matf y;
+	size_t batch_size = test_size / batch_count;
 
-	if(use_gpu){
-		y = forward_gpu(X);
-	}else{
-		y = forward(X);
-	}
-#else
-	Matf y = forward(X);
-#endif
-
-	float m = X.rows;
-
-	Matf d = yp - y;
-
-	elemwiseMult(d, d);
-	d = sumRows(d);
-	d *= 1.f/m;
-
-	//////////// l2
-	l2 = d.sum();
-
+	l2 = 0;
 	int right = 0;
-	for(int i = 0; i < m; i++){
-		int k1 = y.argmax(i, 1);
-		int k2 = yp.argmax(i, 1);
-		right += (int)(k1 == k2);
+
+	for(size_t i = 0; i < batch_count; ++i){
+
+		Matf X, yp;
+		getXyTest(X, yp, batch_size, false, i * batch_size);
+
+		Matf y = forward(X, false, use_gpu);
+
+		Matf d = yp - y;
+
+		int m = X.rows;
+
+		elemwiseMult(d, d);
+		d = sumRows(d);
+		d *= 1.f/m;
+
+		//////////// l2
+		l2 += d.sum();
+
+		for(int i = 0; i < m; i++){
+			int k1 = y.argmax(i, 1);
+			int k2 = yp.argmax(i, 1);
+			right += (int)(k1 == k2);
+		}
+
 	}
+
+	l2 /= (double)batch_count;
+
 	///////////// accuracy
-	accuracy = (double)right / m;
+	accuracy = (double)right / test_size;
 }
 
 void mnist_train::init(int seed)
@@ -205,26 +163,24 @@ void mnist_train::init(int seed)
 	if(!m_mnist || !m_layers.size() || !m_mnist->train().size() || !m_mnist->lb_train().size())
 		return;
 
+	ct::generator.seed(seed);
+
 	int input = m_mnist->X().cols;
 	int output = m_layers[0];
 
-	m_W.resize(m_layers.size());
-	m_b.resize(m_layers.size());
+	m_mlp.resize(m_layers.size());
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
-		double n = 1./sqrt(input);
+		mlp<float>& _mlp = m_mlp[i];
 
-		m_W[i] = Matf(input, output);
-		m_W[i].randn(0., n, seed);
-		m_b[i] = Matf::ones(output, 1);
-		m_b[i].randn(0, n, seed);
+		_mlp.init(input, output);
 
 		input = output;
 	}
 
-	if(!m_AdamOptimizer.init(m_layers, m_mnist->X().cols)){
+	if(!m_optim.init(m_mlp)){
 		std::cout << "optimizer not init\n";
 	}
 }
@@ -303,31 +259,32 @@ void mnist_train::load(const QString &fn)
 
 	int layers = sl[1].toInt();
 
-	m_W.resize(layers);
-	m_b.resize(layers);
+	m_mlp.resize(layers);
 
 	m_layers.resize(layers);
 
 	for(int i = 0; i < layers; i++){
+		ct::mlp<float>& _mlp = m_mlp[i];
+
 		Matf mat1, mat2;
 		QString capt1, capt2;
 		read_mat(f, mat1, capt1);
 		read_mat(f, mat2, capt2);
 		if(capt1 == "W")
-			m_W[i] = mat1;
+			_mlp.W = mat1;
 		else
-			m_b[i] = mat1;
+			_mlp.B = mat1;
 
 		if(capt2 == "b")
-			m_b[i] = mat2;
+			_mlp.B = mat2;
 		else
-			m_W[i] = mat2;
+			_mlp.W = mat2;
 
 //		float w1 = m_W[i].max(), w2 = m_W[i].min();
 //		float b1 = m_b[i].max(), b2 = m_b[i].min();
 //		qDebug("max(w)=%f, max(b)=%f, min(w)=%f, min(b)=%f", w1, b1, w2, b2);
 
-		m_layers[i] = m_W[i].cols;
+		m_layers[i] = _mlp.W.cols;
 	}
 	f.close();
 }
@@ -354,10 +311,10 @@ void mnist_train::save(const QString &fn)
 	if(!f.open(QIODevice::WriteOnly))
 		return;
 
-	f.write(QString("layers %1\n").arg(m_W.size()).toLatin1());
-	for(uint i = 0; i < m_W.size(); i++){
-		write_mat(f, m_W[i], "W");
-		write_mat(f, m_b[i], "b");
+	f.write(QString("layers %1\n").arg(m_mlp.size()).toLatin1());
+	for(uint i = 0; i < m_mlp.size(); i++){
+		write_mat(f, m_mlp[i].W, "W");
+		write_mat(f, m_mlp[i].B, "b");
 	}
 
 	f.close();
@@ -382,22 +339,22 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 
 	if(use_gpu){
 #ifdef _USE_GPU
-		if(enc_gpu.empty()){
-			enc_gpu.resize(m_layers.size() - 1);
-			int input = m_mnist->X().cols;
-			for(uint i = 0; i < enc_gpu.size(); i++){
-				gpumat::SimpleAutoencoder& enc = enc_gpu[i];
-				enc.init(m_gW[i], m_gb[i], input, m_layers[i], &gpumat::reLu, &gpumat::deriv_reLu);
-				input = m_layers[i];
-			}
-		}
+//		if(enc_gpu.empty()){
+//			enc_gpu.resize(m_layers.size() - 1);
+//			int input = m_mnist->X().cols;
+//			for(uint i = 0; i < enc_gpu.size(); i++){
+//				gpumat::SimpleAutoencoder& enc = enc_gpu[i];
+//				enc.init(m_gW[i], m_gb[i], input, m_layers[i], &gpumat::reLu, &gpumat::deriv_reLu);
+//				input = m_layers[i];
+//			}
+//		}
 #endif
 	}else{
 		if(enc.empty()){
 			enc.resize(m_layers.size() - 1);
 			int input = m_mnist->X().cols;
 			for(uint i = 0; i < enc.size(); i++){
-				enc[i].init(m_W[i], m_b[i], input, m_layers[i], &relu, &derivRelu);
+				enc[i].init(m_mlp[i].W, m_mlp[i].B, input, m_layers[i], &relu, &derivRelu);
 				input = m_layers[i];
 			}
 		}
@@ -409,45 +366,46 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 
 		if(use_gpu){
 #ifdef _USE_GPU
-			getX(X, batch);
-			randX(X);
+//			getX(X, batch);
+//			randX(X);
 
-			gpumat::convert_to_gpu(X, gX);
-			g_a[0] = gX;
-			for(int j = 0; j < i; j++){
-				gpumat::matmul(g_a[j], m_gW[j], g_z[j]);
-				gpumat::biasPlus(g_z[j], m_gb[j]);
-				gpumat::reLu(g_z[j], g_a[j + 1]);
-//				z = a[j] * m_W[j];
-//				z.biasPlus(m_b[j]);
-//				a = relu(z);
-			}
+//			gpumat::convert_to_gpu(X, gX);
+//			g_a[0] = gX;
+//			for(int j = 0; j < i; j++){
+//				gpumat::matmul(g_a[j], m_gW[j], g_z[j]);
+//				gpumat::biasPlus(g_z[j], m_gb[j]);
+//				gpumat::reLu(g_z[j], g_a[j + 1]);
+////				z = a[j] * m_W[j];
+////				z.biasPlus(m_b[j]);
+////				a = relu(z);
+//			}
 
-			enc_gpu[i].pass(g_a[i]);
+//			enc_gpu[i].pass(g_a[i]);
 
-			float l2 = enc_gpu[i].l2(g_a[i]);
-			res += l2;
-			qDebug("l[%d]: l2=%f; W.rows=%d; W.cols=%d", i, l2, enc_gpu[i].W[0].rows, enc_gpu[i].W[0].cols);
-			m_gW[i] = enc_gpu[i].W[0];
-			m_gb[i] = enc_gpu[i].b[0];
+//			float l2 = enc_gpu[i].l2(g_a[i]);
+//			res += l2;
+//			qDebug("l[%d]: l2=%f; W.rows=%d; W.cols=%d", i, l2, enc_gpu[i].W[0].rows, enc_gpu[i].W[0].cols);
+//			m_gW[i] = enc_gpu[i].W[0];
+//			m_gb[i] = enc_gpu[i].b[0];
 #endif
 		}else{
 			getX(X, batch);
 			randX(X);
 			a = X;
-			for(int j = 0; j < i; j++){
-				z = a * m_W[j];
-				z.biasPlus(m_b[j]);
-				a = relu(z);
+
+			Matf* pA = &a;
+			for(int j = 0; j < i; ++j){
+				m_mlp[j].forward(pA, ct::RELU, false);
+				pA = &m_mlp[j].A1;
 			}
 
-			enc[i].pass(a);
+			enc[i].pass(*pA);
 
-			float l2 = enc[i].l2(a);
+			float l2 = enc[i].l2(*pA);
 			res += l2;
 			qDebug("l2=%f; W.rows=%d; W.cols=%d", l2, enc[i].W[0].rows, enc[i].W[0].cols);
-			m_W[i] = enc[i].W[0];
-			m_b[i] = enc[i].b[0];
+			m_mlp[i].W = enc[i].W[0];
+			m_mlp[i].B = enc[i].b[0];
 		}
 	}
 	qDebug("<<<<<end>>>>");
@@ -457,9 +415,9 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 void mnist_train::copyWbMat2GpuMat()
 {
 #ifdef _USE_GPU
-	for(size_t i = 0; i < m_W.size(); i++){
-		gpumat::convert_to_gpu(m_W[i], m_gW[i]);
-		gpumat::convert_to_gpu(m_b[i], m_gb[i]);
+	for(size_t i = 0; i < m_mlp.size(); i++){
+		gpumat::convert_to_gpu(m_mlp[i].W, m_gpu_mlp[i].W);
+		gpumat::convert_to_gpu(m_mlp[i].B, m_gpu_mlp[i].B);
 	}
 #endif
 }
@@ -467,9 +425,9 @@ void mnist_train::copyWbMat2GpuMat()
 void mnist_train::copyWbGpuMat2Mat()
 {
 #ifdef _USE_GPU
-	for(size_t i = 0; i < m_W.size(); i++){
-		gpumat::convert_to_mat(m_gW[i], m_W[i]);
-		gpumat::convert_to_mat(m_gb[i], m_b[i]);
+	for(size_t i = 0; i < m_mlp.size(); i++){
+		gpumat::convert_to_mat(m_gpu_mlp[i].W, m_mlp[i].W);
+		gpumat::convert_to_mat(m_gpu_mlp[i].B, m_mlp[i].B);
 	}
 #endif
 }
@@ -479,13 +437,6 @@ void mnist_train::init_weights(int seed)
 	init(seed);
 #ifdef _USE_GPU
 	init_gpu();
-
-	if(g_z.size() != m_layers.size()){
-		g_z.resize(m_layers.size());
-		g_a.resize(m_layers.size() + 1);
-		g_d.resize(m_layers.size());
-		g_sz.resize(m_layers.size());
-	}
 #endif
 }
 
@@ -508,27 +459,47 @@ void mnist_train::getX(Matf &X, int batch)
 	X = m_mnist->X().getRows(indexes);
 }
 
-void mnist_train::getXyTest(Matf &X, Matf &yp, int batch)
+void mnist_train::getXyTest(Matf &X, Matf &yp, int batch, bool use_rand, int beg)
 {
 	if(batch < 0)
 		batch = m_mnist->test().size();
 
-	std::vector<int> indexes;
+	if(use_rand){
 
-	getBatchIds(indexes, batch);
+		std::vector<int> indexes;
 
-	X = Matf::zeros(batch, m_mnist->X().cols);
-	yp = Matf::zeros(batch, m_mnist->y().cols);
+		getBatchIds(indexes, batch);
 
-	for(int i = 0; i < batch; i++){
-		int id = indexes[i];
-		QByteArray& data = m_mnist->test()[id];
-		uint lb = m_mnist->lb_test()[id];
+		X = Matf::zeros(batch, m_mnist->X().cols);
+		yp = Matf::zeros(batch, m_mnist->y().cols);
 
-		for(int j = 0; j < data.size(); j++){
-			X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+		for(int i = 0; i < batch; i++){
+			int id = indexes[i];
+			QByteArray& data = m_mnist->test()[id];
+			uint lb = m_mnist->lb_test()[id];
+
+			for(int j = 0; j < data.size(); j++){
+				X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+			}
+			yp.at(i, lb) = 1.;
 		}
-		yp.at(i, lb) = 1.;
+	}else{
+		int cnt_batch = std::min(m_mnist->test().size() - beg, batch);
+
+		X = Matf::zeros(cnt_batch, m_mnist->X().cols);
+		yp = Matf::zeros(cnt_batch, m_mnist->y().cols);
+
+		int id = beg;
+		for(int i = 0; i < cnt_batch; i++, id++){
+			QByteArray& data = m_mnist->test()[id];
+			uint lb = m_mnist->lb_test()[id];
+
+			for(int j = 0; j < data.size(); j++){
+				X.at(i, j) = ((uint)data[j] > 0? 1. : 0.);
+			}
+			yp.at(i, lb) = 1.;
+		}
+
 	}
 }
 
@@ -573,6 +544,20 @@ void mnist_train::randX(Matf &X)
 
 }
 
+void mnist_train::setDropout(size_t count, float prob)
+{
+	for(size_t i = 0; i < std::min(count, m_mlp.size() - 1); ++i){
+		m_mlp[i].setDropout(true, prob);
+	}
+}
+
+void mnist_train::clearDropout()
+{
+	for(size_t i = 0; i < m_mlp.size(); ++i){
+		m_mlp[i].setDropout(false);
+	}
+}
+
 void mnist_train::getBatchIds(std::vector<int> &indexes, int batch)
 {
 	if(batch > 0){
@@ -599,123 +584,138 @@ void mnist_train::getBatchIds(std::vector<int> &indexes, int batch)
 	}
 }
 
+///*************************
+
+Matf mnist_train::forward(const ct::Matf &X, bool use_dropout, bool use_gpu)
+{
+	if(m_mlp.empty() || m_layers.empty())
+		return Matf(0, 0);
+
+#ifdef _USE_GPU
+	if(use_gpu)
+		return forward_gpu(X);
+#endif
+
+	/////////////////
+
+	m_X = X;
+
+//	qDebug("---CPU---");
+	ct::etypefunction func = ct::RELU;
+
+	if(!use_dropout)
+		clearDropout();
+
+	Matf *pA = &m_X;
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		mlp<float>& _mlp = m_mlp[i];
+
+		if(i == m_layers.size() - 1)
+			func = ct::SOFTMAX;
+
+		_mlp.forward(pA, func);
+		pA = &_mlp.A1;
+	}
+	return m_mlp.back().A1;
+}
+
 void mnist_train::pass_batch(const Matf &X, const Matf &y)
 {
-	if(m_W.empty() || m_b.empty() || m_layers.empty() ||
+	if(m_mlp.empty() || m_layers.empty() ||
 			m_layers.back() != y.cols){
 		std::cout << "wrong parameters of model\n";
 		return;
 	}
 
 	/// forward
+	setDropout(2, 0.95f);
 
-	std::vector< Matf > z, a;
-	z.resize(m_layers.size());
-	a.resize(m_layers.size() + 1);
+	forward(X, true);
 
-	a[0] = X;
-
-	std::vector< Matf > D;
-	Matf Wi;
-	D.resize(3);
-
-	for(size_t i = 0; i < m_layers.size(); i++){
-		if(i < D.size()){
-			dropout(m_W[i].rows, m_W[i].cols, 0.9f, D[i]);
-			elemwiseMult(m_W[i], D[i], Wi);
-			z[i] = a[i] * Wi;
-		}else{
-			z[i] = a[i] * m_W[i];
-		}
-		z[i].biasPlus(m_b[i]);
-
-		if(i < m_layers.size() - 1){
-			a[i + 1] = relu(z[i]);
-		}else
-			a[i + 1] = softmax(z[i], 1);
-	}
-
-	std::vector< Matf > dW, dB;
-	dW.resize(m_layers.size());
-	dB.resize(m_layers.size());
-
-	float m = X.rows;
-	Matf d = a.back() - y;
+	Matf d = m_mlp.back().A1 - y;
 
 	/// backward
 
+	Matf* pD = &d;
+
 	for(int i = (int)m_layers.size() - 1; i > -1; --i){
-//		Matf sz = elemwiseMult(a[i], a[i]);
-//		sz = 1. - sz;
-		Matf di, sz;
-		if(i > 0){
-			sz = derivRelu(a[i]);
+		mlp<float>& _mlp = m_mlp[i];
 
-			//Matf di = d * m_W[i].t();
-			matmulT2(d, m_W[i], di);
-			elemwiseMult(di, sz);
-		}
-		//dW[i] = a[i].t() * d;
-		matmulT1(a[i], d, dW[i]);
-
-		dW[i] *= 1./m;
-		//dW[i] += (m_lambda/m * m_W[i]);
-
-		if(i < (int)D.size()){
-			elemwiseMult(dW[i], D[i]);
-		}
-
-		dB[i] = (sumRows(d) * (1.f/m)).t();
-
-		if(i > 0)
-			d = di;
+		_mlp.backward(*pD, i == 0);
+		pD = &_mlp.DltA0;
 	}
 
-	if(!m_AdamOptimizer.pass(dW, dB, m_W, m_b)){
+	if(!m_optim.pass(m_mlp)){
 		std::cout << "optimizer not work\n";
 	}
-	m_iteration = m_AdamOptimizer.iteration();
+	m_iteration = m_optim.iteration();
 }
 
 #ifdef _USE_GPU
 
-Matf mnist_train::forward_gpu(const Matf &X)
+Matf mnist_train::forward_gpu(const Matf &X, bool use_dropout, bool converToMatf)
 {
 	if(m_layers.empty() || X.empty())
 		return Matf(0, 0);
 
-	Matf a;
+	gpumat::convert_to_gpu(X, m_gX);
 
-	gpumat::convert_to_gpu(X, g_a[0]);
+	gpumat::etypefunction func = gpumat::RELU;
 
-//	Matf D1, Dt1, D2, Dt2, D3, Dt3;
+	if(!use_dropout)
+		clearGpuDropout();
 
-//	qDebug("---GPU---");
+	gpumat::GpuMat *pA = &m_gX;
 
 	for(size_t i = 0; i < m_layers.size(); i++){
-		gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-//		gpumat::save_gmat10(g_z[i], QString("gz%1").arg(i).toStdString());
+		if(i == m_layers.size() - 1)
+			func = gpumat::SOFTMAX;
 
-		gpumat::biasPlus(g_z[i], m_gb[i]);
-
-//		gpumat::save_gmat10(m_gb[i], QString("gb%1").arg(i).toStdString());
-//		gpumat::save_gmat10(g_z[i], QString("gz%1_b").arg(i).toStdString());
-
-		if(i < m_layers.size() - 1){
-			gpumat::reLu(g_z[i], g_a[i + 1]);
-		}else{
-			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
-		}
-
-//		gpumat::save_gmat10(g_a[i + 1], QString("ga%1").arg(i).toStdString());
+		_mlp.forward(pA, func);
+		pA = &_mlp.A1;
 	}
 
-//	qDebug("---END GPU---");
+	if(converToMatf){
+		Matf a;
+		gpumat::convert_to_mat(m_gpu_mlp.back().A1, a);
+		return a;
+	}
+	return Matf(0, 0);
 
-	gpumat::convert_to_mat(g_a.back(), a);
+}
 
-	return a;
+Matf mnist_train::forward_gpu(const gpumat::GpuMat &X, bool use_dropout, bool converToMatf)
+{
+	if(m_layers.empty() || X.empty())
+		return Matf(0, 0);
+
+	gpumat::etypefunction func = gpumat::RELU;
+
+	if(!use_dropout)
+		clearGpuDropout();
+
+	gpumat::GpuMat *pA = (gpumat::GpuMat*)&X;
+
+	for(size_t i = 0; i < m_layers.size(); i++){
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
+
+		if(i == m_layers.size() - 1)
+			func = gpumat::SOFTMAX;
+
+		_mlp.forward(pA, func);
+		pA = &_mlp.A1;
+	}
+
+	if(converToMatf){
+		Matf a;
+		gpumat::convert_to_mat(m_gpu_mlp.back().A1, a);
+		return a;
+	}
+	return Matf(0, 0);
+
 }
 
 void mnist_train::init_gpu()
@@ -726,26 +726,19 @@ void mnist_train::init_gpu()
 	int input = m_mnist->X().cols;
 	int output = m_layers[0];
 
-	m_gW.resize(m_layers.size());
-	m_gb.resize(m_layers.size());
+	m_gpu_mlp.resize(m_layers.size());
 
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
-//		double n = 1./sqrt(input);
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-		Matf Wi = Matf(input, output);
-		Matf bi = Matf::ones(output, 1);
-		Wi.randn(0., 0.1);
-		bi.randn(0, 0.1);
-
-		gpumat::convert_to_gpu(Wi, m_gW[i]);
-		gpumat::convert_to_gpu(bi, m_gb[i]);
+		_mlp.init(input, output, gpumat::GPU_FLOAT);
 
 		input = output;
 	}
 
-	m_gpu_adam.init(m_gW, m_gb);
+	m_gpu_adam.init(m_gpu_mlp);
 }
 
 void mnist_train::pass_batch_gpu(int batch)
@@ -796,79 +789,31 @@ void mnist_train::pass_batch_gpu(int batch)
 
 void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 {
-	if(m_gW.empty() || m_gb.empty() || m_layers.empty() ||
+	if(m_gpu_mlp.empty() || m_layers.empty() ||
 			m_layers.back() != y.cols){
 		std::cout << "wrong parameters of model\n";
 		return;
 	}
 
 	/// forward
+	setGpuDropout(2, 0.95f);
 
-	g_a[0] = X;
+	forward_gpu(X, true, false);
 
-	if(m_DropoutT.empty()){
-		m_Dropout.resize(m_dropout_count);
-		m_DropoutT.resize(m_dropout_count);
-	}
-
-	int max_layers = std::min((int)(m_layers.size() - 2), m_dropout_count);
-
-	for(size_t i = 0; i < m_layers.size(); i++){
-		if(i < (size_t)max_layers){
-			Matf d;
-			ct::dropout(m_gW[i].rows, m_gW[i].cols, 0.92f, d);
-			gpumat::convert_to_gpu(d, m_Dropout[i]);
-			m_DropoutT[i] = m_Dropout[i];
-
-			gpumat::elemwiseMult(m_Dropout[i], m_gW[i]);
-			gpumat::matmul_shared(g_a[i], m_Dropout[i], g_z[i]);
-		}else{
-			gpumat::matmul_shared(g_a[i], m_gW[i], g_z[i]);
-		}
-		gpumat::biasPlus(g_z[i], m_gb[i]);
-		if(i < m_layers.size() - 1){
-			gpumat::reLu(g_z[i], g_a[i + 1]);
-		}else{
-			gpumat::softmax(g_z[i], 1, g_a[i + 1], partZ);
-		}
-	}
-
-	if(g_dW.empty()){
-		g_dW.resize(m_layers.size());
-		g_dB.resize(m_layers.size());
-	}
-
-	float m = X.rows;
-
-	gpumat::sub(g_a.back(), y, g_d.back());
+	gpumat::sub(m_gpu_mlp.back().A1, y, g_d);
 
 	/// backward
 
+	gpumat::GpuMat* pD = &g_d;
+
 	for(int i = (int)m_layers.size() - 1; i > -1; --i){
-		if(i > 0){
-			gpumat::deriv_reLu(g_a[i], g_sz[i]);
+		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-			gpumat::matmulT2_shared(g_d[i], m_gW[i], g_d[i - 1]);
-			gpumat::elemwiseMult(g_d[i - 1], g_sz[i]);
-		}
-		gpumat::matmulT1_shared(g_a[i], g_d[i], g_dW[i]);
-		gpumat::mulval(g_dW[i], 1./m);
-
-		if(i < max_layers){
-			gpumat::elemwiseMult(g_dW[i], m_DropoutT[i]);
-		}
-
-		g_dB[i].swap_dims();
-
-		gpumat::sumRows_shared(g_d[i], g_dB[i], (1./m));
-
-		g_dB[i].swap_dims();
-
-//		if(i > 0)
-//			g_d = g_di;
+		_mlp.backward(*pD, i == 0);
+		pD = &_mlp.DltA0;
 	}
 
-	m_gpu_adam.pass(g_dW, g_dB, m_gW, m_gb);
+	m_gpu_adam.pass(m_gpu_mlp);
 
 	m_iteration = m_gpu_adam.iteration();
 
@@ -876,9 +821,23 @@ void mnist_train::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &
 
 void mnist_train::save_gpu_matricies()
 {
-	for(size_t i = 0; i < m_gW.size(); ++i){
-		gpumat::save_gmat(m_gW[i], QString("./weigths/g_W%1.txt").arg(i).toStdString());
-		gpumat::save_gmat(m_gb[i], QString("./weigths/g_b%1.txt").arg(i).toStdString());
+	for(size_t i = 0; i < m_gpu_mlp.size(); ++i){
+		gpumat::save_gmat(m_gpu_mlp[i].W, QString("./weigths/g_W%1.txt").arg(i).toStdString());
+		gpumat::save_gmat(m_gpu_mlp[i].B, QString("./weigths/g_b%1.txt").arg(i).toStdString());
+	}
+}
+
+void mnist_train::setGpuDropout(size_t count, float prob)
+{
+	for(size_t i = 0; i < std::min(count, m_gpu_mlp.size() - 1); ++i){
+		m_gpu_mlp[i].setDropout(true, prob);
+	}
+}
+
+void mnist_train::clearGpuDropout()
+{
+	for(size_t i = 0; i < m_gpu_mlp.size(); ++i){
+		m_gpu_mlp[i].setDropout(false);
 	}
 }
 

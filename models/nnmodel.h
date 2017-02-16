@@ -66,7 +66,7 @@ private:
 	std::vector< ct::Matd > m_b;
 	std::vector< int > m_layers;
 
-	nn::AdamOptimizer<double> m_AdamOptimizer;
+	ct::AdamOptimizer<double> m_AdamOptimizer;
 
 	EResultModel m_resultModel;
 

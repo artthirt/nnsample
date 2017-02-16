@@ -7,12 +7,14 @@ HEADERS += \
     $$PWD/helper_gpu.h \
     $$PWD/cuda_common.h \
     $$PWD/convnn_gpu.h \
-    $$PWD/cu/common_devices.h
+    $$PWD/cu/common_devices.h \
+    $$PWD/gpu_mlp.h
 
 SOURCES += \
     $$PWD/gpumat.cpp \
     $$PWD/helper_gpu.cpp \
-    $$PWD/convnn_gpu.cpp
+    $$PWD/convnn_gpu.cpp \
+    $$PWD/gpu_mlp.cpp
 
 CUDA_SOURCES += $$PWD/cu/cuda_arithm.cu \
                 $$PWD/cu/cuda_conv.cu
@@ -57,7 +59,7 @@ CONFIG(debug, debug|release) {
     #-D_DEBUG
 
     cuda_d.commands = $$CUDA_DIR/bin/nvcc -D_DEBUG $$NVCC_OPTIONS $$CUDA_INC \
-                    $$NVCC_LIBS --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH \
+                    $$NVCC_LIBS --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH -ccbin gcc-5\
                     -c -o ${QMAKE_FILE_OUT} ${QMAKE_FILE_NAME}
 
     win32{
@@ -76,7 +78,7 @@ else {
     cuda.input = CUDA_SOURCES
     cuda.output = $$CUDA_OBJECTS_DIR/${QMAKE_FILE_BASE}_cuda.o
     cuda.commands = $$CUDA_DIR/bin/nvcc $$NVCC_OPTIONS $$CUDA_INC $$NVCC_LIBS \
-                    --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH \
+                    --machine $$SYSTEM_TYPE -arch=$$CUDA_ARCH -ccbin gcc-5\
                     -c -o ${QMAKE_FILE_OUT} ${QMAKE_FILE_NAME}
 
     win32{
