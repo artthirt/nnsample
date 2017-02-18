@@ -1,5 +1,6 @@
 #include "mnist_conv.h"
 
+#include "matops.h"
 #include "mnist_utils.h"
 
 #include "qt_work_mat.h"
@@ -60,7 +61,7 @@ void mnist_conv::setConvLength(const std::vector<int> &count_cnvW, std::vector<i
 #endif
 }
 
-std::vector<std::vector<convnn::convnn<float> > > &mnist_conv::cnv()
+std::vector<std::vector<ct::convnn<float> > > &mnist_conv::cnv()
 {
 	return m_cnv;
 }
@@ -522,25 +523,25 @@ void mnist_conv::conv(const Matf &X, Matf &X_out, bool saved)
 		return;
 
 	for(size_t i = 0; i < m_cnv.size(); ++i){
-		std::vector< convnn::convnn< float > >& ls = m_cnv[i];
+		std::vector< ct::convnn< float > >& ls = m_cnv[i];
 
 		if(i == 0){
-			convnn::convnn< float >& m0 = ls[0];
+			ct::convnn< float >& m0 = ls[0];
 			m0.forward(&X, ct::RELU);
 		}else{
 			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
 				size_t off1 = j * m_count_cnvW[i - 1];
-				convnn::convnn< float >& m0 = m_cnv[i - 1][j];
+				ct::convnn< float >& m0 = m_cnv[i - 1][j];
 				for(int k = 0; k < m_count_cnvW[i - 1]; ++k){
 					size_t col = off1 + k;
-					convnn::convnn< float >& mi = ls[col];
+					ct::convnn< float >& mi = ls[col];
 					mi.forward(&m0.A2[k], ct::RELU);
 				}
 			}
 		}
 	}
 
-	convnn::convnn<float>::hconcat(m_cnv.back(), X_out);
+	ct::convnn<float>::hconcat(m_cnv.back(), X_out);
 
 	if(!saved){
 		for(size_t i = 0; i < m_cnv.size(); ++i){
@@ -581,13 +582,13 @@ void mnist_conv::pass_batch(const Matf &X, const Matf &y)
 		ct::hsplit(m_mlp.front().DltA0, m_cnv.back().size() * m_cnv.back()[0].W.size(), m_ds);
 
 		for(int i = m_cnv.size() - 1; i > -1; i--){
-			std::vector< convnn::convnn<float > >& lrs = m_cnv[i];
+			std::vector< ct::convnn<float > >& lrs = m_cnv[i];
 
 //			qDebug("LR[%d]-----", i);
 			size_t kidx = 0;
 
 			for(size_t j = 0; j < lrs.size(); ++j){
-				convnn::convnn<float > &cnv = lrs[j];
+				ct::convnn<float > &cnv = lrs[j];
 
 				size_t kfirst = kidx;
 				kidx += (cnv.W.size());

@@ -6,6 +6,7 @@
 #include "common_types.h"
 #include "custom_types.h"
 #include "nn.h"
+#include "matops.h"
 
 #include "qt_work_mat.h"
 

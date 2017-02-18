@@ -94,13 +94,13 @@ public:
 	void setMnist(mnist_reader* mnist);
 	void setConvLength(const std::vector< int > &count_cnvW, std::vector< int >* weight_sizes = 0);
 
-	std::vector< std::vector< convnn::convnn<float> > > &cnv();
+	std::vector< std::vector< ct::convnn<float> > > &cnv();
 
 	std::vector<std::vector<ct::Matf> > cnvW();
 
 private:
 	std::vector< int > m_layers;
-	std::vector< std::vector< convnn::convnn<float> > > m_cnv;
+	std::vector< std::vector< ct::convnn<float> > > m_cnv;
 	std::vector< int > m_count_cnvW;
 	std::vector< ct::mlp<float> > m_mlp;
 	mnist_reader *m_mnist;

@@ -1,6 +1,7 @@
 #include "nnmodel.h"
 #include  <map>
 #include <iostream>
+#include "matops.h"
 
 using namespace ct;
 

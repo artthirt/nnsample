@@ -1,6 +1,8 @@
 #include "drawcnvweight.h"
 #include "ui_drawcnvweight.h"
 
+#include "matops.h"
+
 #include <QPaintEvent>
 #include <QPainter>
 

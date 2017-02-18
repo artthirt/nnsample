@@ -1,4 +1,5 @@
 #include "mnist_train.h"
+#include "matops.h"
 
 #ifdef _USE_GPU
 #include "helper_gpu.h"

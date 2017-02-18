@@ -1,5 +1,6 @@
 #include "gpumat.h"
 
+#include <iomanip>
 #include <sstream>
 #include <fstream>
 
@@ -236,10 +237,10 @@ std::string getString(void* data, int rows, int cols)
 
 	std::stringstream stream;
 
-	stream << "[";
+	stream << std::setprecision(4) << "[";
 	for(int i = 0; i < rows; i++){
 		for(int j = 0; j < cols; j++){
-			stream << vec[i * cols + j] << " ";
+			stream << vec[i * cols + j] << "\t";
 		}
 		if(i != rows - 1)stream << ";\n ";
 	}
@@ -636,7 +637,18 @@ void cuda_softmax(const GpuMat& A, int axis, GpuMat& C, GpuMat& partZ);
  * @param sb2
  */
 extern "C"
-void cuda_adamgrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA, double alpha, double sb1, double sb2);
+void cuda_adamgrad(GpuMat& A, const GpuMat& mA, const GpuMat& vA,
+				   double alpha, double sb1, double sb2);
+
+/**
+ * @brief cuda_subIndOne
+ * @param A
+ * @param Ind
+ * @param B = A : A[row, col == Ind[row]] - 1
+ */
+extern "C"
+void cuda_subIndOne(const GpuMat& A, const GpuMat& Ind, GpuMat& B);
+
 
 /////////////////////////////////////////////////
 
@@ -1049,6 +1061,17 @@ void sub_adamGrad(GpuMat &A, const GpuMat &mA, const GpuMat &vA, double alpha, d
 	}
 
 	cuda_adamgrad(A, mA, vA, alpha, sb1, sb2);
+}
+
+void subIndOne(const GpuMat &A, const GpuMat &Ind, GpuMat &B)
+{
+	if(A.empty() || Ind.empty() || A.rows != Ind.rows || Ind.cols != 1){
+		throw new std::invalid_argument("subIndOne");
+	}
+
+	B.resize(A);
+
+	cuda_subIndOne(A, Ind, B);
 }
 
 }
