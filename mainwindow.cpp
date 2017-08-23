@@ -326,7 +326,7 @@ void MainWindow::update_mnist()
 		ct::Matf y;
 		int index1 = index;
 		int count1 = index1 + count;
-		while(index < count1){
+		while(index1 < count1){
 			ct::Matf yi = m_mnist_train.forward_test(index1, cnti, m_use_gpu);
 			index1 += cnti;
 			y.push_back(yi);
