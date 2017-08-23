@@ -18,20 +18,17 @@ DrawCnvWeight::~DrawCnvWeight()
 	delete ui;
 }
 
-void copy_weights(const std::vector<std::vector<ct::Matf> > &W,
-				  std::vector<std::vector<ct::Matf> > &Wout)
+void copy_weights(const std::vector<ct::Matf > &W,
+				  std::vector<ct::Matf > &Wout)
 {
 	Wout.clear();
 	Wout.resize(W.size());
 	for(size_t i = 0; i < W.size(); i++){
-		Wout[i].resize(W[i].size());
-		for(size_t j = 0; j < W[i].size(); j++){
-			W[i][j].copyTo(Wout[i][j]);
-		}
+		W[i].copyTo(Wout[i]);
 	}
 }
 
-void DrawCnvWeight::set_weight(const std::vector<std::vector<ct::Matf> > &W)
+void DrawCnvWeight::set_weight(const std::vector<ct::Matf > &W)
 {
 	if(W.empty())
 		return;
@@ -48,7 +45,7 @@ void DrawCnvWeight::set_weight(const std::vector<std::vector<ct::Matf> > &W)
 	update();
 }
 
-void DrawCnvWeight::set_prev_weight(const std::vector<std::vector<ct::Matf> > &W)
+void DrawCnvWeight::set_prev_weight(const std::vector< ct::Matf > &W)
 {
 	copy_weights(W, m_prevW);
 }
@@ -104,7 +101,30 @@ void DrawCnvWeight::paintEvent(QPaintEvent *event)
 //	draw_weight(painter, s.height() + 20, m_firstW, false);
 }
 
-QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vector<std::vector<ct::Matf> > &Weights, bool is_prev)
+float max(const ct::Matf& M, int row)
+{
+	int res = M.ptr(row)[0];
+	for(int i = 1; i < M.cols; ++i){
+		if(res < M.ptr(row)[i]){
+			res = M.ptr(row)[i];
+		}
+	}
+	return res;
+}
+
+float min(const ct::Matf& M, int row)
+{
+	int res = M.ptr(row)[0];
+	for(int i = 1; i < M.cols; ++i){
+		if(res > M.ptr(row)[i]){
+			res = M.ptr(row)[i];
+		}
+	}
+	return res;
+}
+
+
+QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vector<ct::Matf> &Weights, bool is_prev)
 {
 	if(m_W.empty())
 		return QSize(0, 0);
@@ -114,21 +134,23 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 	int x = 0, y = offset, w = 0, h = 0;
 
 	for(size_t i = 0; i < Weights.size(); ++i){
-		const std::vector< ct::Matf > &Ws = Weights[i];
+		const ct::Matf &Ws = Weights[i];
 		x = 0;
 
 		float _max = -99999999.f, _min = 999999999.f;
 
-		for(size_t j = 0; j < Ws.size(); ++j){
-			float m1 = Ws[j].max();
-			float m2 = Ws[j].min();
+		for(size_t j = 0; j < Ws.rows; ++j){
+			float m1 = max(Ws, j);
+			float m2 = min(Ws, j);
 
 			_max = std::max(m1, _max);
 			_min = std::min(m2, _min);
 		}
 
-		for(size_t j = 0; j < Ws.size(); ++j){
-			ct::Matf W = Ws[j];
+		for(size_t j = 0; j < Ws.rows; ++j){
+			ct::Matf W = Ws.row(j);
+			W.rows = sqrt(W.cols);
+			W.cols = sqrt(W.cols);
 
 			w = wd_blk * W.cols;
 			h = wd_blk * W.rows;
@@ -139,7 +161,7 @@ QSize DrawCnvWeight::draw_weight(QPainter &painter, int offset, const std::vecto
 			}
 
 			painter.setPen(Qt::NoPen);
-			draw_W(painter, W, m_prevW[i][j], x, y, wd_blk, _max, _min, is_prev);
+			draw_W(painter, W, m_prevW[i].row(j), x, y, wd_blk, _max, _min, is_prev);
 			painter.setPen(Qt::blue);
 			painter.setBrush(Qt::NoBrush);
 			painter.drawRect(QRect(QPoint(x, y), QSize(w, h)));

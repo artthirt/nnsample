@@ -9,19 +9,15 @@ using namespace ct;
 const int imageWidth = 28;
 const int imageHeight = 28;
 
+const int cnv_size = 3;
+
 gpu_model::gpu_model()
 {
 	m_dropout_count = 3;
 	m_iteration = 0;
 	m_init = false;
 
-	m_count_cnvW.push_back(8);
-	m_count_cnvW.push_back(3);
-//	m_count_cnvW.push_back(1);
-	m_conv_length = (int)m_count_cnvW.size();
-
-	setConvLength(m_count_cnvW);
-
+	setConvLength();
 }
 
 bool gpu_model::isInit() const
@@ -29,7 +25,7 @@ bool gpu_model::isInit() const
 	return m_init;
 }
 
-ct::Matf gpu_model::forward_gpu(const gpumat::GpuMat &X, bool use_dropout, bool converToMatf)
+ct::Matf gpu_model::forward_gpu(const std::vector< gpumat::GpuMat > &X, bool use_dropout, bool converToMatf)
 {
 	if(m_layers.empty() || X.empty())
 		return Matf(0, 0);
@@ -69,8 +65,8 @@ void gpu_model::init_gpu(const std::vector< int >& layers)
 
 	m_layers = layers;
 
-	m_cnv_out_size = m_cnv.back()[0].szA2;
-	m_cnv_out_len = m_cnv.back().size() * m_cnv.back()[0].szA2.area() * m_count_cnvW.back();
+	m_cnv_out_size = m_cnv.back().szOut();
+	m_cnv_out_len = m_cnv.back().outputFeatures();
 
 	qDebug("--- input to MLP: %d ----", m_cnv_out_len);
 
@@ -84,7 +80,7 @@ void gpu_model::init_gpu(const std::vector< int >& layers)
 
 		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-		_mlp.init(input, output, gpumat::GPU_FLOAT);
+		_mlp.init(input, output, gpumat::GPU_FLOAT, i == m_layers.size() - 1? gpumat::SOFTMAX : gpumat::LEAKYRELU);
 
 		input = output;
 	}
@@ -94,7 +90,7 @@ void gpu_model::init_gpu(const std::vector< int >& layers)
 	m_init = true;
 }
 
-void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
+void gpu_model::pass_batch_gpu(const std::vector< gpumat::GpuMat > &X, const gpumat::GpuMat &y)
 {
 	if(m_gpu_mlp.empty() || m_layers.empty() ||
 			m_layers.back() != y.cols){
@@ -122,24 +118,13 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 
 	/// convolution
 	{
-		gpumat::hsplit(m_gpu_mlp.front().DltA0, m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
+//		gpumat::hsplit(m_gpu_mlp.front().DltA0, m_cnv.back().size() * m_cnv.back()[0].W.size(), ds);
+		gpumat::mat2vec(m_gpu_mlp.front().DltA0, m_cnv.back().szK, ds);
 
+		std::vector< gpumat::GpuMat > *pVec = &ds;
 		for(int i = m_cnv.size() - 1; i > -1; i--){
-			std::vector< gpumat::convnn >& lrs = m_cnv[i];
-
-			size_t kidx = 0;
-
-			for(size_t j = 0; j < lrs.size(); ++j){
-				gpumat::convnn &cnv = lrs[j];
-
-				size_t kfirst = kidx;
-				kidx += (cnv.W.size());
-
-				if(i == m_cnv.size() - 1)
-					cnv.backward(ds, gpumat::RELU, kfirst, kidx, i == 0);
-				else
-					cnv.backward(m_cnv[i + 1], gpumat::RELU, kfirst, kidx, i == 0);
-			}
+			m_cnv[i].backward(*pVec, i == 0);
+			pVec = &m_cnv[i].Dlt;
 		}
 	}
 
@@ -149,7 +134,7 @@ void gpu_model::pass_batch_gpu(const gpumat::GpuMat &X, const gpumat::GpuMat &y)
 
 }
 
-uint gpu_model::iteration() const
+uint32_t gpu_model::iteration() const
 {
 	return m_iteration;
 }
@@ -159,10 +144,8 @@ void gpu_model::setAlpha(double val)
 	m_gpu_adam.setAlpha(val);
 
 	for(size_t i = 0; i < m_cnv.size(); ++i){
-		for(size_t j = 0; j < m_cnv[i].size(); ++j){
-			gpumat::convnn& cnv = m_cnv[i][j];
-			cnv.setAlpha(val);
-		}
+		gpumat::convnn_gpu& cnv = m_cnv[i];
+		cnv.setAlpha(val);
 	}
 }
 
@@ -171,36 +154,25 @@ void gpu_model::setLayers(const std::vector<int> &layers)
 	init_gpu(layers);
 }
 
-std::vector<std::vector<gpumat::convnn> > &gpu_model::cnv()
+std::vector<gpumat::convnn_gpu> &gpu_model::cnv()
 {
 	return m_cnv;
 }
 
-void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
+void gpu_model::conv(const std::vector< gpumat::GpuMat > &X, gpumat::GpuMat &X_out)
 {
 	if(X.empty())
 		return;
 
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		std::vector< gpumat::convnn >& ls = m_cnv[i];
+	std::vector< gpumat::GpuMat > *pVec = (std::vector< gpumat::GpuMat > *)&X;
 
-		if(i == 0){
-			gpumat::convnn& m0 = ls[0];
-			m0.forward(&X, gpumat::RELU);
-		}else{
-			for(size_t j = 0; j < m_cnv[i - 1].size(); ++j){
-				size_t off1 = j * m_count_cnvW[i - 1];
-				gpumat::convnn& m0 = m_cnv[i - 1][j];
-				for(size_t k = 0; k < m_count_cnvW[i - 1]; ++k){
-					size_t col = off1 + k;
-					gpumat::convnn& mi = ls[col];
-					mi.forward(&m0.A2[k], gpumat::RELU);
-				}
-			}
-		}
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		m_cnv[i].forward(pVec);
+		pVec = &m_cnv[i].XOut();
 	}
 
-	m_adds.hconcat(m_cnv.back(), X_out);
+	gpumat::vec2mat(m_cnv.back().XOut(), X_out);
+//	m_adds.hconcat(m_cnv.back(), X_out);
 
 //	if(!saved){
 //		for(size_t i = 0; i < m_cnv.size(); ++i){
@@ -211,39 +183,24 @@ void gpu_model::conv(const gpumat::GpuMat &X, gpumat::GpuMat &X_out)
 	//	}
 }
 
-void gpu_model::setConvLength(const std::vector<int> &count_cnvW, std::vector<int> *weight_sizes)
+void gpu_model::setConvLength()
 {
-	if(!count_cnvW.size())
-		return;
-	m_conv_length = (int)count_cnvW.size();
-	m_count_cnvW = count_cnvW;
-
 	time_t tm;
 	time(&tm);
 	ct::generator.seed(tm);
 
-	m_cnv.resize(m_conv_length);
-	int prev = 1;
+	m_cnv.resize(cnv_size);
 	ct::Size szA0(imageWidth, imageHeight);
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		m_cnv[i].resize(prev);
-		for(size_t j = 0; j < m_cnv[i].size(); ++j){
-
-			if(weight_sizes && weight_sizes->size() == m_count_cnvW.size()){
-				m_cnv[i][j].setWeightSize((*weight_sizes)[i]);
-			}
-
-			m_cnv[i][j].init(m_count_cnvW[i], szA0);
-		}
-		szA0 = m_cnv[i][0].szA2;
-		prev = m_count_cnvW[i] * prev;
-	}
+	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), gpumat::LEAKYRELU, true, false);
+	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 32, ct::Size(3, 3), gpumat::LEAKYRELU, true);
+	m_cnv[2].init(m_cnv[1].szOut(), 32, 1, 64, ct::Size(3, 3), gpumat::LEAKYRELU, true);
 }
 
 void gpu_model::setGpuDropout(size_t count, float prob)
 {
 	for(size_t i = 0; i < std::min(count, m_gpu_mlp.size() - 1); ++i){
-		m_gpu_mlp[i].setDropout(true, prob);
+		m_gpu_mlp[i].setDropout(true);
+		m_gpu_mlp[i].setDropout(prob);
 	}
 }
 

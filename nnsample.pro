@@ -36,12 +36,6 @@ RCC_DIR = tmp/$$DST/rcc
 MOC_DIR = tmp/$$DST/moc
 
 include(nsample.pri)
-include(ct/ct.pri)
 
-win32-msvc*{
-    include(gpu/gpu.pri)
-}
-
-unix{
-    include(gpu/gpu.pri)
-}
+include(ml_algorithms/ct/ct.pri)
+include(ml_algorithms/gpu/gpu.pri)

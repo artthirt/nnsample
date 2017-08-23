@@ -299,6 +299,7 @@ std::string fromDouble(double val)
 
 void internal_test_gpu()
 {
+#if 0
 	ct::Matf A, W1, W2, tmp;
 	conv_mat(A, W1, W2);
 	gpumat::GpuMat gA, gAi, gMi, gAi2, gD;
@@ -475,6 +476,8 @@ void internal_test_gpu()
 	}
 
 	qDebug("END GPUMAT TEST");
+
+#endif
 }
 
 #endif

@@ -5,7 +5,7 @@
 #include "mnist_reader.h"
 #include "nn.h"
 
-#include "convnn.h"
+#include "convnn2.h"
 #include "mlp.h"
 
 #include <random>
@@ -26,7 +26,7 @@ public:
 	 * @param X
 	 * @return
 	 */
-	ct::Matf forward(const ct::Matf& X,
+	ct::Matf forward(const std::vector<ct::Matf> &X,
 					 bool use_dropout = false,
 					 bool use_gpu = false,
 					 bool saved = false);
@@ -92,21 +92,19 @@ public:
 	 * @param mnist
 	 */
 	void setMnist(mnist_reader* mnist);
-	void setConvLength(const std::vector< int > &count_cnvW, std::vector< int >* weight_sizes = 0);
+	void setConvLength();
 
-	std::vector< std::vector< ct::convnn<float> > > &cnv();
+	std::vector< conv2::convnn<float> > &cnv();
 
-	std::vector<std::vector<ct::Matf> > cnvW();
+	std::vector<ct::Matf> cnvW();
 
 private:
 	std::vector< int > m_layers;
-	std::vector< std::vector< ct::convnn<float> > > m_cnv;
-	std::vector< int > m_count_cnvW;
+	std::vector< conv2::convnn<float> > m_cnv;
 	std::vector< ct::mlp<float> > m_mlp;
 	mnist_reader *m_mnist;
 	std::mt19937 m_generator;
 	uint m_iteration;
-	int m_conv_length;
 	bool m_use_gpu;
 	int m_seed;
 
@@ -118,7 +116,8 @@ private:
 
 #ifdef _USE_GPU
 	gpu_model m_gpu_model;
-	gpumat::GpuMat gX, gY;
+	std::vector< gpumat::GpuMat > gX;
+	gpumat::GpuMat gY;
 #endif
 
 	ct::Size m_cnv_out_size;
@@ -129,15 +128,15 @@ private:
 
 	ct::MlpOptim<float> m_optim;
 
-	void pass_batch(const ct::Matf& X, const ct::Matf& y);
+	void pass_batch(const std::vector<ct::Matf> &X, const ct::Matf& y);
 
 	void getX(ct::Matf& X, int batch);
-	void getXyTest(ct::Matf &X, ct::Matf &yp, int batch, bool use_rand = true, int beg = -1);
-	void getXy(ct::Matf& X, ct::Matf& y, int batch);
+	void getXyTest(std::vector<ct::Matf> &X, ct::Matf &yp, int batch, bool use_rand = true, int beg = -1);
+	void getXy(std::vector<ct::Matf> &X, ct::Matf& y, int batch);
 	void randX(ct::Matf& X);
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 
-	void conv(const ct::Matf &X, ct::Matf &X_out, bool saved = true);
+	void conv(const std::vector<ct::Matf> &X, ct::Matf &X_out, bool saved = true);
 };
 
 #endif // MIST_CONV_H

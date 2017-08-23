@@ -59,9 +59,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	const int cnt = 27000;
 	const int cnt_val = 700;
 	const int cnt2 = 5;
-	m_X = ct::Matd(cnt, 2);
-	m_X_val = ct::Matd(cnt_val, 2);
-	m_y = ct::Matd(cnt, 1);
+	m_X = ct::Matf(cnt, 2);
+	m_X_val = ct::Matf(cnt_val, 2);
+	m_y = ct::Matf(cnt, 1);
 
 	ud = std::uniform_real_distribution<double>(-10, 10);
 
@@ -110,9 +110,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_nn.setData(m_X, m_y);
 	//m_nn.init_weights(13);
 	std::vector<int> layers;
-	layers.push_back(20);
-	layers.push_back(60);
-	layers.push_back(20);
+	layers.push_back(10);
+	layers.push_back(10);
+	layers.push_back(10);
 //	layers.push_back(5);
 //	layers.push_back(10);
 	layers.push_back(1);
@@ -143,22 +143,15 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.init_weights(time(0));
 
 	layers3.push_back(500);
-	layers3.push_back(400);
 	layers3.push_back(300);
 	layers3.push_back(10);
 
-	cnv_layers.push_back(25);
-	cnv_layers.push_back(1);
-//	cnv_layers.push_back(6);
-
-	ws.push_back(5);
-	ws.push_back(5);
 //	ws.push_back(5);
 
 	ui->widgetMNISTCnv->setMnist(&m_mnist);
 	ui->widgetMNISTCnv->update();
 
-	m_mnist_cnv.setConvLength(cnv_layers, &ws);
+	m_mnist_cnv.setConvLength();
 	m_mnist_cnv.setLayers(layers3);
 	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);
@@ -250,7 +243,7 @@ void MainWindow::on_dsb_alpha_valueChanged(double arg1)
 
 void MainWindow::update_scene()
 {
-	ct::Matd Y = m_nn.forward_model(m_X), y_validate;
+	ct::Matf Y = m_nn.forward_model(m_X), y_validate;
 
 	y_validate = m_nn.forward_model(m_X_val);
 

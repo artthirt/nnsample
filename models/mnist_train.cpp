@@ -176,7 +176,7 @@ void mnist_train::init(int seed)
 
 		mlp<float>& _mlp = m_mlp[i];
 
-		_mlp.init(input, output);
+		_mlp.init(input, output, i == m_layers.size() - 1? ct::SOFTMAX : ct::LEAKYRELU);
 
 		input = output;
 	}
@@ -396,7 +396,7 @@ double mnist_train::pass_batch_autoencoder(int batch, bool use_gpu)
 
 			Matf* pA = &a;
 			for(int j = 0; j < i; ++j){
-				m_mlp[j].forward(pA, ct::RELU, false);
+				m_mlp[j].forward(pA, false);
 				pA = &m_mlp[j].A1;
 			}
 
@@ -548,7 +548,8 @@ void mnist_train::randX(Matf &X)
 void mnist_train::setDropout(size_t count, float prob)
 {
 	for(size_t i = 0; i < std::min(count, m_mlp.size() - 1); ++i){
-		m_mlp[i].setDropout(true, prob);
+		m_mlp[i].setDropout(true);
+		m_mlp[i].setDropout(prob);
 	}
 }
 
@@ -602,7 +603,6 @@ Matf mnist_train::forward(const ct::Matf &X, bool use_dropout, bool use_gpu)
 	m_X = X;
 
 //	qDebug("---CPU---");
-	ct::etypefunction func = ct::RELU;
 
 	if(!use_dropout)
 		clearDropout();
@@ -612,10 +612,7 @@ Matf mnist_train::forward(const ct::Matf &X, bool use_dropout, bool use_gpu)
 	for(size_t i = 0; i < m_layers.size(); i++){
 		mlp<float>& _mlp = m_mlp[i];
 
-		if(i == m_layers.size() - 1)
-			func = ct::SOFTMAX;
-
-		_mlp.forward(pA, func);
+		_mlp.forward(pA);
 		pA = &_mlp.A1;
 	}
 	return m_mlp.back().A1;
@@ -693,8 +690,6 @@ Matf mnist_train::forward_gpu(const gpumat::GpuMat &X, bool use_dropout, bool co
 	if(m_layers.empty() || X.empty())
 		return Matf(0, 0);
 
-	gpumat::etypefunction func = gpumat::RELU;
-
 	if(!use_dropout)
 		clearGpuDropout();
 
@@ -703,10 +698,7 @@ Matf mnist_train::forward_gpu(const gpumat::GpuMat &X, bool use_dropout, bool co
 	for(size_t i = 0; i < m_layers.size(); i++){
 		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-		if(i == m_layers.size() - 1)
-			func = gpumat::SOFTMAX;
-
-		_mlp.forward(pA, func);
+		_mlp.forward(pA);
 		pA = &_mlp.A1;
 	}
 
@@ -734,7 +726,7 @@ void mnist_train::init_gpu()
 
 		gpumat::mlp& _mlp = m_gpu_mlp[i];
 
-		_mlp.init(input, output, gpumat::GPU_FLOAT);
+		_mlp.init(input, output, gpumat::GPU_FLOAT, i == m_layers.size() - 1? gpumat::SOFTMAX : gpumat::LEAKYRELU);
 
 		input = output;
 	}
@@ -831,7 +823,8 @@ void mnist_train::save_gpu_matricies()
 void mnist_train::setGpuDropout(size_t count, float prob)
 {
 	for(size_t i = 0; i < std::min(count, m_gpu_mlp.size() - 1); ++i){
-		m_gpu_mlp[i].setDropout(true, prob);
+		m_gpu_mlp[i].setDropout(true);
+		m_gpu_mlp[i].setDropout(prob);
 	}
 }
 

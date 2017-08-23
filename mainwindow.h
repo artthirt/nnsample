@@ -104,9 +104,9 @@ private:
 	QTimer m_timer_mnist;
 	QTimer m_timer_pretraint;
 
-	ct::Matd m_X;
-	ct::Matd m_X_val;
-	ct::Matd m_y;
+	ct::Matf m_X;
+	ct::Matf m_X_val;
+	ct::Matf m_y;
 
 	bool m_use_gpu;
 

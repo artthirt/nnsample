@@ -4,6 +4,7 @@
 #include <custom_types.h>
 #include <random>
 #include "nn.h"
+#include "mlp.h"
 
 class nnmodel
 {
@@ -15,7 +16,7 @@ public:
 		ESquarError
 	};
 
-	void setData(const ct::Matd& X, const ct::Matd& y);
+	void setData(const ct::Matf& X, const ct::Matf& y);
 	void setAlpha(double alpha);
 	double alpha() const;
 
@@ -24,49 +25,50 @@ public:
 	void setBetha1(double v);
 	void setBetha2(double v);
 
-//	ct::Matd forward(const ct::Matd& X) const;
+//	ct::Matf forward(const ct::Matf& X) const;
 
-	double L2() const;
+	double L2();
 
-//	ct::Matd& w1();
-//	ct::Matd& w2();
-//	ct::Matd& w3();
-//	ct::Matd& w4();
+//	ct::Matf& w1();
+//	ct::Matf& w2();
+//	ct::Matf& w3();
+//	ct::Matf& w4();
 
-//	ct::Matd& b1();
-//	ct::Matd& b2();
-//	ct::Matd& b3();
-//	ct::Matd& b4();
+//	ct::Matf& b1();
+//	ct::Matf& b2();
+//	ct::Matf& b3();
+//	ct::Matf& b4();
 
-	ct::Matd w(int index);
-	ct::Matd b(int index);
+	ct::Matf w(int index);
+	ct::Matf b(int index);
 	int count() const;
 
 //	void init_weights(int seed = 0);
 	void pass();
 
 //	void pass_batch(int batch = 100);
-//	void pass_batch(const ct::Matd& X, const ct::Matd y);
+//	void pass_batch(const ct::Matf& X, const ct::Matf y);
 
-	ct::Matd resultModel(ct::Matd& m);
-	ct::Matd diffModel(ct::Matd& m);
+	ct::Matf resultModel(ct::Matf &m);
+	ct::Matf diffModel(ct::Matf& m);
 
 	void setLayers(const std::vector< int >& layers);
 	void init_model(int seed = 0);
 
-	ct::Matd forward_model(const ct::Matd& X) const;
-	void pass_batch_model(const ct::Matd &X, const ct::Matd y);
+	ct::Matf forward_model(const ct::Matf& X);
+	void pass_batch_model(const ct::Matf &X, const ct::Matf y);
 	void pass_batch_model(int batch = 100);
 
 private:
-	ct::Matd m_X;
-	ct::Matd m_y;
+	ct::Matf m_X;
+	ct::Matf m_y;
 
-	std::vector< ct::Matd > m_W;
-	std::vector< ct::Matd > m_b;
+	std::vector< ct::mlpf > m_mlp;
+//	std::vector< ct::Matf > m_W;
+//	std::vector< ct::Matf > m_b;
 	std::vector< int > m_layers;
 
-	ct::AdamOptimizer<double> m_AdamOptimizer;
+	ct::MlpOptim<float> m_AdamOptimizer;
 
 	EResultModel m_resultModel;
 
