@@ -39,8 +39,8 @@ void mnist_conv::setConvLength()
 	ct::Size szA0(imageWidth, imageHeight);
 
 	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), ct::LEAKYRELU, true, false);
-	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 32, ct::Size(3, 3), ct::LEAKYRELU, true);
-	m_cnv[2].init(m_cnv[1].szOut(), 32, 1, 64, ct::Size(3, 3), ct::LEAKYRELU, true);
+	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 64, ct::Size(3, 3), ct::LEAKYRELU, true);
+	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), ct::LEAKYRELU, true);
 
 #ifdef _USE_GPU
 	m_gpu_model.setConvLength();
@@ -143,14 +143,26 @@ void mnist_conv::getEstimate(int batch, double &l2, double &accuracy, bool use_g
 	if(m_mnist->X().empty() || m_mnist->y().empty())
 		return;
 
-	std::vector< Matf > X;
-	Matf yp;
+	//std::vector< Matf > X;
+	Matf yp, y;
 
-	getXy(X, yp, batch);
+	const int batchi = 50;
+	int index = 0;
+	int xcnt = 0;
 
-	Matf y = forward(X, false, use_gpu);
+	while(index < batch){
+		std::vector< Matf > Xi;
+		ct::Matf ypi;
+		getXy(Xi, ypi, batchi);
+		yp.push_back(ypi);
+		xcnt += Xi.size();
 
-	double m = X.size();
+		Matf yi = forward(Xi, false, use_gpu);
+		y.push_back(yi);
+		index += batchi;
+	}
+
+	double m = xcnt;
 
 	Matf d = yp - y;
 

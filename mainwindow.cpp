@@ -134,8 +134,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	std::vector<int> layers2, layers3, cnv_layers, ws;
 //	layers2.push_back(600);
 	layers2.push_back(600);
-	layers2.push_back(540);
-	layers2.push_back(320);
 	layers2.push_back(10);
 
 	m_mnist_train.setLayers(layers2);
@@ -143,7 +141,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_train.init_weights(time(0));
 
 	layers3.push_back(500);
-	layers3.push_back(300);
 	layers3.push_back(10);
 
 //	ws.push_back(5);
@@ -300,11 +297,20 @@ void MainWindow::update_mnist()
 
 	uint index = ui->widgetMNIST->index();
 
+	const int cnti = 50;
+
 	if(ui->widgetMNIST->mode() == WidgetMNIST::TRAIN){
 
 		int count = std::min((uint)2000, m_mnist.count_train_images() - index);
 
-		ct::Matf y = m_mnist_train.forward(index, count, m_use_gpu);
+		ct::Matf y;
+		int index1 = index;
+		int count1 = index + count;
+		while(index1 < count1){
+			ct::Matf yi = m_mnist_train.forward(index1, cnti, m_use_gpu);
+			index1 += cnti;
+			y.push_back(yi);
+		}
 
 		QVector< uchar > data;
 
@@ -316,7 +322,15 @@ void MainWindow::update_mnist()
 		ui->widgetMNIST->updatePredictfromIndex(index, data);
 	}else{
 		uint count = std::min((uint)2000, m_mnist.count_test_images() - index);
-		ct::Matf y = m_mnist_train.forward_test(index, count, m_use_gpu);
+
+		ct::Matf y;
+		int index1 = index;
+		int count1 = index1 + count;
+		while(index < count1){
+			ct::Matf yi = m_mnist_train.forward_test(index1, cnti, m_use_gpu);
+			index1 += cnti;
+			y.push_back(yi);
+		}
 
 		QVector< uchar > data;
 
@@ -435,6 +449,8 @@ void MainWindow::on_pb_test_cnv_clicked()
 
 void MainWindow::on_pb_update_cnv_clicked()
 {
+	const int cnt = 50;
+
 	ui->wdg_cnvW->set_weight(m_mnist_cnv.cnvW());
 
 	double l2, accuracy;
@@ -447,7 +463,14 @@ void MainWindow::on_pb_update_cnv_clicked()
 
 		int count = std::min((uint)2000, m_mnist.count_train_images() - index);
 
-		ct::Matf y = m_mnist_cnv.forward(index, count, ui->chb_use_gpu_cnv->isChecked());
+		ct::Matf y;
+		int index1 = index;
+		int count1 = index + count;
+		while(index1 < count1){
+			ct::Matf yi = m_mnist_cnv.forward(index1, cnt, ui->chb_use_gpu_cnv->isChecked());
+			index1 += cnt;
+			y.push_back(yi);
+		}
 
 		QVector< uchar > data;
 
@@ -460,7 +483,15 @@ void MainWindow::on_pb_update_cnv_clicked()
 		ui->widgetMNISTCnv->updatePredictfromIndex(index, data);
 	}else{
 		int count = std::min((uint)2000, m_mnist.count_test_images() - index);
-		ct::Matf y = m_mnist_cnv.forward_test(index, count, ui->chb_use_gpu_cnv->isChecked());
+
+		ct::Matf y;
+		int index1 = index;
+		int count1 = index + count;
+		while(index1 < count1){
+			ct::Matf yi = m_mnist_cnv.forward_test(index1, cnt, ui->chb_use_gpu_cnv->isChecked());
+			y.push_back(yi);
+			index1 += cnt;
+		}
 
 		QVector< uchar > data;
 
