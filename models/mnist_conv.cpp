@@ -95,17 +95,15 @@ Matf mnist_conv::forward_test(int index, int count, bool use_gpu)
 		return Matf(0, 0);
 
 	std::vector< Matf > X;
-	X.resize(m_mnist->X().rows);
-	for(int i= 0; i < m_mnist->X().rows; ++i){
-		X[i] = Matf::zeros(1, m_mnist->X().cols);
-	}
 
 	count = std::min(count, m_mnist->test().size() - index);
 
+	X.resize(count);
 	for(int i = 0; i < count; i++){
 		int id = index + i;
 		QByteArray& data = m_mnist->test()[id];
 		//uint lb = m_mnist->lb_test()[id];
+		X[i].setSize(1, m_mnist->X().cols);
 
 		for(int j = 0; j < data.size(); j++){
 			X[i].ptr()[j] = ((uint)data[j] > 0? 1. : 0.);
