@@ -40,7 +40,7 @@ void mnist_conv::setConvLength()
 
 	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), ct::LEAKYRELU, true, false);
 	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 64, ct::Size(3, 3), ct::LEAKYRELU, true);
-	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), ct::LEAKYRELU, true);
+	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), ct::LEAKYRELU, false);
 
 #ifdef _USE_GPU
 	m_gpu_model.setConvLength();
