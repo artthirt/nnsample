@@ -247,7 +247,7 @@ void nnmodel::init_model(int seed)
 	for(size_t i = 0; i < m_layers.size(); i++){
 		output = m_layers[i];
 
-		m_mlp[i].init(input, output, i == m_layers.size() - 1? ct::LINEAR : ct::RELU);
+		m_mlp[i].init(input, output, i == m_layers.size() - 1? ct::LINEAR : ct::LEAKYRELU);
 //		double n = 1./sqrt(input);
 
 //		m_W[i] = Matf(input, output);
@@ -280,7 +280,7 @@ Matf nnmodel::forward_model(const Matf &X)
 //		}else
 //			a = z;
 	}
-	a = m_mlp.back().Y();
+	m_mlp.back().Y().copyTo(a);
 	return a;
 }
 
