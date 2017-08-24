@@ -74,6 +74,96 @@ std::vector< Matf > mnist_conv::cnvW()
 	return res;
 }
 
+void mnist_conv::save_model(bool gpu)
+{
+	if(gpu){
+		m_gpu_model.save_model();
+		return;
+	}
+
+	std::fstream fs;
+	fs.open(name_model_cnv, std::ios_base::out | std::ios_base::binary);
+
+	if(!fs.is_open()){
+		printf("File %s not open\n", name_model_cnv.c_str());
+		return;
+	}
+
+//	write_vector(fs, m_cnvlayers);
+//	write_vector(fs, m_layers);
+
+//	fs.write((char*)&m_szA0, sizeof(m_szA0));
+
+	int cnvs = m_cnv.size(), mlps = m_mlp.size();
+
+	/// size of convolution array
+	fs.write((char*)&cnvs, sizeof(cnvs));
+	/// size of mlp array
+	fs.write((char*)&mlps, sizeof(mlps));
+
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		conv2::convnnf &cnv = m_cnv[i];
+		cnv.write2(fs);
+	}
+
+	for(size_t i = 0; i < m_mlp.size(); ++i){
+		m_mlp[i].write2(fs);
+	}
+
+	printf("model saved.\n");
+}
+
+void mnist_conv::load_model(bool gpu)
+{
+	if(gpu){
+		m_gpu_model.load_model();
+		return;
+	}
+
+	std::fstream fs;
+	fs.open(name_model_cnv, std::ios_base::in | std::ios_base::binary);
+
+	if(!fs.is_open()){
+		printf("File %s not open\n", name_model_cnv.c_str());
+		return;
+	}
+
+//	read_vector(fs, m_cnvlayers);
+//	read_vector(fs, m_layers);
+
+//	fs.read((char*)&m_szA0, sizeof(m_szA0));
+
+//	setConvLayers(m_cnvlayers, m_szA0);
+
+	int cnvs, mlps;
+
+	/// size of convolution array
+	fs.read((char*)&cnvs, sizeof(cnvs));
+	/// size of mlp array
+	fs.read((char*)&mlps, sizeof(mlps));
+
+	printf("Load model: conv size %d, mlp size %d", cnvs, mlps);
+
+	m_cnv.resize(cnvs);
+	m_mlp.resize(mlps);
+
+	printf("conv\n");
+	for(size_t i = 0; i < m_cnv.size(); ++i){
+		conv2::convnnf &cnv = m_cnv[i];
+		cnv.read2(fs);
+		printf("layer %d: rows %d, cols %d\n", i, cnv.W[0].rows, cnv.W[0].cols);
+	}
+
+	printf("mlp\n");
+	for(size_t i = 0; i < m_mlp.size(); ++i){
+		ct::mlpf &mlp = m_mlp[i];
+		mlp.read2(fs);
+		printf("layer %d: rows %d, cols %d\n", i, mlp.W.rows, mlp.W.cols);
+	}
+
+	printf("model loaded.\n");
+}
+
 Matf mnist_conv::forward(int index, int count, bool use_gpu)
 {
 	if(m_layers.empty())

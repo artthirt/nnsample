@@ -3,6 +3,8 @@
 
 #include <vector>
 
+const std::string name_model_cnv("model_conv.bin");
+
 template< typename T >
 void translate(int x, int y, int w, int h, T *X)
 {

@@ -98,6 +98,9 @@ public:
 
 	std::vector<ct::Matf> cnvW();
 
+	void save_model(bool gpu = false);
+	void load_model(bool gpu = false);
+
 private:
 	std::vector< int > m_layers;
 	std::vector< conv2::convnn<float> > m_cnv;

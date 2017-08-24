@@ -153,6 +153,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);
 
+	m_mnist_cnv.load_model(true);
+	m_mnist_cnv.load_model();
+
 	ui->sb_timeout_train->setValue(m_timer_mnist.interval());
 }
 
@@ -476,7 +479,6 @@ void MainWindow::on_pb_update_cnv_clicked()
 
 		data.resize(count);
 
-#pragma omp parallel for
 		for(int i = 0; i < count; i++){
 			data[i] = y.argmax(i, 1);
 		}
@@ -497,12 +499,13 @@ void MainWindow::on_pb_update_cnv_clicked()
 
 		data.resize(count);
 
-#pragma omp parallel for
 		for(int i = 0; i < count; i++){
 			data[i] = y.argmax(i, 1);
 		}
 		ui->widgetMNISTCnv->updatePredictfromIndex(index, data);
 	}
+
+	m_mnist_cnv.save_model(ui->chb_use_gpu_cnv->isChecked());
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

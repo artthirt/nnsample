@@ -43,6 +43,9 @@ public:
 
 	std::vector< gpumat::convnn_gpu > &cnv();
 
+	void save_model();
+	void load_model();
+
 private:
 	std::vector< int > m_layers;
 	std::vector< gpumat::convnn_gpu > m_cnv;
