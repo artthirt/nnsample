@@ -273,8 +273,8 @@ void mnist_conv::getEstimateTest(double &l2, double &accuracy, bool use_gpu)
 	if(!m_mnist || m_mnist->test().empty() || m_mnist->lb_test().empty())
 		return;
 
-	size_t batch_count = 10;
 	size_t test_size = m_mnist->test().size();
+	size_t batch_count = test_size/50;
 
 	size_t batch_size = test_size / batch_count;
 
