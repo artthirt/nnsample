@@ -129,7 +129,8 @@ private:
 	void setDropout(size_t count, float prob);
 	void clearDropout();
 
-	ct::MlpOptim<float> m_optim;
+	ct::MlpOptimMoment<float> m_optim;
+	conv2::CnvMomentumOptimizer<float> m_cnv_optim;
 
 	void pass_batch(const std::vector<ct::Matf> &X, const ct::Matf& y);
 

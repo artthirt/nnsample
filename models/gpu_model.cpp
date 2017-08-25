@@ -87,7 +87,8 @@ void gpu_model::init_gpu(const std::vector< int >& layers)
 		input = output;
 	}
 
-	m_gpu_adam.init(m_gpu_mlp);
+	m_mlp_optim.init(m_gpu_mlp);
+	m_cnv_optim.init(m_cnv);
 
 	m_init = true;
 }
@@ -130,9 +131,10 @@ void gpu_model::pass_batch_gpu(const std::vector< gpumat::GpuMat > &X, const gpu
 		}
 	}
 
-	m_gpu_adam.pass(m_gpu_mlp);
+	m_mlp_optim.pass(m_gpu_mlp);
+	m_cnv_optim.pass(m_cnv);
 
-	m_iteration = m_gpu_adam.iteration();
+	m_iteration = m_mlp_optim.iteration();
 
 }
 
@@ -143,12 +145,8 @@ uint32_t gpu_model::iteration() const
 
 void gpu_model::setAlpha(double val)
 {
-	m_gpu_adam.setAlpha(val);
-
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		gpumat::convnn_gpu& cnv = m_cnv[i];
-		cnv.setAlpha(val);
-	}
+	m_mlp_optim.setAlpha(val);
+	m_cnv_optim.setAlpha(val);
 }
 
 void gpu_model::setLayers(const std::vector<int> &layers)
@@ -228,7 +226,7 @@ void gpu_model::load_model()
 	for(size_t i = 0; i < m_cnv.size(); ++i){
 		gpumat::convnn_gpu &cnv = m_cnv[i];
 		cnv.read2(fs);
-		printf("layer %d: rows %d, cols %d\n", i, cnv.W[0].rows, cnv.W[0].cols);
+		printf("layer %d: rows %d, cols %d\n", i, cnv.W.rows, cnv.W.cols);
 	}
 
 	printf("mlp\n");
@@ -272,11 +270,6 @@ void gpu_model::setConvLength()
 	ct::generator.seed(tm);
 
 	m_cnv.resize(cnv_size);
-
-	m_mg.resize(m_cnv.size());
-	for(int i = 0; i < m_cnv.size(); ++i){
-		m_cnv[i].setOptimizer(&m_mg[i]);
-	}
 
 	ct::Size szA0(imageWidth, imageHeight);
 	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), gpumat::LEAKYRELU, true, false);

@@ -49,7 +49,6 @@ public:
 private:
 	std::vector< int > m_layers;
 	std::vector< gpumat::convnn_gpu > m_cnv;
-	std::vector< gpumat::MomentumOptimizer > m_mg;
 	std::vector< gpumat::mlp > m_gpu_mlp;
 	gpumat::convnn_gpu m_adds;
 	bool m_init;
@@ -67,7 +66,8 @@ private:
 	gpumat::GpuMat g_Xout;
 	std::vector< gpumat::GpuMat > ds;
 
-	gpumat::MlpOptimMoment m_gpu_adam;
+	gpumat::MlpOptimMoment m_mlp_optim;
+	gpumat::CnvAdamOptimizer m_cnv_optim;
 
 	void conv(const std::vector<gpumat::GpuMat> &X, gpumat::GpuMat &X_out);
 

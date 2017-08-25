@@ -61,14 +61,14 @@ std::vector< Matf > mnist_conv::cnvW()
 
 		for(size_t i = 0; i < m_gpu_model.cnv().size(); ++i){
 			ct::Matf Wf;
-			gpumat::convert_to_mat(m_gpu_model.cnv()[i].W[0], Wf);
+			gpumat::convert_to_mat(m_gpu_model.cnv()[i].W, Wf);
 			res.push_back(Wf);
 		}
 	}else{
 		res.resize(m_cnv.size());
 
 		for(size_t i = 0; i < m_cnv.size(); ++i){
-			res.push_back(m_cnv[i].W[0]);
+			res.push_back(m_cnv[i].W);
 		}
 	}
 	return res;
@@ -151,7 +151,7 @@ void mnist_conv::load_model(bool gpu)
 	for(size_t i = 0; i < m_cnv.size(); ++i){
 		conv2::convnnf &cnv = m_cnv[i];
 		cnv.read2(fs);
-		printf("layer %d: rows %d, cols %d\n", i, cnv.W[0].rows, cnv.W[0].cols);
+		printf("layer %d: rows %d, cols %d\n", i, cnv.W.rows, cnv.W.cols);
 	}
 
 	printf("mlp\n");
@@ -206,10 +206,7 @@ Matf mnist_conv::forward_test(int index, int count, bool use_gpu)
 void mnist_conv::setAlpha(double alpha)
 {
 	m_optim.setAlpha(alpha);
-
-	for(size_t i = 0; i < m_cnv.size(); ++i){
-		m_cnv[i].setAlpha(alpha);
-	}
+	m_cnv_optim.setAlpha(alpha);
 
 	m_gpu_model.setAlpha(alpha);
 }
@@ -577,6 +574,7 @@ void mnist_conv::init(int seed)
 	if(!m_optim.init(m_mlp)){
 		std::cout << "optimizer not init\n";
 	}
+	m_cnv_optim.init(m_cnv);
 
 	m_gpu_model.init_gpu(m_layers);
 }
@@ -665,5 +663,6 @@ void mnist_conv::pass_batch(const std::vector< Matf > &X, const Matf &y)
 	}
 
 	m_optim.pass(m_mlp);
+	m_cnv_optim.pass(m_cnv);
 	m_iteration = m_optim.iteration();
 }

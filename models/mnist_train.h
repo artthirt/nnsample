@@ -170,7 +170,7 @@ private:
 	float m_lambda;
 	uint m_iteration;
 
-	ct::MlpOptim<float> m_optim;
+	ct::MlpOptimAdam<float> m_optim;
 
 	std::vector< ct::SimpleAutoencoder<float> > enc;
 
@@ -197,7 +197,7 @@ private:
 
 	std::vector< gpumat::SimpleAutoencoder > enc_gpu;
 
-	gpumat::MlpOptim m_gpu_adam;
+	gpumat::MlpOptimAdam m_gpu_adam;
 
 	void setGpuDropout(size_t count, float prob);
 	void clearGpuDropout();
