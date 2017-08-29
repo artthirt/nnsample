@@ -300,7 +300,7 @@ std::string fromDouble(double val)
 
 void internal_test_gpu()
 {
-	gpumat::GpuMat g_Mean, g_tMean, g_Sigma;
+	gpumat::GpuMat g_Mean, g_tMean, g_Sigma, g_Alpha, g_Betha;
 	std::vector< gpumat::GpuMat > g_X, g_Y;
 
 	int cnt = 60;
@@ -329,7 +329,12 @@ void internal_test_gpu()
 	fs << str << std::endl << str2;
 	fs.close();
 
-	gpumat::batch_normalize(g_X, g_Mean, g_Sigma, g_Y);
+	g_Alpha.resize(1, g_X[0].cols, g_X[0].type);
+	gpumat::memset(g_Alpha, 1);
+	g_Betha.resize(1, g_X[0].cols, g_X[0].type);
+	gpumat::memset(g_Betha, 0);
+
+	gpumat::batch_normalize(g_X, g_Alpha, g_Betha, g_Mean, g_Sigma, g_Y);
 
 	gpumat::transpose(g_Mean, g_tMean);
 	gpumat::save_gmat(g_tMean, "Mean.txt");
