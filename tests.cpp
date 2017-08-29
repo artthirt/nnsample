@@ -7,6 +7,7 @@
 #include "custom_types.h"
 #include "nn.h"
 #include "matops.h"
+#include "convnn2_gpu.h"
 
 #include "qt_work_mat.h"
 
@@ -299,185 +300,53 @@ std::string fromDouble(double val)
 
 void internal_test_gpu()
 {
-#if 0
-	ct::Matf A, W1, W2, tmp;
-	conv_mat(A, W1, W2);
-	gpumat::GpuMat gA, gAi, gMi, gAi2, gD;
-	std::vector< gpumat::GpuMat > gWs, gA1;
-	std::vector< gpumat::GpuMat > bs;
-	gWs.resize(2);
-	bs.resize(2);
-	gpumat::convert_to_gpu(A, gA);
-	gpumat::convert_to_gpu(W1, gWs[0]);
-	gpumat::convert_to_gpu(W2, gWs[1]);
-	ct::Size szA0(ww, hh);
+	gpumat::GpuMat g_Mean, g_tMean, g_Sigma;
+	std::vector< gpumat::GpuMat > g_X, g_Y;
 
-	bs[0].resize(1, 1, gpumat::GPU_FLOAT);
-	bs[0].zeros();
-	bs[1].resize(1, 1, gpumat::GPU_FLOAT);
-	bs[1].zeros();
+	int cnt = 60;
+	g_X.resize(cnt);
 
-	ct::Size szO = gpumat::conv2D(gA, szA0, 1, gWs, bs, gA1), szAi;
+	int index = 0;
 
-	std::string s1 = gA1[0].print();
-	std::string s2 = gA1[1].print();
+	std::string str, str2;
 
-	qDebug("***GPU CONV2D**\nA1[0]:\n%s\nA1[1]:\n%s\n******", s1.c_str(), s2.c_str());
-
-	qDebug("Conv2d[0]");
-	gpumat::convert_to_mat(gA1[0], tmp);
-	PRINT_IMAGE(tmp, szO.width, szO.height);
-	qDebug("Conv2d[1]");
-	gpumat::convert_to_mat(gA1[1], tmp);
-	PRINT_IMAGE(tmp, szO.width, szO.height);
-
-	gpumat::subsample(gA1[0], szO, gAi, gMi, szAi);
-	gpumat::convert_to_mat(gAi, tmp);
-	qDebug("Subsample");
-	PRINT_IMAGE(tmp, szAi.width, szAi.height);
-
-	gpumat::convert_to_mat(gMi, tmp);
-	qDebug("Mask");
-	PRINT_IMAGE(tmp, szO.width, szO.height);
-
-	gpumat::upsample(gAi, szAi, szO, gMi, gAi2);
-
-	gpumat::convert_to_mat(gAi2, tmp);
-	qDebug("Upsample");
-	PRINT_IMAGE(tmp, szO.width, szO.height);
-
-	std::vector< gpumat::GpuMat > derivs, ws;
-	gpumat::GpuMat ggW;
-	gpumat::GpuMat ggB;
-	derivs.push_back(gAi2);
-	ws.push_back(gWs[0]);
-
-	gpumat::deriv_prev_cnv(derivs, ws, szO, szA0, 1, gD);
-
-	gpumat::convert_to_mat(gD, tmp);
-	qDebug("DerivPrevLayer");
-	PRINT_IMAGE(tmp, szA0.width, szA0.height);
-
-	gpumat::deriv_conv2D(gA, gAi2, szA0, szO, gWs[0].sz(), 1, ggW, ggB);
-
-	gpumat::convert_to_mat(ggW, tmp);
-	qDebug("DerivPrevLayer: B=%s", ggB.print().c_str());
-	ct::Size szW = ggW.sz();
-	PRINT_IMAGE(tmp, szW.width, szW.height);
-
-	std::vector< gpumat::GpuMat > list;
-
-	float data[10 * 12];
-	for(int i = 0; i < 10; ++i){
-		for(int j = 0; j < 12; ++j){
-			data[i * 12 + j] = i + j;
+	str2 = "Xs = [";
+	for(gpumat::GpuMat& g_Xi: g_X){
+		ct::Matf X(10, 20);
+		float *dX = X.ptr();
+		for(int i = 0; i < X.total(); ++i){
+			float val = (float)i/X.total() * 3.;
+			val = sin(index + (val) + cos(index * 0.1));
+			dX[i] = val;
 		}
+		gpumat::convert_to_gpu(X, g_Xi);
+		str += "X_" + std::to_string(++index) + "=" + X.print() + ";\n";
+		str2 += "reshape(X_" + std::to_string(index) + "', [1, 200]); ";
 	}
+	str2 += "];\n";
+	std::fstream fs;
+	fs.open("labX.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
 
-	gA.resize(10, 12, gpumat::GPU_FLOAT);
-	gA.setData(data);
+	gpumat::batch_normalize(g_X, g_Mean, g_Sigma, g_Y);
 
-	gpumat::hsplit(gA, 4, list);
+	gpumat::transpose(g_Mean, g_tMean);
+	gpumat::save_gmat(g_tMean, "Mean.txt");
+	gpumat::save_gmat(g_Sigma, "Sigma.txt");
 
-	s1 = list[0].print();
-	s2 = list[1].print();
-	qDebug("HSPLIT:\nSRC\n%s\nL[0]\n%s\nL[1]\n%s", gA.print().c_str(), s1.c_str(), s2.c_str());
-
-	list.pop_back();
-	gpumat::hconcat(list, gA);
-	qDebug("HCONCAT:\nDST\n%s", gA.print().c_str());
-
-	float test_data[] = {
-		1, 1, 1, 1,
-		1, 1, 1, 1,
-		1, 1, 1, 1,
-		1, 1, 1, 1
-	},
-	test_data2[] = {
-		2, 2,
-		2, 2
-	};
-	gpumat::GpuMat Test(1, 16, gpumat::GPU_FLOAT), Test2(1, 4, gpumat::GPU_FLOAT);
-	Test.setData(test_data);
-	Test2.setData(test_data2);
-
-	gpumat::deriv_conv2D(Test, Test2, ct::Size(4, 4), ct::Size(2, 2), gWs[0].sz(), 1, ggW, ggB);
-	gpumat::convert_to_mat(ggW, tmp);
-	qDebug("deriv_conv2D: B=%s", ggB.print().c_str());
-	szW = ggW.sz();
-	PRINT_IMAGE(tmp, szW.width, szW.height);
-
-	if(0){
-		ct::Matf gradW, A0, A1, dA1;
-		gpumat::GpuMat gA0, gA1, gdA1, gdW_out, blocks;
-		gpumat::GpuMat gradB;
-		qt_work_mat::q_load_mat("gradW.txt", gradW);
-		qt_work_mat::q_load_mat("A0.txt", A0);
-		qt_work_mat::q_load_mat("A1.txt", A1);
-		qt_work_mat::q_load_mat("dA1.txt", dA1);
-
-		gpumat::convert_to_gpu(A0, gA0);
-		gpumat::convert_to_gpu(A1, gA1);
-		gpumat::convert_to_gpu(dA1, gdA1);
-
-		gpumat::deriv_conv2D(gA0, gdA1, ct::Size(12, 12), ct::Size(8, 8), ct::Size(5, 5), 1,
-							 gdW_out, gradB, &blocks);
-
-		gpumat::convert_to_mat(gdW_out, tmp);
-		qDebug("deriv_conv2D: B=%s", gradB.print().c_str());
-		PRINT_IMAGE(tmp, 5, 5);
+	str = "";
+	str2 = "Ys = [";
+	index = 0;
+	for(gpumat::GpuMat& g_Yi: g_Y){
+		str += "Y_" + std::to_string(++index) + "=" + g_Yi.print() + ";\n";
+		str2 += "Y_" + std::to_string(index) + "; ";
 	}
+	str2 += "];\n";
+	fs.open("labY.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
 
-	if(0){
-		std::vector< ct::Matf > dA1, gW, W;
-		std::vector< float> b;
-		ct::Matf A0, D;
-
-		qt_work_mat::q_load_mat("_A0.txt", A0);
-
-		int cnt = 3;
-
-		dA1.resize(cnt);
-		W.resize(cnt);
-		for(int i = 0; i < cnt; i++){
-			std::stringstream ss;
-			ss << "_dA1_" << i << ".txt";
-			qt_work_mat::q_load_mat(ss.str().c_str(), dA1[i]);
-			ss.str("");
-			ss << "_W_" << i << ".txt";
-			qt_work_mat::q_load_mat(ss.str().c_str(), W[i]);
-		}
-		ct::deriv_conv2D(A0, dA1, ct::Size(28, 28), ct::Size(24, 24), ct::Size(5, 5),
-							 1, gW, b);
-		qDebug("deriv_conv2D: B=%f, %f", b[0], b[1]);
-		for(size_t i = 0; i < gW.size(); ++i){
-			PRINT_IMAGE(gW[i], 5, 5);
-		}
-
-		ct::deriv_prev_cnv(dA1, W, ct::Size(24, 24), ct::Size(28, 28), D);
-		qt_work_mat::q_save_mat(D, "TestD.txt");
-	}
-
-	if(1){
-		gpumat::GpuMat res;
-		gpumat::GpuMat A0;
-		float tmp;
-		qt_work_mat::q_load_mat("A0.txt", A0);
-
-		gpumat::reduce(gWs[0], res);
-		res.getData(&tmp);
-		qDebug("REDUCE_MAT\n%s", gWs[0].print().c_str());
-		qDebug("REDUCE = %f", tmp);
-
-		if(!A0.empty()){
-			CALC_MAT(gpumat::reduce(gA, res), res.print(), "REDUCE", 10000);
-		}
-
-	}
-
-	qDebug("END GPUMAT TEST");
-
-#endif
 }
 
 #endif
