@@ -300,8 +300,11 @@ std::string fromDouble(double val)
 
 void internal_test_gpu()
 {
-	gpumat::GpuMat g_Mean, g_tMean, g_Sigma, g_Alpha, g_Betha;
-	std::vector< gpumat::GpuMat > g_X, g_Y;
+	gpumat::BN bn;
+	ct::BN<float> cbn;
+
+	std::vector< gpumat::GpuMat > g_X, g_Y, g_D;
+	std::vector< ct::Matf > Xs, Ys, Ds;
 
 	int cnt = 60;
 	g_X.resize(cnt);
@@ -320,6 +323,7 @@ void internal_test_gpu()
 			dX[i] = val;
 		}
 		gpumat::convert_to_gpu(X, g_Xi);
+		Xs.push_back(X);
 		str += "X_" + std::to_string(++index) + "=" + X.print() + ";\n";
 		str2 += "reshape(X_" + std::to_string(index) + "', [1, 200]); ";
 	}
@@ -329,16 +333,22 @@ void internal_test_gpu()
 	fs << str << std::endl << str2;
 	fs.close();
 
-	g_Alpha.resize(1, g_X[0].cols, g_X[0].type);
-	gpumat::memset(g_Alpha, 1);
-	g_Betha.resize(1, g_X[0].cols, g_X[0].type);
-	gpumat::memset(g_Betha, 0);
 
-	gpumat::batch_normalize(g_X, g_Alpha, g_Betha, g_Mean, g_Sigma, g_Y);
+	bn.gamma.resize(1, g_X[0].total(), g_X[0].type);
+	gpumat::memset(bn.gamma, 1);
+	bn.betha.resize(1, g_X[0].total(), g_X[0].type);
+	gpumat::memset(bn.betha, 0);
 
-	gpumat::transpose(g_Mean, g_tMean);
-	gpumat::save_gmat(g_tMean, "Mean.txt");
-	gpumat::save_gmat(g_Sigma, "Sigma.txt");
+	bn.X = &g_X;
+	bn.Y = &g_Y;
+	bn.D = &g_D;
+
+	gpumat::batch_normalize(bn);
+
+//	gpumat::GpuMat g_tMean;
+//	gpumat::transpose(bn.Mean, g_tMean);
+	gpumat::save_gmat(bn.Mean, "Mean.txt");
+	gpumat::save_gmat(bn.Var, "Var.txt");
 
 	str = "";
 	str2 = "Ys = [";
@@ -349,6 +359,26 @@ void internal_test_gpu()
 	}
 	str2 += "];\n";
 	fs.open("labY.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
+
+	cbn.X = &Xs;
+	cbn.Y = &Ys;
+	cbn.D = &Ds;
+
+	cbn.normalize();
+	ct::save_mat(cbn.Mean, "cMean.txt");
+	ct::save_mat(cbn.Var, "cVar.txt");
+
+	str = "";
+	str2 = "Ys = [";
+	index = 0;
+	for(ct::Matf& Yi: Ys){
+		str += "Y_" + std::to_string(++index) + "=" + Yi.print() + ";\n";
+		str2 += "Y_" + std::to_string(index) + "; ";
+	}
+	str2 += "];\n";
+	fs.open("labcY.m", std::ios_base::out);
 	fs << str << std::endl << str2;
 	fs.close();
 
