@@ -388,17 +388,20 @@ void internal_test_gpu()
 
 	index = 0;
 	for(ct::Matf& Di: Ds){
-		Di.setSize(Xs[index].size());
-		Di.randn(0, 0.1);
+		Ys[index].copyTo(Di);
+//		Di.setSize(Xs[index].size());
+//		Di.randn(0, 0.1);
 		gpumat::convert_to_gpu(Di, g_D[index]);
 		index++;
 	}
+	cbn.Var.copyTo(cbn.gamma);
+	cbn.Mean.copyTo(cbn.betha);
 	cbn.denormalize();
 
 	str = "";
 	str2 = "Ds = [";
 	index = 0;
-	for(ct::Matf& Di: Ds){
+	for(ct::Matf& Di: cbn.Dout){
 		str += "D_" + std::to_string(++index) + "=" + Di.print() + ";\n";
 		str2 += "D_" + std::to_string(index) + "; ";
 	}
@@ -409,12 +412,15 @@ void internal_test_gpu()
 
 	////
 
+	bn.Var.copyTo(bn.gamma);
+	bn.Mean.copyTo(bn.betha);
+
 	gpumat::batch_denormalize(bn);
 
 	str = "";
 	str2 = "Ds = [";
 	index = 0;
-	for(gpumat::GpuMat& Di: g_D){
+	for(gpumat::GpuMat& Di: bn.Dout){
 		str += "D_" + std::to_string(++index) + "=" + Di.print() + ";\n";
 		str2 += "D_" + std::to_string(index) + "; ";
 	}
