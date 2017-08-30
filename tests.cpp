@@ -382,6 +382,46 @@ void internal_test_gpu()
 	fs << str << std::endl << str2;
 	fs.close();
 
+
+	Ds.resize(Xs.size());
+	g_D.resize(Ds.size());
+
+	index = 0;
+	for(ct::Matf& Di: Ds){
+		Di.setSize(Xs[index].size());
+		Di.randn(0, 0.1);
+		gpumat::convert_to_gpu(Di, g_D[index]);
+		index++;
+	}
+	cbn.denormalize();
+
+	str = "";
+	str2 = "Ds = [";
+	index = 0;
+	for(ct::Matf& Di: Ds){
+		str += "D_" + std::to_string(++index) + "=" + Di.print() + ";\n";
+		str2 += "D_" + std::to_string(index) + "; ";
+	}
+	str2 += "];\n";
+	fs.open("labcD.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
+
+	////
+
+	gpumat::batch_denormalize(bn);
+
+	str = "";
+	str2 = "Ds = [";
+	index = 0;
+	for(gpumat::GpuMat& Di: g_D){
+		str += "D_" + std::to_string(++index) + "=" + Di.print() + ";\n";
+		str2 += "D_" + std::to_string(index) + "; ";
+	}
+	str2 += "];\n";
+	fs.open("labD.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
 }
 
 #endif
