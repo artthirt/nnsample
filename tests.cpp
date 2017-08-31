@@ -303,8 +303,8 @@ void internal_test_gpu()
 	gpumat::BN bn;
 	ct::BN<float> cbn;
 
-	std::vector< gpumat::GpuMat > g_X, g_Y, g_D;
-	std::vector< ct::Matf > Xs, Ys, Ds;
+	std::vector< gpumat::GpuMat > g_X, g_Y, g_Y1, g_D;
+	std::vector< ct::Matf > Xs, Ys, Ys1, Ds;
 
 	int cnt = 60;
 	g_X.resize(cnt);
@@ -343,7 +343,7 @@ void internal_test_gpu()
 	bn.Y = &g_Y;
 	bn.D = &g_D;
 
-	gpumat::batch_normalize(bn);
+	bn.normalize();
 
 //	gpumat::GpuMat g_tMean;
 //	gpumat::transpose(bn.Mean, g_tMean);
@@ -366,6 +366,7 @@ void internal_test_gpu()
 	cbn.Y = &Ys;
 	cbn.D = &Ds;
 
+	cbn.channels = 20;
 	cbn.normalize();
 	ct::save_mat(cbn.Mean, "cMean.txt");
 	ct::save_mat(cbn.Var, "cVar.txt");
@@ -382,7 +383,6 @@ void internal_test_gpu()
 	fs << str << std::endl << str2;
 	fs.close();
 
-
 	Ds.resize(Xs.size());
 	g_D.resize(Ds.size());
 
@@ -394,8 +394,10 @@ void internal_test_gpu()
 		gpumat::convert_to_gpu(Di, g_D[index]);
 		index++;
 	}
-	cbn.Var.copyTo(cbn.gamma);
-	cbn.Mean.copyTo(cbn.betha);
+//	cbn.Var.copyTo(cbn.gamma);
+//	cbn.Mean.copyTo(cbn.betha);
+
+#if 1
 	cbn.denormalize();
 
 	str = "";
@@ -409,13 +411,30 @@ void internal_test_gpu()
 	fs.open("labcD.m", std::ios_base::out);
 	fs << str << std::endl << str2;
 	fs.close();
+#else
+	cbn.X = &Ys;
+	cbn.Y = &Ys1;
 
+	cbn.Var.copyTo(cbn.gamma);
+	cbn.Mean.copyTo(cbn.betha);
+	cbn.normalize();
+
+	str = "";
+	str2 = "Ys = [";
+	index = 0;
+	for(ct::Matf& Yi: Ys1){
+		str += "Y_" + std::to_string(++index) + "=" + Yi.print() + ";\n";
+		str2 += "Y_" + std::to_string(index) + "; ";
+	}
+	str2 += "];\n";
+	fs.open("labcY1.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
+#endif
 	////
 
-	bn.Var.copyTo(bn.gamma);
-	bn.Mean.copyTo(bn.betha);
-
-	gpumat::batch_denormalize(bn);
+#if 1
+	bn.denormalize();
 
 	str = "";
 	str2 = "Ds = [";
@@ -428,6 +447,34 @@ void internal_test_gpu()
 	fs.open("labD.m", std::ios_base::out);
 	fs << str << std::endl << str2;
 	fs.close();
+#else
+
+	bn.X = &g_Y;
+	bn.Y = &g_Y1;
+
+	bn.Var.copyTo(bn.gamma);
+	bn.Mean.copyTo(bn.betha);
+
+	bn.denormalize();;
+
+//	gpumat::GpuMat g_tMean;
+//	gpumat::transpose(bn.Mean, g_tMean);
+	gpumat::save_gmat(bn.Mean, "Mean.txt");
+	gpumat::save_gmat(bn.Var, "Var.txt");
+
+	str = "";
+	str2 = "Ys = [";
+	index = 0;
+	for(gpumat::GpuMat& g_Yi: g_Y1){
+		str += "Y_" + std::to_string(++index) + "=" + g_Yi.print() + ";\n";
+		str2 += "Y_" + std::to_string(index) + "; ";
+	}
+	str2 += "];\n";
+	fs.open("labY1.m", std::ios_base::out);
+	fs << str << std::endl << str2;
+	fs.close();
+
+#endif
 }
 
 #endif

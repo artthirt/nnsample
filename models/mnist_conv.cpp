@@ -38,9 +38,9 @@ void mnist_conv::setConvLength()
 	int prev = 1;
 	ct::Size szA0(imageWidth, imageHeight);
 
-	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), ct::LEAKYRELU, true, false);
-	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 64, ct::Size(3, 3), ct::LEAKYRELU, true);
-	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), ct::LEAKYRELU, false);
+	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), ct::LEAKYRELU, true, false, true);
+	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 64, ct::Size(3, 3), ct::LEAKYRELU, true, true, true);
+	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), ct::LEAKYRELU, false, true, true);
 
 #ifdef _USE_GPU
 	m_gpu_model.setConvLength();
@@ -579,7 +579,7 @@ void mnist_conv::init(int seed)
 	m_gpu_model.init_gpu(m_layers);
 }
 
-Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, bool use_gpu, bool saved)
+Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, bool use_gpu, bool train)
 {
 	if(m_mlp.empty() || m_layers.empty() || X.empty())
 		return Matf(0, 0);
@@ -592,7 +592,7 @@ Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, boo
 		return m_gpu_model.forward_gpu(gX);
 	}
 
-	conv(X, m_Xout, saved);
+	conv(X, m_Xout, train);
 
 	Matf *pA = &m_Xout;
 
@@ -608,13 +608,14 @@ Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, boo
 	return m_mlp.back().A1;
 }
 
-void mnist_conv::conv(const std::vector< Matf > &X, Matf &X_out, bool saved)
+void mnist_conv::conv(const std::vector< Matf > &X, Matf &X_out, bool train)
 {
 	if(X.empty())
 		return;
 
 	std::vector< Matf > *pX = (std::vector< Matf > *)&X;
 	for(size_t i = 0; i < m_cnv.size(); ++i){
+		m_cnv[i].setTrain(train);
 		m_cnv[i].forward(pX);
 		pX = &m_cnv[i].XOut();
 	}
