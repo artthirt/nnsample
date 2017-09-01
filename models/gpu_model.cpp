@@ -272,9 +272,9 @@ void gpu_model::setConvLength()
 	m_cnv.resize(cnv_size);
 
 	ct::Size szA0(imageWidth, imageHeight);
-	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), gpumat::LEAKYRELU, true, false);
-	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 64, ct::Size(3, 3), gpumat::LEAKYRELU, true);
-	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), gpumat::LEAKYRELU, false);
+	m_cnv[0].init(szA0, 1, 1, 32, ct::Size(3, 3), gpumat::LEAKYRELU, true, true, false);
+	m_cnv[1].init(m_cnv[0].szOut(), 32, 1, 64, ct::Size(3, 3), gpumat::LEAKYRELU, true, true, true);
+	m_cnv[2].init(m_cnv[1].szOut(), 64, 1, 96, ct::Size(3, 3), gpumat::LEAKYRELU, false, true, true);
 
 }
 

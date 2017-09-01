@@ -313,13 +313,15 @@ void internal_test_gpu()
 
 	std::string str, str2;
 
+	int channels = 100;
+
 	str2 = "Xs = [";
 	for(gpumat::GpuMat& g_Xi: g_X){
-		ct::Matf X(10, 20);
+		ct::Matf X(10, channels);
 		float *dX = X.ptr();
 		for(int i = 0; i < X.total(); ++i){
 			float val = (float)i/X.total() * 3.;
-			val = sin(index + (val) + cos(index * 0.1));
+			val = 2 * sin(index + (val) + 1.5 * cos(index * 0.1));
 			dX[i] = val;
 		}
 		gpumat::convert_to_gpu(X, g_Xi);
@@ -333,17 +335,12 @@ void internal_test_gpu()
 	fs << str << std::endl << str2;
 	fs.close();
 
-
-	bn.gamma.resize(1, g_X[0].total(), g_X[0].type);
-	gpumat::memset(bn.gamma, 1);
-	bn.betha.resize(1, g_X[0].total(), g_X[0].type);
-	gpumat::memset(bn.betha, 0);
-
 	bn.X = &g_X;
 	bn.Y = &g_Y;
 	bn.D = &g_D;
+	bn.channels = channels;
 
-	bn.normalize();
+	bn.normalize();					//// <----------
 
 //	gpumat::GpuMat g_tMean;
 //	gpumat::transpose(bn.Mean, g_tMean);
@@ -362,12 +359,16 @@ void internal_test_gpu()
 	fs << str << std::endl << str2;
 	fs.close();
 
+	/////////////////////////////
+
 	cbn.X = &Xs;
 	cbn.Y = &Ys;
 	cbn.D = &Ds;
 
-	cbn.channels = 20;
-	cbn.normalize();
+	cbn.channels = channels;
+
+	cbn.normalize();					//// <---------
+
 	ct::save_mat(cbn.Mean, "cMean.txt");
 	ct::save_mat(cbn.Var, "cVar.txt");
 
@@ -411,6 +412,10 @@ void internal_test_gpu()
 	fs.open("labcD.m", std::ios_base::out);
 	fs << str << std::endl << str2;
 	fs.close();
+
+//	ct::save_mat(cbn.Var, "cdmean.txt");
+	ct::save_mat(cbn.dgamma, "cdgamma.txt");
+	ct::save_mat(cbn.dbetha, "cdbetha.txt");
 #else
 	cbn.X = &Ys;
 	cbn.Y = &Ys1;
@@ -447,6 +452,12 @@ void internal_test_gpu()
 	fs.open("labD.m", std::ios_base::out);
 	fs << str << std::endl << str2;
 	fs.close();
+
+//	gpumat::save_gmat(bn.Mean, "dmean.txt");
+//	gpumat::save_gmat(bn.dVar, "dvar.txt");
+	gpumat::save_gmat(bn.dgamma, "dgamma.txt");
+	gpumat::save_gmat(bn.dbetha, "dbetha.txt");
+	std::cout << "end\n";
 #else
 
 	bn.X = &g_Y;

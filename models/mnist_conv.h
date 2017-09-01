@@ -28,8 +28,7 @@ public:
 	 */
 	ct::Matf forward(const std::vector<ct::Matf> &X,
 					 bool use_dropout = false,
-					 bool use_gpu = false,
-					 bool train = false);
+					 bool use_gpu = false);
 	/**
 	 * @brief forward
 	 * @param index
@@ -140,7 +139,7 @@ private:
 	void randX(ct::Matf& X);
 	void getBatchIds(std::vector< int >& indexes, int batch = -1);
 
-	void conv(const std::vector<ct::Matf> &X, ct::Matf &X_out, bool train = true);
+	void conv(const std::vector<ct::Matf> &X, ct::Matf &X_out);
 };
 
 #endif // MIST_CONV_H
