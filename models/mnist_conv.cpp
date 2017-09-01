@@ -164,7 +164,7 @@ void mnist_conv::load_model(bool gpu)
 	printf("model loaded.\n");
 }
 
-Matf mnist_conv::forward(int index, int count, bool use_gpu)
+Matf mnist_conv::forward(int index, int count, bool use_gpu, bool train)
 {
 	if(m_layers.empty())
 		return Matf(0, 0);
@@ -200,7 +200,7 @@ Matf mnist_conv::forward_test(int index, int count, bool use_gpu)
 		}
 	}
 
-	return forward(X, false, use_gpu);
+	return forward(X, false, use_gpu, false);
 }
 
 void mnist_conv::setAlpha(double alpha)
@@ -242,7 +242,7 @@ void mnist_conv::getEstimate(int batch, double &l2, double &accuracy, bool use_g
 		yp.push_back(ypi);
 		xcnt += Xi.size();
 
-		Matf yi = forward(Xi, false, use_gpu);
+		Matf yi = forward(Xi, false, use_gpu, false);
 		y.push_back(yi);
 		index += batchi;
 	}
@@ -579,7 +579,7 @@ void mnist_conv::init(int seed)
 	m_gpu_model.init_gpu(m_layers);
 }
 
-Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, bool use_gpu)
+Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, bool use_gpu, bool train)
 {
 	if(m_mlp.empty() || m_layers.empty() || X.empty())
 		return Matf(0, 0);
@@ -589,7 +589,12 @@ Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, boo
 		if(!m_gpu_model.isInit())
 			m_gpu_model.init_gpu(m_layers);
 		gpumat::cnv2gpu(X, gX);
+		m_gpu_model.set_train(train);
 		return m_gpu_model.forward_gpu(gX);
+	}
+
+	for(conv2::convnnf& item: m_cnv){
+		item.setTrainMode(train);
 	}
 
 	conv(X, m_Xout);

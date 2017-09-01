@@ -36,6 +36,8 @@ public:
 	 */
 	void pass_batch_gpu(const std::vector<gpumat::GpuMat> &X, const gpumat::GpuMat& y);
 
+	void set_train(bool val);
+
 	uint32_t iteration() const;
 	void setAlpha(double val);
 

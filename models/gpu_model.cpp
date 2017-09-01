@@ -138,6 +138,13 @@ void gpu_model::pass_batch_gpu(const std::vector< gpumat::GpuMat > &X, const gpu
 
 }
 
+void gpu_model::set_train(bool val)
+{
+	for(gpumat::convnn_gpu& item: m_cnv){
+		item.setTrainMode(val);
+	}
+}
+
 uint32_t gpu_model::iteration() const
 {
 	return m_iteration;

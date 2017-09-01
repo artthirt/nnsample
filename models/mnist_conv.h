@@ -28,7 +28,7 @@ public:
 	 */
 	ct::Matf forward(const std::vector<ct::Matf> &X,
 					 bool use_dropout = false,
-					 bool use_gpu = false);
+					 bool use_gpu = false, bool train = true);
 	/**
 	 * @brief forward
 	 * @param index
@@ -36,7 +36,7 @@ public:
 	 * @param use_gpu
 	 * @return
 	 */
-	ct::Matf forward(int index, int count, bool use_gpu = false);
+	ct::Matf forward(int index, int count, bool use_gpu = false, bool train = true);
 	/**
 	 * @brief forward_test
 	 * @param index
