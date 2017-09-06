@@ -153,8 +153,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_mnist_cnv.setMnist(&m_mnist);
 	m_mnist_cnv.init(1);
 
-	m_mnist_cnv.load_model(true);
-	m_mnist_cnv.load_model();
+//	m_mnist_cnv.load_model(true);
+//	m_mnist_cnv.load_model();
 
 	ui->sb_timeout_train->setValue(m_timer_mnist.interval());
 }

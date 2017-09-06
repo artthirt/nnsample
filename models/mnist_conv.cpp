@@ -589,7 +589,6 @@ Matf mnist_conv::forward(const std::vector< ct::Matf > &X, bool use_dropout, boo
 		if(!m_gpu_model.isInit())
 			m_gpu_model.init_gpu(m_layers);
 		gpumat::cnv2gpu(X, gX);
-		m_gpu_model.set_train(train);
 		return m_gpu_model.forward_gpu(gX);
 	}
 
