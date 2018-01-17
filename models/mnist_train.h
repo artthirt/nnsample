@@ -170,7 +170,7 @@ private:
 	float m_lambda;
 	uint m_iteration;
 
-	ct::MlpOptimAdam<float> m_optim;
+	ct::MlpAdamOptimizer<float> m_optim;
 
 	std::vector< ct::SimpleAutoencoder<float> > enc;
 

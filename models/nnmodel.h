@@ -68,7 +68,7 @@ private:
 //	std::vector< ct::Matf > m_b;
 	std::vector< int > m_layers;
 
-	ct::MlpOptimAdam<float> m_AdamOptimizer;
+	ct::MlpAdamOptimizer<float> m_AdamOptimizer;
 
 	EResultModel m_resultModel;
 

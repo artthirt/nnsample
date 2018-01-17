@@ -350,7 +350,7 @@ void MainWindow::pass_cnv()
 {
 //	ui->wdg_cnvW->set_prev_weight(m_mnist_cnv.cnvW());
 
-	m_mnist_cnv.pass_batch(100 + ui->chb_use_gpu_cnv->isChecked() * 1,
+	m_mnist_cnv.pass_batch(ui->sb_batch->value(),
 						   ui->chb_use_gpu_cnv->isChecked());
 //	on_pb_update_cnv_clicked();
 	ui->lb_out_cnv->setText("Pass: #" + QString::number(m_mnist_cnv.iteration()));

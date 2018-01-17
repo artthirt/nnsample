@@ -306,18 +306,18 @@ void internal_test_gpu()
 	std::vector< gpumat::GpuMat > g_X, g_Y, g_Y1, g_D;
 	std::vector< ct::Matf > Xs, Ys, Ys1, Ds;
 
-	int cnt = 60;
+	int cnt = 5;
 	g_X.resize(cnt);
 
 	int index = 0;
 
 	std::string str, str2;
 
-	int channels = 100;
+	int channels = 64;
 
 	str2 = "Xs = [";
 	for(gpumat::GpuMat& g_Xi: g_X){
-		ct::Matf X(10, channels);
+		ct::Matf X(3136, channels);
 		float *dX = X.ptr();
 		for(int i = 0; i < X.total(); ++i){
 			float val = (float)i/X.total() * 3.;

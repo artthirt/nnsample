@@ -66,8 +66,8 @@ private:
 	gpumat::GpuMat g_Xout;
 	std::vector< gpumat::GpuMat > ds;
 
-	gpumat::MlpOptimMoment m_mlp_optim;
-	gpumat::CnvMomentumOptimizer m_cnv_optim;
+	gpumat::MlpOptimAdam m_mlp_optim;
+	gpumat::CnvAdamOptimizer m_cnv_optim;
 
 	void conv(const std::vector<gpumat::GpuMat> &X, gpumat::GpuMat &X_out);
 
